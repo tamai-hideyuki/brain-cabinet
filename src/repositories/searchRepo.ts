@@ -1,13 +1,18 @@
 import { db } from "../db/client";
 import { notes } from "../db/schema";
-import { like } from "drizzle-orm";
+import { sql, desc } from "drizzle-orm";
 
 export const searchNotesInDB = async (query: string) => {
-  if (!query) return [];
+  const q = query.trim();
+  if (!q) return [];
+
+  const keyword = `%${q}%`;
 
   return await db
     .select()
     .from(notes)
-    .where(like(notes.content, `%${query}%`))
-    .all();
+    .where(
+      sql`${notes.title} LIKE ${keyword} OR ${notes.content} LIKE ${keyword}`
+    )
+    .orderBy(desc(notes.updatedAt));
 };
