@@ -39,3 +39,7 @@ package-lock.json
 
 notes/
 docs/
+
+openapi.json
+brain-cabinet-mode.md 
+brain-cabinet-tools.json

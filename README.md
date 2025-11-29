@@ -45,25 +45,26 @@ brain-cabinet/
 
 ```
 
-- 後から設計図
-```
-src/
-  domain/
-    note/
-      Note.ts
-      NoteId.ts
-      NoteRepository.ts (interface)
-      NoteService.ts
-  application/
-    getNoteList/
-    searchNote/
-    importNotes/
-  infrastructure/
-    db/
-      NoteRepositoryImpl.ts
-    vector/
-      ChromaAdapter.ts
-  interfaces/
-    http/
-      routes/
-```
+
+- 情報取得（Input系）
+
+| 目的             | API                                  | 
+| -------------- | ------------------------------------ |
+| キーワード検索        | GET /api/search                      |
+| タグ検索           | GET /api/search?tags=                |
+| ノート全文 + 履歴     | GET /api/notes/:id/full-context      |
+| 履歴のHTML差分      | GET /api/notes/:id/history/:hid/diff |
+| 履歴一覧           | GET /api/notes/:id/history           |
+| 軽量履歴           | GET /api/notes/:id/with-history      |
+| カテゴリ一覧         | GET /api/search/categories           |
+| GPT向け複合検索      | GET /api/gpt/search                  |
+| GPT向けノートコンテキスト | GET /api/gpt/notes/:id/context       |
+| GPT全体サマリー      | GET /api/gpt/overview                |
+
+- 状態変更（Write系）
+
+| 目的     | API                             |
+| ------ | ------------------------------- |
+| ノート更新  | PUT /api/notes/:id              |
+| 巻き戻し   | POST /api/notes/:id/revert/:hid |
+| GPTタスク | POST /api/gpt/task              |
