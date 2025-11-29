@@ -42,3 +42,39 @@ export const getHistoryHtmlDiff = async (historyId: string) => {
 export const getHistoryById = async (historyId: string) => {
   return await findHistoryById(historyId);
 };
+
+// GPT向け: ノート + 全履歴 + 差分を一括取得
+export const getNoteFullContext = async (noteId: string) => {
+  const note = await findNoteById(noteId);
+  if (!note) {
+    throw new Error("Note not found");
+  }
+
+  const histories = await findHistoryByNoteId(noteId);
+
+  // 各履歴に HTML diff を追加（履歴→現在 の差分）
+  const historiesWithDiff = histories.map((h) => ({
+    id: h.id,
+    content: h.content,
+    diff: h.diff,
+    createdAt: h.createdAt,
+    htmlDiff: computeHtmlDiff(h.content, note.content),
+  }));
+
+  return {
+    note: {
+      id: note.id,
+      title: note.title,
+      path: note.path,
+      content: note.content,
+      tags: note.tags ? JSON.parse(note.tags) : [],
+      category: note.category,
+      headings: note.headings ? JSON.parse(note.headings) : [],
+      createdAt: note.createdAt,
+      updatedAt: note.updatedAt,
+    },
+    // 最新 → 過去 の順（createdAt 降順）
+    histories: historiesWithDiff,
+    totalHistories: historiesWithDiff.length,
+  };
+};

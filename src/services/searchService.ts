@@ -1,4 +1,4 @@
-import { searchNotesInDB } from "../repositories/searchRepo";
+import { searchNotesInDB, SearchOptions } from "../repositories/searchRepo";
 import { findAllNotes } from "../repositories/notesRepo";
 import { normalizeText } from "../utils/normalize";
 import TinySegmenter from "tiny-segmenter";
@@ -192,8 +192,8 @@ const computeRecencyScore = (note: any): number => {
 // -------------------------------------
 // 検索本体
 // -------------------------------------
-export const searchNotes = async (query: string) => {
-  const raw = await searchNotesInDB(query);
+export const searchNotes = async (query: string, options?: SearchOptions) => {
+  const raw = await searchNotesInDB(query, options);
   const { idfMap } = await getIDFCache();
 
   // クエリを形態素解析

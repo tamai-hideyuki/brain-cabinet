@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { getAllNotes, updateNote, revertNote } from "../services/notesService";
-import { getNoteHistory, getHistoryHtmlDiff } from "../services/historyService";
+import { getNoteHistory, getHistoryHtmlDiff, getNoteFullContext } from "../services/historyService";
 
 export const notesRoute = new Hono();
 
@@ -43,5 +43,16 @@ notesRoute.post("/:id/revert/:historyId", async (c) => {
     return c.json(reverted);
   } catch (e) {
     return c.json({ error: (e as Error).message }, 400);
+  }
+});
+
+// GPT向け: ノート + 全履歴 + 差分を一括取得
+notesRoute.get("/:id/full-context", async (c) => {
+  const id = c.req.param("id");
+  try {
+    const context = await getNoteFullContext(id);
+    return c.json(context);
+  } catch (e) {
+    return c.json({ error: (e as Error).message }, 404);
   }
 });

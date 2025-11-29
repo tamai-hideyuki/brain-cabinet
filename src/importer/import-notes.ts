@@ -6,6 +6,7 @@ import { notes, noteHistory } from "../db/schema";
 import { eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { computeDiff } from "../utils/diff";
+import { extractMetadata } from "../utils/metadata";
 
 const SUPPORTED_EXT = [".md", ".txt", ".mdx"];
 
@@ -65,27 +66,39 @@ const importNotes = async (targetDir: string) => {
           createdAt: Math.floor(Date.now() / 1000),
         });
 
+        // メタデータ抽出
+        const metadata = extractMetadata(content, title);
+
         // 更新
         await db
           .update(notes)
           .set({
             title,
             content,
+            tags: JSON.stringify(metadata.tags),
+            category: metadata.category,
+            headings: JSON.stringify(metadata.headings),
             updatedAt: Math.floor(Date.now() / 1000),
           })
           .where(eq(notes.path, filePath));
-        console.log(`✔ Updated: ${title}`);
+        console.log(`✔ Updated: ${title} [${metadata.category}]`);
       } else {
+        // メタデータ抽出
+        const metadata = extractMetadata(content, title);
+
         // 新規
         await db.insert(notes).values({
           id: randomUUID(),
           title,
           path: filePath,
           content,
+          tags: JSON.stringify(metadata.tags),
+          category: metadata.category,
+          headings: JSON.stringify(metadata.headings),
           createdAt: Math.floor(Date.now() / 1000),
           updatedAt: Math.floor(Date.now() / 1000),
         });
-        console.log(`✔ Imported: ${title}`);
+        console.log(`✔ Imported: ${title} [${metadata.category}]`);
       }
     } catch (err) {
       console.error(`Failed: ${filePath}`, err);
