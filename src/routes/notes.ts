@@ -1,6 +1,6 @@
 import { Hono } from "hono";
-import { getAllNotes } from "../services/notesService";
-import { updateNote } from "../services/notesService";
+import { getAllNotes, updateNote } from "../services/notesService";
+import { getNoteHistory } from "../services/historyService";
 
 export const notesRoute = new Hono();
 
@@ -15,4 +15,10 @@ notesRoute.put("/:id", async (c) => {
 
   const updated = await updateNote(id, content);
   return c.json(updated);
+});
+
+notesRoute.get("/:id/history", async (c) => {
+  const id = c.req.param("id");
+  const history = await getNoteHistory(id);
+  return c.json(history);
 });

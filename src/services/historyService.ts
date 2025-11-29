@@ -1,4 +1,4 @@
-import { insertHistory } from "../repositories/historyRepo";
+import { insertHistory, findHistoryByNoteId } from "../repositories/historyRepo";
 import { randomUUID } from "crypto";
 
 type SaveHistoryInput = {
@@ -15,4 +15,8 @@ export const saveNoteHistory = async ({ noteId, content, diff }: SaveHistoryInpu
     diff: diff ?? null,
     createdAt: Math.floor(Date.now() / 1000),
   });
+};
+
+export const getNoteHistory = async (noteId: string) => {
+  return await findHistoryByNoteId(noteId);
 };
