@@ -1,15 +1,18 @@
-import { db } from "../db/client";
-import { noteHistory } from "../db/schema";
+import { insertHistory } from "../repositories/historyRepo";
 import { randomUUID } from "crypto";
 
-export const saveHistory = async (noteId: string, content: string, diff?: string) => {
-  const now = Math.floor(Date.now() / 1000);
+type SaveHistoryInput = {
+  noteId: string;
+  content: string;
+  diff?: string;
+};
 
-  await db.insert(noteHistory).values({
+export const saveNoteHistory = async ({ noteId, content, diff }: SaveHistoryInput) => {
+  await insertHistory({
     id: randomUUID(),
     noteId,
     content,
-    diff,
-    createdAt: now,
+    diff: diff ?? null,
+    createdAt: Math.floor(Date.now() / 1000),
   });
 };
