@@ -36,6 +36,9 @@ const importNotes = async (targetDir: string) => {
 
   for (const filePath of targetFiles) {
     try {
+      const content = fs.readFileSync(filePath, "utf-8");
+      const title = path.basename(filePath, path.extname(filePath));
+
       const exists = await db
         .select()
         .from(notes)
@@ -43,23 +46,28 @@ const importNotes = async (targetDir: string) => {
         .limit(1);
 
       if (exists.length > 0) {
-        console.log(`↩︎ Skip: ${filePath}`);
-        continue;
+        // 更新
+        await db
+          .update(notes)
+          .set({
+            title,
+            content,
+            updatedAt: Math.floor(Date.now() / 1000),
+          })
+          .where(eq(notes.path, filePath));
+        console.log(`✔ Updated: ${title}`);
+      } else {
+        // 新規
+        await db.insert(notes).values({
+          id: randomUUID(),
+          title,
+          path: filePath,
+          content,
+          createdAt: Math.floor(Date.now() / 1000),
+          updatedAt: Math.floor(Date.now() / 1000),
+        });
+        console.log(`✔ Imported: ${title}`);
       }
-
-      const content = fs.readFileSync(filePath, "utf-8");
-      const title = path.basename(filePath, path.extname(filePath));
-
-      await db.insert(notes).values({
-        id: randomUUID(),
-        title,
-        path: filePath,
-        content,
-        createdAt: Math.floor(Date.now() / 1000),
-        updatedAt: Math.floor(Date.now() / 1000),
-      });
-
-      console.log(`✔ Imported: ${title}`);
     } catch (err) {
       console.error(`Failed: ${filePath}`, err);
     }

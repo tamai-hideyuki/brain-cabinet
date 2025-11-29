@@ -2,6 +2,17 @@
 - pnpm import-notes ./notes
 - curl "http://localhost:3000/api/search?query=test"
 
+- 現状のアルゴリズム
+- 検索ワードがたくさん含まれるほどスコアが上がる（メモの長さ（内容量）に比例して高くなる）
+- タイトル一致の重みは小さい（内容が多いものが勝つ）
+- snippet もちゃんと先頭から取れてる（ユーザーが見たときの UI としてとても自然）
+
+- 現状DB
+- createdAt
+- updatedAt
+- content
+- path
+- snippet
 
 ```
 brain-cabinet/
