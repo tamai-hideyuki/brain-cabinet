@@ -1,23 +1,12 @@
 import { searchNotesInDB } from "../repositories/searchRepo";
+import { normalizeText } from "../utils/normalize";
 import TinySegmenter from "tiny-segmenter";
 
 const segmenter = new TinySegmenter();
 
 // 形態素解析
 const tokenize = (text: string): string[] => {
-  return segmenter.segment(text); // ["ありがとう"] → ["あり","がと","う"]
-};
-
-// -------------------------------------
-// Markdown を整形（検索結果テキスト）
-// -------------------------------------
-const normalizeText = (md: string) => {
-  return md
-    .replace(/^\s*[-*+]\s+/gm, "")
-    .replace(/^#{1,6}\s+/gm, "")
-    .replace(/^>\s*/gm, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  return segmenter.segment(text);
 };
 
 // -------------------------------------
