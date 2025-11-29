@@ -5,6 +5,7 @@ import { db } from "../db/client";
 import { notes, noteHistory } from "../db/schema";
 import { eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
+import { computeDiff } from "../utils/diff";
 
 const SUPPORTED_EXT = [".md", ".txt", ".mdx"];
 
@@ -54,12 +55,13 @@ const importNotes = async (targetDir: string) => {
           continue;
         }
 
-        // 履歴保存（変更前の内容）
+        // 履歴保存（変更前の内容 + 差分）
+        const diff = computeDiff(old.content, content);
         await db.insert(noteHistory).values({
           id: randomUUID(),
           noteId: old.id,
           content: old.content,
-          diff: null,
+          diff,
           createdAt: Math.floor(Date.now() / 1000),
         });
 

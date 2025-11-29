@@ -5,17 +5,18 @@
 - curl -s "http://localhost:3000/api/notes/bbf22250-58d0-451e-acc1-f312bc865381/history" | jq .
 
 
-- 現状のアルゴリズム
-- 検索ワードがたくさん含まれるほどスコアが上がる（メモの長さ（内容量）に比例して高くなる）
-- タイトル一致の重みは小さい（内容が多いものが勝つ）
-- snippet もちゃんと先頭から取れてる（ユーザーが見たときの UI としてとても自然）
+# ファイル編集後にインポート（diffが保存される）
+pnpm import-notes notes
 
-- 現状DB
-- createdAt
-- updatedAt
-- content
-- path
-- snippet
+# 履歴確認
+- curl "http://localhost:3000/api/notes/{noteId}/history"
+
+# HTML diff取得
+- curl "http://localhost:3000/api/notes/{noteId}/history/{historyId}/diff"
+
+# 巻き戻し
+- curl -X POST "http://localhost:3000/api/notes/{noteId}/revert/{historyId}"
+
 
 ```
 brain-cabinet/

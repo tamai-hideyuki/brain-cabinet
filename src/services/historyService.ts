@@ -1,4 +1,6 @@
-import { insertHistory, findHistoryByNoteId } from "../repositories/historyRepo";
+import { insertHistory, findHistoryByNoteId, findHistoryById } from "../repositories/historyRepo";
+import { findNoteById } from "../repositories/notesRepo";
+import { computeHtmlDiff } from "../utils/diff";
 import { randomUUID } from "crypto";
 
 type SaveHistoryInput = {
@@ -19,4 +21,24 @@ export const saveNoteHistory = async ({ noteId, content, diff }: SaveHistoryInpu
 
 export const getNoteHistory = async (noteId: string) => {
   return await findHistoryByNoteId(noteId);
+};
+
+export const getHistoryHtmlDiff = async (historyId: string) => {
+  const history = await findHistoryById(historyId);
+  if (!history) {
+    throw new Error("History not found");
+  }
+
+  const note = await findNoteById(history.noteId);
+  if (!note) {
+    throw new Error("Note not found");
+  }
+
+  // 履歴(過去) → 現在 の差分をHTML化
+  const html = computeHtmlDiff(history.content, note.content);
+  return { historyId, noteId: history.noteId, html };
+};
+
+export const getHistoryById = async (historyId: string) => {
+  return await findHistoryById(historyId);
 };

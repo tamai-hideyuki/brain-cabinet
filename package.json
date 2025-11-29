@@ -9,12 +9,14 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.19.6",
+    "diff-match-patch": "^1.0.5",
     "drizzle-orm": "^0.44.7",
     "hono": "^4.0.0",
     "tiny-segmenter": "^0.2.0"
   },
   "devDependencies": {
     "@libsql/client": "^0.15.15",
+    "@types/diff-match-patch": "^1.0.36",
     "@types/node": "^24.10.1",
     "drizzle-kit": "^0.31.7",
     "tsx": "^4.7.0",

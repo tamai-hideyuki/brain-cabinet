@@ -13,3 +13,12 @@ export const findHistoryByNoteId = async (noteId: string) => {
     .where(eq(noteHistory.noteId, noteId))
     .orderBy(desc(noteHistory.createdAt));
 };
+
+export const findHistoryById = async (historyId: string) => {
+  const result = await db
+    .select()
+    .from(noteHistory)
+    .where(eq(noteHistory.id, historyId))
+    .limit(1);
+  return result[0] ?? null;
+};
