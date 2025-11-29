@@ -63,21 +63,81 @@ const getIDFCache = async (): Promise<IDFCache> => {
 };
 
 // -------------------------------------
-// snippet生成
+// snippet生成（2段階: パラグラフ優先 → トークンベース）
 // -------------------------------------
-const makeSnippet = (content: string, query: string, length = 80) => {
+
+// パラグラフ分割（句点・改行で区切る）
+const splitParagraphs = (text: string): string[] => {
+  return text
+    .split(/[。\n]+/)
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0);
+};
+
+// トークンベースのsnippet（前後15トークン）
+const makeTokenSnippet = (content: string, query: string, contextTokens = 15): string => {
   const text = normalizeText(content);
-  const lower = text.toLowerCase();
+  const tokens = tokenize(text);
+  const queryTokens = tokenize(query.toLowerCase());
+
+  // クエリトークンの位置を探す
+  let matchIndex = -1;
+  const lowerTokens = tokens.map((t) => t.toLowerCase());
+
+  for (const qt of queryTokens) {
+    if (qt.length < 2) continue;
+    const idx = lowerTokens.findIndex((t) => t.includes(qt));
+    if (idx !== -1) {
+      matchIndex = idx;
+      break;
+    }
+  }
+
+  if (matchIndex === -1) {
+    // 見つからない場合は先頭から
+    return tokens.slice(0, contextTokens * 2).join("") + "...";
+  }
+
+  // 前後のトークンを抽出
+  const start = Math.max(0, matchIndex - contextTokens);
+  const end = Math.min(tokens.length, matchIndex + contextTokens);
+  const snippetTokens = tokens.slice(start, end);
+
+  return (start > 0 ? "..." : "") + snippetTokens.join("") + (end < tokens.length ? "..." : "");
+};
+
+// パラグラフベースのsnippet
+const makeParagraphSnippet = (content: string, query: string, maxLength = 120): string | null => {
+  const paragraphs = splitParagraphs(content);
   const q = query.toLowerCase();
 
-  const idx = lower.indexOf(q);
-  if (idx === -1) return text.slice(0, length) + "...";
+  // クエリを含むパラグラフを探す
+  for (const p of paragraphs) {
+    if (p.toLowerCase().includes(q)) {
+      // 長すぎる場合は切り詰め
+      if (p.length > maxLength) {
+        const idx = p.toLowerCase().indexOf(q);
+        const start = Math.max(0, idx - maxLength / 2);
+        const end = Math.min(p.length, idx + maxLength / 2);
+        return (start > 0 ? "..." : "") + p.slice(start, end) + (end < p.length ? "..." : "");
+      }
+      return p;
+    }
+  }
 
-  const start = Math.max(0, idx - length / 2);
-  const end = Math.min(text.length, idx + length / 2);
-  const snippet = text.slice(start, end);
+  return null;
+};
 
-  return snippet.replace(new RegExp(query, "gi"), (m) => `<mark>${m}</mark>`) + "...";
+// メインのsnippet生成
+const makeSnippet = (content: string, query: string): string => {
+  // 1. パラグラフベースを試す
+  const paragraphSnippet = makeParagraphSnippet(content, query);
+  if (paragraphSnippet) {
+    return paragraphSnippet;
+  }
+
+  // 2. トークンベースにフォールバック
+  return makeTokenSnippet(content, query);
 };
 
 // -------------------------------------
