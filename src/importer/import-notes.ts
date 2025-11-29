@@ -2,7 +2,7 @@
 import fs from "fs";
 import path from "path";
 import { db } from "../db/client";
-import { notes } from "../db/schema";
+import { notes, noteHistory } from "../db/schema";
 import { eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
@@ -46,6 +46,23 @@ const importNotes = async (targetDir: string) => {
         .limit(1);
 
       if (exists.length > 0) {
+        const old = exists[0];
+
+        // 内容が変わっていない場合はスキップ
+        if (old.content === content) {
+          console.log(`↩︎ Skip (unchanged): ${title}`);
+          continue;
+        }
+
+        // 履歴保存（変更前の内容）
+        await db.insert(noteHistory).values({
+          id: randomUUID(),
+          noteId: old.id,
+          content: old.content,
+          diff: null,
+          createdAt: Math.floor(Date.now() / 1000),
+        });
+
         // 更新
         await db
           .update(notes)
