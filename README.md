@@ -1,3 +1,8 @@
+- メモ作成
+- pnpm import-notes ./notes
+- curl "http://localhost:3000/api/search?query=test"
+
+
 ```
 brain-cabinet/
 ├── src/
