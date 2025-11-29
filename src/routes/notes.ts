@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { getAllNotes, updateNote, revertNote } from "../services/notesService";
-import { getNoteHistory, getHistoryHtmlDiff, getNoteFullContext } from "../services/historyService";
+import { getNoteHistory, getHistoryHtmlDiff, getNoteFullContext, getNoteWithHistory } from "../services/historyService";
 
 export const notesRoute = new Hono();
 
@@ -43,6 +43,20 @@ notesRoute.post("/:id/revert/:historyId", async (c) => {
     return c.json(reverted);
   } catch (e) {
     return c.json({ error: (e as Error).message }, 400);
+  }
+});
+
+// 軽量版: ノート + 最新N件の履歴
+notesRoute.get("/:id/with-history", async (c) => {
+  const id = c.req.param("id");
+  const limitParam = c.req.query("limit");
+  const limit = limitParam ? parseInt(limitParam, 10) : 3;
+
+  try {
+    const result = await getNoteWithHistory(id, limit);
+    return c.json(result);
+  } catch (e) {
+    return c.json({ error: (e as Error).message }, 404);
   }
 });
 

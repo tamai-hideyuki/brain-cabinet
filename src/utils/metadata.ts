@@ -30,17 +30,34 @@ const KATAKANA_REGEX = /[\u30A0-\u30FF]{2,}/g;
 
 // ストップワード（除外する一般的な単語）
 const STOP_WORDS = new Set([
-  // 英語
+  // 英語一般
   "the", "and", "for", "with", "that", "this", "from", "have", "not", "but",
   "are", "was", "were", "been", "being", "has", "had", "will", "would", "could",
   "should", "may", "might", "must", "can", "which", "what", "when", "where",
   "who", "how", "why", "all", "each", "every", "some", "any", "most", "other",
   "into", "over", "such", "only", "also", "than", "then", "now", "here", "there",
   "just", "more", "very", "about", "through", "between", "under", "after", "before",
-  // プログラミング一般（コードブロック内でよく出る）
+  "like", "make", "use", "using", "used", "get", "set", "add", "put", "take",
+  "see", "look", "know", "think", "want", "need", "try", "come", "give", "tell",
+  // プログラミング予約語（タグとして不要）
   "const", "let", "var", "function", "return", "import", "export", "default",
   "class", "extends", "implements", "interface", "type", "async", "await",
   "true", "false", "null", "undefined", "new", "delete", "typeof", "instanceof",
+  "if", "else", "switch", "case", "break", "continue", "while", "do", "for",
+  "try", "catch", "finally", "throw", "throws", "public", "private", "protected",
+  "static", "final", "abstract", "void", "int", "string", "boolean", "number",
+]);
+
+// 日本語ストップワード
+const JAPANESE_STOP_WORDS = new Set([
+  "する", "こと", "もの", "ため", "これ", "それ", "あれ", "どれ",
+  "ここ", "そこ", "あそこ", "どこ", "この", "その", "あの", "どの",
+  "なる", "ある", "いる", "できる", "れる", "られる", "せる", "させる",
+  "ない", "ます", "です", "だ", "である", "という", "として", "について",
+  "から", "まで", "より", "ほど", "など", "くらい", "ぐらい",
+  "ので", "のに", "けど", "けれど", "しかし", "でも", "だが", "ただし",
+  "また", "そして", "それで", "だから", "したがって", "ところで", "さて",
+  "とき", "ところ", "ほう", "わけ", "はず", "つもり", "よう", "みたい",
 ]);
 
 // 技術用語の重み付け（これらは優先的にタグ化）
@@ -84,7 +101,7 @@ export const extractTags = (content: string, maxTags = 10): string[] => {
     (t: string) =>
       t.length >= 2 &&
       /^[\u3040-\u309F\u4E00-\u9FAF]+$/.test(t) && // ひらがな・漢字
-      !/^(する|こと|もの|ため|これ|それ|あれ|どれ|ここ|そこ|あそこ|どこ)$/.test(t) // ストップワード
+      !JAPANESE_STOP_WORDS.has(t) // 日本語ストップワード除外
   );
 
   for (const word of japaneseWords) {
@@ -111,49 +128,84 @@ export const extractTags = (content: string, maxTags = 10): string[] => {
 // カテゴリ分類
 // -------------------------------------
 
-// カテゴリごとのキーワード
-const CATEGORY_KEYWORDS: Record<Category, string[]> = {
+// カテゴリごとのキーワード（重み付き）
+// weight: 1 = 通常, 2 = 強い指標, 3 = 決定的
+type WeightedKeyword = { word: string; weight: number };
+
+const CATEGORY_KEYWORDS: Record<Category, WeightedKeyword[]> = {
   技術: [
-    "typescript", "javascript", "python", "api", "データベース", "実装",
-    "コード", "プログラミング", "開発", "バグ", "エラー", "デバッグ",
-    "アルゴリズム", "フレームワーク", "ライブラリ", "サーバー", "クライアント",
-    "react", "vue", "node", "docker", "aws", "github", "git",
+    // 決定的（これがあればほぼ技術）
+    { word: "typescript", weight: 3 }, { word: "javascript", weight: 3 },
+    { word: "python", weight: 3 }, { word: "rust", weight: 3 }, { word: "golang", weight: 3 },
+    { word: "react", weight: 3 }, { word: "vue", weight: 3 }, { word: "angular", weight: 3 },
+    { word: "docker", weight: 3 }, { word: "kubernetes", weight: 3 },
+    { word: "aws", weight: 3 }, { word: "gcp", weight: 3 }, { word: "azure", weight: 3 },
+    // 強い指標
+    { word: "api", weight: 2 }, { word: "データベース", weight: 2 }, { word: "db", weight: 2 },
+    { word: "実装", weight: 2 }, { word: "コード", weight: 2 }, { word: "プログラミング", weight: 2 },
+    { word: "開発", weight: 2 }, { word: "バグ", weight: 2 }, { word: "エラー", weight: 2 },
+    { word: "デバッグ", weight: 2 }, { word: "github", weight: 2 }, { word: "git", weight: 2 },
+    // 通常
+    { word: "アルゴリズム", weight: 1 }, { word: "フレームワーク", weight: 1 },
+    { word: "ライブラリ", weight: 1 }, { word: "サーバー", weight: 1 }, { word: "クライアント", weight: 1 },
+    { word: "関数", weight: 1 }, { word: "変数", weight: 1 }, { word: "クラス", weight: 1 },
   ],
   心理: [
-    "心理", "メンタル", "感情", "ストレス", "不安", "うつ", "認知",
-    "行動", "習慣", "モチベーション", "自己", "意識", "無意識",
-    "トラウマ", "セラピー", "カウンセリング", "マインド",
+    { word: "心理学", weight: 3 }, { word: "認知行動療法", weight: 3 }, { word: "cbt", weight: 3 },
+    { word: "心理", weight: 2 }, { word: "メンタル", weight: 2 }, { word: "感情", weight: 2 },
+    { word: "ストレス", weight: 2 }, { word: "不安", weight: 2 }, { word: "うつ", weight: 2 },
+    { word: "認知", weight: 1 }, { word: "行動", weight: 1 }, { word: "習慣", weight: 1 },
+    { word: "モチベーション", weight: 1 }, { word: "自己", weight: 1 }, { word: "意識", weight: 1 },
+    { word: "トラウマ", weight: 2 }, { word: "セラピー", weight: 2 }, { word: "カウンセリング", weight: 2 },
   ],
   健康: [
-    "健康", "運動", "食事", "睡眠", "栄養", "ダイエット", "筋トレ",
-    "有酸素", "ストレッチ", "瞑想", "呼吸", "姿勢", "疲労", "回復",
-    "サプリ", "ビタミン", "プロテイン",
+    { word: "健康", weight: 2 }, { word: "運動", weight: 2 }, { word: "食事", weight: 2 },
+    { word: "睡眠", weight: 2 }, { word: "栄養", weight: 2 }, { word: "ダイエット", weight: 2 },
+    { word: "筋トレ", weight: 2 }, { word: "有酸素", weight: 2 }, { word: "ストレッチ", weight: 1 },
+    { word: "瞑想", weight: 1 }, { word: "呼吸", weight: 1 }, { word: "姿勢", weight: 1 },
+    { word: "疲労", weight: 1 }, { word: "回復", weight: 1 }, { word: "サプリ", weight: 1 },
+    { word: "ビタミン", weight: 1 }, { word: "プロテイン", weight: 1 }, { word: "カロリー", weight: 1 },
   ],
   仕事: [
-    "仕事", "キャリア", "転職", "面接", "スキル", "マネジメント",
-    "チーム", "プロジェクト", "タスク", "会議", "資料", "報告",
-    "上司", "部下", "同僚", "クライアント", "納期", "評価",
+    { word: "仕事", weight: 2 }, { word: "キャリア", weight: 2 }, { word: "転職", weight: 2 },
+    { word: "面接", weight: 2 }, { word: "マネジメント", weight: 2 }, { word: "リーダーシップ", weight: 2 },
+    { word: "チーム", weight: 1 }, { word: "プロジェクト", weight: 1 }, { word: "タスク", weight: 1 },
+    { word: "会議", weight: 1 }, { word: "資料", weight: 1 }, { word: "報告", weight: 1 },
+    { word: "上司", weight: 1 }, { word: "部下", weight: 1 }, { word: "同僚", weight: 1 },
+    { word: "クライアント", weight: 1 }, { word: "納期", weight: 1 }, { word: "評価", weight: 1 },
+    { word: "給与", weight: 1 }, { word: "昇進", weight: 1 }, { word: "スキルアップ", weight: 1 },
   ],
   人間関係: [
-    "人間関係", "コミュニケーション", "家族", "友人", "恋愛", "結婚",
-    "会話", "傾聴", "共感", "信頼", "対立", "解決", "境界線",
+    { word: "人間関係", weight: 3 }, { word: "コミュニケーション", weight: 2 },
+    { word: "家族", weight: 2 }, { word: "友人", weight: 2 }, { word: "恋愛", weight: 2 },
+    { word: "結婚", weight: 2 }, { word: "会話", weight: 1 }, { word: "傾聴", weight: 1 },
+    { word: "共感", weight: 1 }, { word: "信頼", weight: 1 }, { word: "対立", weight: 1 },
+    { word: "解決", weight: 1 }, { word: "境界線", weight: 1 }, { word: "距離感", weight: 1 },
   ],
   学習: [
-    "学習", "勉強", "読書", "本", "教育", "スキル", "知識",
-    "理解", "記憶", "復習", "ノート", "メモ", "インプット", "アウトプット",
+    { word: "学習", weight: 2 }, { word: "勉強", weight: 2 }, { word: "読書", weight: 2 },
+    { word: "本", weight: 1 }, { word: "教育", weight: 1 }, { word: "知識", weight: 1 },
+    { word: "理解", weight: 1 }, { word: "記憶", weight: 1 }, { word: "復習", weight: 1 },
+    { word: "ノート", weight: 1 }, { word: "インプット", weight: 1 }, { word: "アウトプット", weight: 1 },
+    { word: "暗記", weight: 1 }, { word: "試験", weight: 1 }, { word: "資格", weight: 1 },
   ],
   アイデア: [
-    "アイデア", "発想", "企画", "提案", "仮説", "実験", "検証",
-    "創造", "イノベーション", "ブレスト", "思考", "構想",
+    { word: "アイデア", weight: 3 }, { word: "発想", weight: 2 }, { word: "企画", weight: 2 },
+    { word: "提案", weight: 1 }, { word: "仮説", weight: 1 }, { word: "実験", weight: 1 },
+    { word: "検証", weight: 1 }, { word: "創造", weight: 1 }, { word: "イノベーション", weight: 2 },
+    { word: "ブレスト", weight: 2 }, { word: "思考", weight: 1 }, { word: "構想", weight: 1 },
   ],
   走り書き: [
-    "メモ", "todo", "あとで", "覚書", "雑記", "思いつき",
+    { word: "todo", weight: 3 }, { word: "あとで", weight: 2 }, { word: "覚書", weight: 2 },
+    { word: "雑記", weight: 2 }, { word: "思いつき", weight: 2 }, { word: "メモ", weight: 1 },
+    { word: "一旦", weight: 1 }, { word: "とりあえず", weight: 1 },
   ],
   その他: [],
 };
 
 export const classifyCategory = (content: string, title: string): Category => {
   const text = (title + " " + content).toLowerCase();
+  const titleLower = title.toLowerCase();
 
   let bestCategory: Category = "その他";
   let bestScore = 0;
@@ -162,11 +214,19 @@ export const classifyCategory = (content: string, title: string): Category => {
     const keywords = CATEGORY_KEYWORDS[category];
     let score = 0;
 
-    for (const keyword of keywords) {
-      const regex = new RegExp(keyword, "gi");
-      const matches = text.match(regex);
-      if (matches) {
-        score += matches.length;
+    for (const { word, weight } of keywords) {
+      const regex = new RegExp(word, "gi");
+
+      // タイトルでのマッチは2倍
+      const titleMatches = titleLower.match(regex);
+      if (titleMatches) {
+        score += titleMatches.length * weight * 2;
+      }
+
+      // 本文でのマッチ
+      const contentMatches = text.match(regex);
+      if (contentMatches) {
+        score += contentMatches.length * weight;
       }
     }
 
@@ -174,6 +234,11 @@ export const classifyCategory = (content: string, title: string): Category => {
       bestScore = score;
       bestCategory = category;
     }
+  }
+
+  // 最低スコア閾値（あまりにも低いスコアは「その他」）
+  if (bestScore < 2) {
+    return "その他";
   }
 
   return bestCategory;

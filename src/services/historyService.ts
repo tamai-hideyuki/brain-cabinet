@@ -43,6 +43,38 @@ export const getHistoryById = async (historyId: string) => {
   return await findHistoryById(historyId);
 };
 
+// 軽量版: ノート + 最新N件の履歴（デフォルト3件）
+export const getNoteWithHistory = async (noteId: string, limit = 3) => {
+  const note = await findNoteById(noteId);
+  if (!note) {
+    throw new Error("Note not found");
+  }
+
+  const allHistories = await findHistoryByNoteId(noteId);
+  const recentHistories = allHistories.slice(0, limit);
+
+  return {
+    note: {
+      id: note.id,
+      title: note.title,
+      path: note.path,
+      content: note.content,
+      tags: note.tags ? JSON.parse(note.tags) : [],
+      category: note.category,
+      headings: note.headings ? JSON.parse(note.headings) : [],
+      createdAt: note.createdAt,
+      updatedAt: note.updatedAt,
+    },
+    histories: recentHistories.map((h) => ({
+      id: h.id,
+      createdAt: h.createdAt,
+      // 軽量版なのでcontentは含めない（必要ならfull-contextを使う）
+      hasContent: true,
+    })),
+    totalHistories: allHistories.length,
+  };
+};
+
 // GPT向け: ノート + 全履歴 + 差分を一括取得
 export const getNoteFullContext = async (noteId: string) => {
   const note = await findNoteById(noteId);
