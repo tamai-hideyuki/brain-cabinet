@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "tsx src/index.ts",
     "migrate": "drizzle-kit push",
-    "import-notes": "tsx src/importer/import-notes.ts"
+    "import-notes": "tsx src/importer/import-notes.ts",
+    "export-notes": "tsx src/exporter/export-notes.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.6",
