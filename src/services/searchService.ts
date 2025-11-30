@@ -360,6 +360,19 @@ const computeMetadataScore = (
 };
 
 // -------------------------------------
+// JSON配列パース（安全に）
+// -------------------------------------
+const parseJsonArray = (jsonStr: string | null): string[] => {
+  if (!jsonStr) return [];
+  try {
+    const parsed = JSON.parse(jsonStr);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+// -------------------------------------
 // 検索本体
 // -------------------------------------
 export const searchNotes = async (query: string, options?: SearchOptions) => {
@@ -387,6 +400,8 @@ export const searchNotes = async (query: string, options?: SearchOptions) => {
 
     return {
       ...note,
+      tags: parseJsonArray(note.tags),
+      headings: parseJsonArray(note.headings),
       snippet: makeSnippet(note.content, query),
       score: Number(totalScore.toFixed(2)),
       _debug: {
