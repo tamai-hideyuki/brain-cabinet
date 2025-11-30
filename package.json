@@ -6,7 +6,8 @@
     "dev": "tsx src/index.ts",
     "migrate": "drizzle-kit push",
     "import-notes": "tsx src/importer/import-notes.ts",
-    "export-notes": "tsx src/exporter/export-notes.ts"
+    "export-notes": "tsx src/exporter/export-notes.ts",
+    "integrity-check": "tsx src/checker/integrity-check.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.6",
