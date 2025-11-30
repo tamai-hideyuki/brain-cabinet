@@ -1,20 +1,58 @@
 import { Hono } from "hono";
-import { getAllNotes, updateNote, revertNote } from "../services/notesService";
+import { getAllNotes, getNoteById, createNote, updateNote, deleteNote, revertNote } from "../services/notesService";
 import { getNoteHistory, getHistoryHtmlDiff, getNoteFullContext, getNoteWithHistory } from "../services/historyService";
 
 export const notesRoute = new Hono();
 
+// GET /api/notes - 一覧取得
 notesRoute.get("/", async (c) => {
   const notes = await getAllNotes();
   return c.json(notes);
 });
 
+// POST /api/notes - 新規作成
+notesRoute.post("/", async (c) => {
+  try {
+    const { title, content } = await c.req.json();
+    const created = await createNote(title, content);
+    return c.json(created, 201);
+  } catch (e) {
+    return c.json({ error: (e as Error).message }, 400);
+  }
+});
+
+// GET /api/notes/:id - 詳細取得
+notesRoute.get("/:id", async (c) => {
+  const id = c.req.param("id");
+  try {
+    const note = await getNoteById(id);
+    return c.json(note);
+  } catch (e) {
+    return c.json({ error: (e as Error).message }, 404);
+  }
+});
+
+// PUT /api/notes/:id - 更新
 notesRoute.put("/:id", async (c) => {
   const id = c.req.param("id");
-  const { content } = await c.req.json();
+  try {
+    const { content } = await c.req.json();
+    const updated = await updateNote(id, content);
+    return c.json(updated);
+  } catch (e) {
+    return c.json({ error: (e as Error).message }, 400);
+  }
+});
 
-  const updated = await updateNote(id, content);
-  return c.json(updated);
+// DELETE /api/notes/:id - 削除
+notesRoute.delete("/:id", async (c) => {
+  const id = c.req.param("id");
+  try {
+    const deleted = await deleteNote(id);
+    return c.json({ message: "Note deleted", note: deleted });
+  } catch (e) {
+    return c.json({ error: (e as Error).message }, 404);
+  }
 });
 
 notesRoute.get("/:id/history", async (c) => {

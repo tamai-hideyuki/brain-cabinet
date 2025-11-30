@@ -1,9 +1,32 @@
-import { findAllNotes, updateNoteInDB, findNoteById } from "../repositories/notesRepo";
+import { findAllNotes, updateNoteInDB, findNoteById, createNoteInDB, deleteNoteInDB } from "../repositories/notesRepo";
 import { saveNoteHistory, getHistoryById } from "./historyService";
 import { computeDiff } from "../utils/diff";
 
 export const getAllNotes = async () => {
   return await findAllNotes();
+};
+
+export const getNoteById = async (id: string) => {
+  const note = await findNoteById(id);
+  if (!note) {
+    throw new Error("Note not found");
+  }
+  return note;
+};
+
+export const createNote = async (title: string, content: string) => {
+  if (!title || !content) {
+    throw new Error("Title and content are required");
+  }
+  return await createNoteInDB(title, content);
+};
+
+export const deleteNote = async (id: string) => {
+  const deleted = await deleteNoteInDB(id);
+  if (!deleted) {
+    throw new Error("Note not found");
+  }
+  return deleted;
 };
 
 export const updateNote = async (id: string, newContent: string) => {
