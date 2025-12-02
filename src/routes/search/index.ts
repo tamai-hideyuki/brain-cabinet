@@ -1,10 +1,11 @@
 import { Hono } from "hono";
-import { searchNotes, searchNotesSemantic } from "../services/searchService";
-import { Category, CATEGORIES } from "../db/schema";
-import { logger } from "../utils/logger";
+import { searchNotes, searchNotesSemantic } from "../../services/searchService";
+import { Category, CATEGORIES } from "../../db/schema";
+import { logger } from "../../utils/logger";
 
 export const searchRoute = new Hono();
 
+// GET /api/search - 検索
 searchRoute.get("/", async (c) => {
   let q = c.req.query("query") || "";
   const categoryParam = c.req.query("category");
@@ -56,6 +57,11 @@ searchRoute.get("/", async (c) => {
   return c.json(results);
 });
 
+// GET /api/search/categories - カテゴリ一覧
+searchRoute.get("/categories", (c) => {
+  return c.json(CATEGORIES);
+});
+
 /**
  * キーワード検索と意味検索の結果を統合
  */
@@ -101,8 +107,3 @@ const mergeSearchResults = (
     }))
     .sort((a, b) => b.score - a.score);
 };
-
-// カテゴリ一覧を返すエンドポイント
-searchRoute.get("/categories", (c) => {
-  return c.json(CATEGORIES);
-});

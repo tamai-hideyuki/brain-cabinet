@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
-import { notesRoute } from "./routes/notes";
-import { searchRoute } from "./routes/search";
-import { gptRoute } from "./routes/gpt";
+import { notesRoute } from "./routes/notes/index";
+import { searchRoute } from "./routes/search/index";
+import { gptRoute } from "./routes/gpt/index";
 import { logger } from "./utils/logger";
 import fs from "fs";
 import path from "path";
