@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { getAllNotes, getNoteById, createNote, updateNote, deleteNote, revertNote } from "../services/notesService";
 import { getNoteHistory, getHistoryHtmlDiff, getNoteFullContext, getNoteWithHistory } from "../services/historyService";
+import { logger } from "../utils/logger";
 
 export const notesRoute = new Hono();
 
@@ -12,11 +13,14 @@ notesRoute.get("/", async (c) => {
 
 // POST /api/notes - 新規作成
 notesRoute.post("/", async (c) => {
+  let title: string | undefined;
   try {
-    const { title, content } = await c.req.json();
-    const created = await createNote(title, content);
+    const body = await c.req.json();
+    title = body.title;
+    const created = await createNote(body.title, body.content);
     return c.json(created, 201);
   } catch (e) {
+    logger.error({ err: e, title }, "Failed to create note");
     return c.json({ error: (e as Error).message }, 400);
   }
 });
@@ -28,6 +32,7 @@ notesRoute.get("/:id", async (c) => {
     const note = await getNoteById(id);
     return c.json(note);
   } catch (e) {
+    logger.error({ err: e, noteId: id }, "Failed to get note");
     return c.json({ error: (e as Error).message }, 404);
   }
 });
@@ -40,6 +45,7 @@ notesRoute.put("/:id", async (c) => {
     const updated = await updateNote(id, content);
     return c.json(updated);
   } catch (e) {
+    logger.error({ err: e, noteId: id }, "Failed to update note");
     return c.json({ error: (e as Error).message }, 400);
   }
 });
@@ -51,6 +57,7 @@ notesRoute.delete("/:id", async (c) => {
     const deleted = await deleteNote(id);
     return c.json({ message: "Note deleted", note: deleted });
   } catch (e) {
+    logger.error({ err: e, noteId: id }, "Failed to delete note");
     return c.json({ error: (e as Error).message }, 404);
   }
 });
@@ -63,11 +70,13 @@ notesRoute.get("/:id/history", async (c) => {
 
 // HTML形式の差分を取得
 notesRoute.get("/:id/history/:historyId/diff", async (c) => {
+  const noteId = c.req.param("id");
   const historyId = c.req.param("historyId");
   try {
     const diff = await getHistoryHtmlDiff(historyId);
     return c.json(diff);
   } catch (e) {
+    logger.error({ err: e, noteId, historyId }, "Failed to get history diff");
     return c.json({ error: (e as Error).message }, 404);
   }
 });
@@ -80,6 +89,7 @@ notesRoute.post("/:id/revert/:historyId", async (c) => {
     const reverted = await revertNote(id, historyId);
     return c.json(reverted);
   } catch (e) {
+    logger.error({ err: e, noteId: id, historyId }, "Failed to revert note");
     return c.json({ error: (e as Error).message }, 400);
   }
 });
@@ -94,6 +104,7 @@ notesRoute.get("/:id/with-history", async (c) => {
     const result = await getNoteWithHistory(id, limit);
     return c.json(result);
   } catch (e) {
+    logger.error({ err: e, noteId: id, limit }, "Failed to get note with history");
     return c.json({ error: (e as Error).message }, 404);
   }
 });
@@ -105,6 +116,7 @@ notesRoute.get("/:id/full-context", async (c) => {
     const context = await getNoteFullContext(id);
     return c.json(context);
   } catch (e) {
+    logger.error({ err: e, noteId: id }, "Failed to get full context");
     return c.json({ error: (e as Error).message }, 404);
   }
 });

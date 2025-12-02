@@ -3,6 +3,7 @@ import { saveNoteHistory, getHistoryById } from "./historyService";
 import { computeDiff } from "../utils/diff";
 import { generateAndSaveNoteEmbedding, removeNoteEmbedding } from "./embeddingService";
 import { checkEmbeddingTableExists } from "../repositories/embeddingRepo";
+import { logger } from "../utils/logger";
 
 // Embedding生成が有効かどうか（環境変数で制御）
 const EMBEDDING_ENABLED = !!process.env.OPENAI_API_KEY;
@@ -17,7 +18,7 @@ const scheduleEmbeddingGeneration = async (noteId: string) => {
 
   // 非同期で実行（エラーはログのみ）
   generateAndSaveNoteEmbedding(noteId).catch((err) => {
-    console.error(`[Embedding] Failed to generate for ${noteId}:`, err.message);
+    logger.error({ err, noteId }, "Failed to generate embedding");
   });
 };
 
@@ -88,9 +89,11 @@ export const deleteNote = async (id: string) => {
     throw new Error("Note not found");
   }
 
-  // Embedding削除（非同期・エラーは無視）
+  // Embedding削除（非同期・エラーはログのみ）
   if (EMBEDDING_ENABLED) {
-    removeNoteEmbedding(id).catch(() => {});
+    removeNoteEmbedding(id).catch((err) => {
+      logger.error({ err, noteId: id }, "Failed to remove embedding");
+    });
   }
 
   return formatNoteForAPI(deleted);

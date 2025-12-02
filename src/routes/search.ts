@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { searchNotes, searchNotesSemantic } from "../services/searchService";
 import { Category, CATEGORIES } from "../db/schema";
+import { logger } from "../utils/logger";
 
 export const searchRoute = new Hono();
 
@@ -41,7 +42,10 @@ searchRoute.get("/", async (c) => {
     // キーワード検索と意味検索の両方を実行して統合
     const [keywordResults, semanticResults] = await Promise.all([
       searchNotes(q, { category, tags }),
-      searchNotesSemantic(q, { category, tags }).catch(() => []),
+      searchNotesSemantic(q, { category, tags }).catch((e) => {
+        logger.warn({ err: e, query: q }, "Semantic search failed, falling back to keyword only");
+        return [];
+      }),
     ]);
     const results = mergeSearchResults(keywordResults, semanticResults);
     return c.json(results);

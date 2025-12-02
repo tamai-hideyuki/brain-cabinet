@@ -6,6 +6,7 @@ import {
   getNotesOverviewForGPT,
   GPTTaskType,
 } from "../services/gptService";
+import { logger } from "../utils/logger";
 
 export const gptRoute = new Hono();
 
@@ -46,6 +47,7 @@ gptRoute.get("/search", async (c) => {
     });
     return c.json(result);
   } catch (e) {
+    logger.error({ err: e, query, searchIn, category, limit }, "GPT search failed");
     return c.json({ error: (e as Error).message }, 500);
   }
 });
@@ -81,6 +83,7 @@ gptRoute.get("/notes/:id/context", async (c) => {
     });
     return c.json(context);
   } catch (e) {
+    logger.error({ err: e, noteId: id }, "GPT context fetch failed");
     return c.json({ error: (e as Error).message }, 404);
   }
 });
@@ -96,9 +99,13 @@ gptRoute.get("/notes/:id/context", async (c) => {
  * - options: 追加オプション
  */
 gptRoute.post("/task", async (c) => {
+  let taskType: string | undefined;
+  let noteId: string | undefined;
   try {
     const body = await c.req.json();
-    const { type, noteId, query, options } = body;
+    const { type, noteId: nId, query, options } = body;
+    taskType = type;
+    noteId = nId;
 
     if (!type) {
       return c.json({ error: "type is required" }, 400);
@@ -119,9 +126,10 @@ gptRoute.post("/task", async (c) => {
       }, 400);
     }
 
-    const result = await prepareGPTTask({ type, noteId, query, options });
+    const result = await prepareGPTTask({ type, noteId: nId, query, options });
     return c.json(result);
   } catch (e) {
+    logger.error({ err: e, taskType, noteId }, "GPT task failed");
     return c.json({ error: (e as Error).message }, 400);
   }
 });
@@ -137,6 +145,7 @@ gptRoute.get("/overview", async (c) => {
     const overview = await getNotesOverviewForGPT();
     return c.json(overview);
   } catch (e) {
+    logger.error({ err: e }, "GPT overview fetch failed");
     return c.json({ error: (e as Error).message }, 500);
   }
 });
