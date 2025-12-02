@@ -1,6 +1,25 @@
 import { findAllNotes, updateNoteInDB, findNoteById, createNoteInDB, deleteNoteInDB } from "../repositories/notesRepo";
 import { saveNoteHistory, getHistoryById } from "./historyService";
 import { computeDiff } from "../utils/diff";
+import { generateAndSaveNoteEmbedding, removeNoteEmbedding } from "./embeddingService";
+import { checkEmbeddingTableExists } from "../repositories/embeddingRepo";
+
+// Embedding生成が有効かどうか（環境変数で制御）
+const EMBEDDING_ENABLED = !!process.env.OPENAI_API_KEY;
+
+/**
+ * Embedding生成をバックグラウンドでスケジュール（レスポンスをブロックしない）
+ */
+const scheduleEmbeddingGeneration = async (noteId: string) => {
+  // テーブル存在確認
+  const tableExists = await checkEmbeddingTableExists();
+  if (!tableExists) return;
+
+  // 非同期で実行（エラーはログのみ）
+  generateAndSaveNoteEmbedding(noteId).catch((err) => {
+    console.error(`[Embedding] Failed to generate for ${noteId}:`, err.message);
+  });
+};
 
 /**
  * JSON文字列を配列にパース（安全に）
@@ -54,6 +73,12 @@ export const createNote = async (title: string, content: string) => {
     throw new Error("Title and content are required");
   }
   const note = await createNoteInDB(title, content);
+
+  // Embedding生成（非同期・エラーは無視）
+  if (note && EMBEDDING_ENABLED) {
+    scheduleEmbeddingGeneration(note.id);
+  }
+
   return note ? formatNoteForAPI(note) : null;
 };
 
@@ -62,6 +87,12 @@ export const deleteNote = async (id: string) => {
   if (!deleted) {
     throw new Error("Note not found");
   }
+
+  // Embedding削除（非同期・エラーは無視）
+  if (EMBEDDING_ENABLED) {
+    removeNoteEmbedding(id).catch(() => {});
+  }
+
   return formatNoteForAPI(deleted);
 };
 
@@ -88,6 +119,12 @@ export const updateNote = async (id: string, newContent: string) => {
 
   // ③ 本体を更新
   const updated = await updateNoteInDB(id, newContent);
+
+  // Embedding再生成（非同期・エラーは無視）
+  if (updated && EMBEDDING_ENABLED) {
+    scheduleEmbeddingGeneration(updated.id);
+  }
+
   return updated ? formatNoteForAPI(updated) : null;
 };
 

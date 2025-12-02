@@ -8,13 +8,16 @@
     "import-notes": "tsx src/importer/import-notes.ts",
     "export-notes": "tsx src/exporter/export-notes.ts",
     "sync-notes": "tsx src/syncer/sync-notes.ts",
-    "integrity-check": "tsx src/checker/integrity-check.ts"
+    "integrity-check": "tsx src/checker/integrity-check.ts",
+    "init-fts": "tsx src/scripts/init-fts.ts",
+    "init-embeddings": "tsx src/scripts/init-embeddings.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.6",
     "diff-match-patch": "^1.0.5",
     "drizzle-orm": "^0.44.7",
     "hono": "^4.0.0",
+    "openai": "^6.9.1",
     "tiny-segmenter": "^0.2.0"
   },
   "devDependencies": {

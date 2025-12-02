@@ -423,3 +423,61 @@ export const searchNotes = async (query: string, options?: SearchOptions) => {
 export const clearIDFCache = () => {
   idfCache = null;
 };
+
+// -------------------------------------
+// 意味検索（Semantic Search）
+// -------------------------------------
+import { searchSimilarNotes } from "./embeddingService";
+import { findNoteById } from "../repositories/notesRepo";
+
+export const searchNotesSemantic = async (
+  query: string,
+  options?: { category?: string; tags?: string[] }
+) => {
+  // Embeddingベースで類似ノートを検索
+  const similarResults = await searchSimilarNotes(query, 20);
+
+  if (similarResults.length === 0) {
+    return [];
+  }
+
+  // ノート詳細を取得
+  const results = await Promise.all(
+    similarResults.map(async ({ noteId, similarity }) => {
+      const note = await findNoteById(noteId);
+      if (!note) return null;
+
+      return {
+        ...note,
+        tags: parseJsonArray(note.tags),
+        headings: parseJsonArray(note.headings),
+        snippet: makeSnippet(note.content, query),
+        score: Number((similarity * 100).toFixed(2)), // 0-100スケール
+        _debug: {
+          similarity: Number(similarity.toFixed(4)),
+          mode: "semantic",
+        },
+      };
+    })
+  );
+
+  // null除去 & フィルター適用
+  let filtered = results.filter((r): r is NonNullable<typeof r> => r !== null);
+
+  // カテゴリフィルター
+  if (options?.category) {
+    filtered = filtered.filter((note) => note.category === options.category);
+  }
+
+  // タグフィルター
+  if (options?.tags && options.tags.length > 0) {
+    filtered = filtered.filter((note) => {
+      const noteTags = note.tags.map((t: string) => t.toLowerCase());
+      return options.tags!.every((tag) =>
+        noteTags.some((nt: string) => nt.includes(tag.toLowerCase()))
+      );
+    });
+  }
+
+  return filtered;
+};
