@@ -114,9 +114,12 @@ pnpm dev
 
 | メソッド | エンドポイント | 説明 |
 |---------|---------------|------|
-| GET | `/api/search?q=keyword` | キーワード検索 |
-| GET | `/api/search?q=keyword&category=技術` | カテゴリフィルター |
-| GET | `/api/search?q=keyword&tag=typescript` | タグフィルター |
+| GET | `/api/search?query=keyword` | キーワード検索 |
+| GET | `/api/search?query=keyword&mode=semantic` | 意味検索（Embedding） |
+| GET | `/api/search?query=keyword&mode=hybrid` | ハイブリッド検索 |
+| GET | `/api/search?query=keyword&category=技術` | カテゴリフィルター |
+| GET | `/api/search?query=keyword&tags=typescript` | タグフィルター |
+| GET | `/api/search/categories` | カテゴリ一覧 |
 
 ### GPT統合 API
 
@@ -236,8 +239,11 @@ TF-IDF ベースのスコアリングに加え、以下の要素を考慮:
 | Server | @hono/node-server |
 | Database | SQLite (libsql) |
 | ORM | Drizzle ORM |
+| 全文検索 | FTS5 |
+| Embedding | OpenAI text-embedding-3-small |
 | 形態素解析 | TinySegmenter |
 | 差分計算 | diff-match-patch |
+| ロギング | Pino + pino-pretty |
 | 言語 | TypeScript |
 | パッケージマネージャ | pnpm |
 
@@ -253,29 +259,54 @@ brain-cabinet/
 │   │   ├── client.ts             # DB接続
 │   │   └── schema.ts             # Drizzle スキーマ
 │   ├── routes/
-│   │   ├── notes.ts              # /api/notes
-│   │   ├── search.ts             # /api/search
-│   │   └── gpt.ts                # /api/gpt
+│   │   ├── notes/
+│   │   │   ├── index.ts          # ルート統合
+│   │   │   ├── crud.ts           # CRUD操作
+│   │   │   └── history.ts        # 履歴関連
+│   │   ├── search/
+│   │   │   └── index.ts          # 検索API
+│   │   └── gpt/
+│   │       ├── index.ts          # ルート統合
+│   │       ├── search.ts         # GPT向け検索
+│   │       ├── context.ts        # コンテキスト取得
+│   │       ├── task.ts           # タスク実行
+│   │       └── overview.ts       # 概要情報
 │   ├── services/
 │   │   ├── notesService.ts       # ノート操作
 │   │   ├── historyService.ts     # 履歴管理
 │   │   ├── searchService.ts      # 検索エンジン
+│   │   ├── embeddingService.ts   # Embedding生成
 │   │   └── gptService.ts         # GPT統合
 │   ├── repositories/
 │   │   ├── notesRepo.ts          # ノートDB操作
 │   │   ├── historyRepo.ts        # 履歴DB操作
-│   │   └── searchRepo.ts         # 検索クエリ
+│   │   ├── searchRepo.ts         # 検索クエリ
+│   │   ├── ftsRepo.ts            # FTS5インデックス
+│   │   └── embeddingRepo.ts      # Embedding保存
 │   ├── importer/
 │   │   └── import-notes.ts       # インポーター
+│   ├── exporter/
+│   │   ├── export-notes.ts       # エクスポーター
+│   │   └── markdown-formatter.ts # Markdownフォーマッター
+│   ├── syncer/
+│   │   └── sync-notes.ts         # 差分同期
+│   ├── checker/
+│   │   └── integrity-check.ts    # 整合性チェック
+│   ├── scripts/
+│   │   ├── init-fts.ts           # FTS5初期化
+│   │   └── init-embeddings.ts    # Embedding一括生成
 │   ├── utils/
 │   │   ├── diff.ts               # 差分計算
+│   │   ├── logger.ts             # Pinoロガー
 │   │   ├── markdown.ts           # Markdown正規化
+│   │   ├── markdown-parser.ts    # Markdownパーサー
 │   │   ├── metadata.ts           # メタデータ抽出
-│   │   └── normalize.ts          # テキスト正規化
+│   │   ├── normalize.ts          # テキスト正規化
+│   │   └── slugify.ts            # URL化
 │   └── types/
 │       └── tiny-segmenter.d.ts   # TinySegmenter型定義
 ├── docs/
-│   ├── README.v1.0.md            
+│   ├── README.v1.0.md
 │   ├── usage.md                  # 使い方ガイド
 │   ├── design-plan.md            # 設計計画書
 │   ├── brain-cabinet-mode.md     # GPT人格設定
@@ -302,11 +333,26 @@ brain-cabinet/
 # 開発サーバー起動
 pnpm dev
 
+# DB マイグレーション適用
+pnpm migrate
+
 # ノートインポート
 pnpm import-notes -- --dir /path/to/notes
 
-# DB マイグレーション適用
-pnpm migrate
+# ノートエクスポート（DB → Markdown）
+pnpm export-notes -- --output /path/to/output
+
+# 差分同期（Markdown ↔ DB）
+pnpm sync-notes -- --dir /path/to/notes
+
+# 整合性チェック
+pnpm integrity-check -- --dir /path/to/notes
+
+# FTS5 インデックス初期化
+pnpm init-fts
+
+# Embedding 一括生成（要 OPENAI_API_KEY）
+pnpm init-embeddings
 ```
 
 ---
@@ -320,26 +366,41 @@ pnpm migrate
 - [x] メタデータ自動抽出
 - [x] GPT 統合 API
 
-### Phase 2（予定）
-- [ ] セマンティック検索（ベクトル検索）
-- [ ] 関連ノート推薦
-- [ ] タグ・カテゴリ統計 API
+### Phase 2（完了）
+- [x] セマンティック検索（Embedding + Cosine類似度）
+- [x] ハイブリッド検索（キーワード + 意味検索）
+- [x] FTS5 全文検索インデックス
+- [x] エクスポート機能（DB → Markdown）
+- [x] 整合性チェック機能
+- [x] 差分同期機能
+- [x] 構造化ロギング（Pino）
 
 ### Phase 3（予定）
+- [ ] 関連ノート推薦
+- [ ] タグ・カテゴリ統計 API
 - [ ] 要約生成・保存
 - [ ] RAG（質問応答）
 - [ ] ノート間リンク分析
 
 ### Phase 4（将来）
 - [ ] Webhook / 自動インポート
-- [ ] エクスポート機能
 - [ ] マルチユーザー対応
 - [ ] Web UI
 
 
 ## バージョン履歴
 
-### v1.0.0 (Phase 1.5 完了)
+### v1.1.0 (Phase 2 完了)
+- セマンティック検索（OpenAI Embedding）
+- ハイブリッド検索（キーワード + 意味検索）
+- FTS5 全文検索インデックス
+- エクスポート機能（DB → Markdown）
+- 整合性チェック機能
+- 差分同期機能
+- 構造化ロギング（Pino + pino-pretty）
+- ルートファイル分割によるコード整理
+
+### v1.0.0 (Phase 1 完了)
 - ノート管理の基本機能
 - TF-IDF + 構造スコア検索
 - 履歴管理（差分保存、巻き戻し）
