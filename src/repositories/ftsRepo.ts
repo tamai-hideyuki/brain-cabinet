@@ -152,8 +152,9 @@ const buildFTSQuery = (query: string): string => {
   if (!trimmed) return "";
 
   // 特殊文字を除去/エスケープ
+  // FTS5がトークン区切りとして扱う文字（/ - . +など）も除去
   const sanitized = trimmed
-    .replace(/['"(){}[\]*:^~!@#$%&\\]/g, " ")
+    .replace(/['"(){}[\]*:^~!@#$%&\\/.+-]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 
