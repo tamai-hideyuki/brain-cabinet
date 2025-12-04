@@ -3,6 +3,7 @@ import { searchRoute } from "./search";
 import { contextRoute } from "./context";
 import { taskRoute } from "./task";
 import { overviewRoute } from "./overview";
+import { healthRoute } from "./health";
 
 export const gptRoute = new Hono();
 
@@ -17,3 +18,6 @@ gptRoute.route("/", taskRoute);
 
 // GPT向け概要
 gptRoute.route("/", overviewRoute);
+
+// GPT向けヘルスチェック
+gptRoute.route("/", healthRoute);

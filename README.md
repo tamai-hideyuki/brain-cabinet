@@ -196,6 +196,7 @@ pnpm dev
 | POST | `/api/gpt/task` | タスク準備（要約・抽出・比較など） |
 | GET | `/api/gpt/overview` | 統計情報（ノート数・カテゴリ分布・タグクラウド） |
 | GET | `/api/gpt/tasks` | タスクタイプ一覧 |
+| GET | `/api/gpt/health` | ヘルスチェック（DB接続・ストレージ状態） |
 
 ---
 
