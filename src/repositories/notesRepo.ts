@@ -40,18 +40,20 @@ export const createNoteInDB = async (title: string, content: string) => {
   return await findNoteById(id);
 };
 
-export const updateNoteInDB = async (id: string, newContent: string) => {
+export const updateNoteInDB = async (id: string, newContent: string, newTitle?: string) => {
   const now = Math.floor(Date.now() / 1000);
   const note = await findNoteById(id);
   if (!note) return null;
 
-  const metadata = extractMetadata(newContent, note.title);
+  const title = newTitle ?? note.title;
+  const metadata = extractMetadata(newContent, title);
   const tagsJson = JSON.stringify(metadata.tags);
   const headingsJson = JSON.stringify(metadata.headings);
 
   await db
     .update(notes)
     .set({
+      title,
       content: newContent,
       tags: tagsJson,
       category: metadata.category,
@@ -61,7 +63,7 @@ export const updateNoteInDB = async (id: string, newContent: string) => {
     .where(eq(notes.id, id));
 
   // FTS5に同期
-  await updateFTS(id, note.title, newContent, tagsJson, headingsJson);
+  await updateFTS(id, title, newContent, tagsJson, headingsJson);
 
   return await findNoteById(id);
 };

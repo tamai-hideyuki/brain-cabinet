@@ -99,7 +99,7 @@ export const deleteNote = async (id: string) => {
   return formatNoteForAPI(deleted);
 };
 
-export const updateNote = async (id: string, newContent: string) => {
+export const updateNote = async (id: string, newContent: string, newTitle?: string) => {
   // ① 元のノートを取得（履歴用に必要）
   const old = await findNoteById(id);
 
@@ -107,21 +107,25 @@ export const updateNote = async (id: string, newContent: string) => {
     throw new Error("Note not found");
   }
 
-  // 内容が変わっていない場合はスキップ
-  if (old.content === newContent) {
+  // 内容もタイトルも変わっていない場合はスキップ
+  const titleChanged = newTitle !== undefined && newTitle !== old.title;
+  const contentChanged = old.content !== newContent;
+  if (!titleChanged && !contentChanged) {
     return formatNoteForAPI(old);
   }
 
-  // ② 履歴保存（前の内容 + 差分）
-  const diff = computeDiff(old.content, newContent);
-  await saveNoteHistory({
-    noteId: id,
-    content: old.content,
-    diff,
-  });
+  // ② 履歴保存（前の内容 + 差分）- 内容が変わった場合のみ
+  if (contentChanged) {
+    const diff = computeDiff(old.content, newContent);
+    await saveNoteHistory({
+      noteId: id,
+      content: old.content,
+      diff,
+    });
+  }
 
   // ③ 本体を更新
-  const updated = await updateNoteInDB(id, newContent);
+  const updated = await updateNoteInDB(id, newContent, newTitle);
 
   // Embedding再生成（非同期・エラーは無視）
   if (updated && EMBEDDING_ENABLED) {
