@@ -1,5 +1,5 @@
 import TinySegmenter from "tiny-segmenter";
-import { CATEGORIES, Category } from "../db/schema";
+import { CATEGORIES, Category } from "../../db/schema";
 
 const segmenter = new TinySegmenter();
 
