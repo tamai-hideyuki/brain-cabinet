@@ -1,9 +1,10 @@
-# Brain Cabinet v1.1
+# Brain Cabinet v2.0
 
 **思考ベースの検索型知識システム — あなたの思考を理解し、必要な知識を再構成して返す外部脳**
 
 > Brain Cabinet は単なるメモ帳ではありません。
 > ノートの**文脈を理解**し、質問に応じて**必要な部分だけを抽出・再構成**する仕組みです。
+> v2.0 では**ローカル Embedding**、**Semantic Diff**、**Topic Clustering**、**Analytics** を搭載。
 
 ---
 
@@ -11,13 +12,15 @@
 
 従来のメモアプリは「保存」と「検索」だけ。Brain Cabinet は違います：
 
-| 従来のメモアプリ | Brain Cabinet |
-|----------------|---------------|
+| 従来のメモアプリ | Brain Cabinet v2 |
+|----------------|------------------|
 | キーワード一致で検索 | **意味を理解**して関連ノートを発見 |
 | タグは手動で付ける | **自動でタグ・カテゴリを抽出** |
 | 検索結果は羅列 | **TF-IDF + 構造スコア**で最適順に |
-| 履歴なし | **差分保存**で思考の変遷を追跡 |
+| 履歴なし | **Semantic Diff**で思考の変化率を追跡 |
 | 単体で完結 | **GPT/Claude と連携**して外部脳化 |
+| 整理は手動 | **K-Means クラスタリング**で自動分類 |
+| 振り返りは困難 | **Analytics API**で思考の可視化 |
 
 ---
 
@@ -42,7 +45,7 @@
 ```
 
 - **キーワード検索**: FTS5 全文検索 + TF-IDF スコアリング
-- **セマンティック検索**: OpenAI Embedding による意味ベースの類似度計算
+- **セマンティック検索**: **ローカル MiniLM** による意味ベースの類似度計算（API不要）
 - **ハイブリッド検索**: キーワード(60%) + 意味(40%) を統合した最適解
 
 ### 2. 自動メタデータ抽出
@@ -53,13 +56,36 @@
 - **カテゴリ**: キーワードマッチングで自動分類（技術/心理/健康/仕事/学習など）
 - **見出し**: Markdown の `#` から自動抽出
 
-### 3. 文脈理解と履歴管理
+### 3. Semantic Diff と履歴管理
 
 - ノート更新時に**差分を自動保存**
+- **Semantic Diff**: 意味的な変化率（0〜1）を自動計算
+- 5%以上の意味変化があった場合のみ履歴を作成（ノイズ除去）
 - 過去の任意の時点に**巻き戻し可能**
 - GPT が**思考の変遷**を参照して回答できる
 
-### 4. GPT/Claude 統合（外部脳化）
+### 4. Topic Clustering（K-Means）
+
+- **K-Means クラスタリング**でノートを自動分類（k=8）
+- 各クラスタに代表ノートを自動選出
+- **Cluster Boost**: 同一クラスタのノートは関連度 +10%、異なるクラスタは -5%
+- 手動でクラスタ再構築可能（`POST /api/clusters/rebuild`）
+
+### 5. Relation Graph
+
+- ノート間の**類似度を自動計算**
+- **similar**（0.85以上）: 類似ノート
+- **derived**（0.92以上）: 派生ノート
+- 各ノートから最大10件の関連ノートをリンク
+
+### 6. Analytics Engine
+
+- **Timeline**: 日ごとの Semantic Diff 推移
+- **Heatmap**: GitHub風の年間活動グラフ
+- **Journey**: クラスタ遷移履歴
+- **Trends**: 週/月ごとのトピック興亡
+
+### 7. GPT/Claude 統合（外部脳化）
 
 GPT は Brain Cabinet API を通じて：
 - 関連ノートを**自動検索**
@@ -79,33 +105,26 @@ cd brain-cabinet
 pnpm install
 ```
 
-### 2. 環境変数の設定
-
-```bash
-# .env ファイルを作成
-OPENAI_API_KEY=your-api-key  # セマンティック検索に必要
-```
-
-### 3. データベース初期化
+### 2. データベース初期化
 
 ```bash
 pnpm migrate
 ```
 
-### 4. ノートのインポート
+### 3. ノートのインポート
 
 ```bash
 pnpm import-notes -- --dir /path/to/your/notes
 ```
 
-### 5. インデックス構築
+### 4. インデックス構築
 
 ```bash
 pnpm init-fts          # FTS5 全文検索インデックス
-pnpm init-embeddings   # Embedding 生成（セマンティック検索用）
+pnpm init-embeddings   # Embedding 生成（ローカル MiniLM、API不要）
 ```
 
-### 6. サーバー起動
+### 5. サーバー起動
 
 ```bash
 pnpm dev
@@ -125,29 +144,37 @@ pnpm dev
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                    Brain Cabinet API                        │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐                  │
-│  │  /notes  │  │ /search  │  │  /gpt    │                  │
-│  └──────────┘  └──────────┘  └──────────┘                  │
-│        │            │             │                         │
-│        ▼            ▼             ▼                         │
+│  ┌────────┐ ┌────────┐ ┌────────┐ ┌──────────┐ ┌─────────┐ │
+│  │ /notes │ │/search │ │  /gpt  │ │/clusters │ │/analytics│ │
+│  └────────┘ └────────┘ └────────┘ └──────────┘ └─────────┘ │
+│        │         │          │           │           │       │
+│        ▼         ▼          ▼           ▼           ▼       │
 │  ┌─────────────────────────────────────────────────────┐   │
 │  │                  Service Layer                       │   │
 │  │  notesService │ searchService │ embeddingService     │   │
-│  │               │ gptService                           │   │
+│  │  gptService   │ analyticsService                     │   │
+│  └─────────────────────────────────────────────────────┘   │
+│        │                                                    │
+│        ▼                                                    │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │                    Job Queue                         │   │
+│  │  NOTE_ANALYZE (embedding/semantic diff/relations)    │   │
+│  │  CLUSTER_REBUILD (K-Means clustering)                │   │
 │  └─────────────────────────────────────────────────────┘   │
 │        │                                                    │
 │        ▼                                                    │
 │  ┌─────────────────────────────────────────────────────┐   │
 │  │                 Repository Layer                     │   │
 │  │  notesRepo │ historyRepo │ searchRepo │ ftsRepo      │   │
-│  │  embeddingRepo                                       │   │
+│  │  embeddingRepo │ relationRepo │ clusterRepo          │   │
 │  └─────────────────────────────────────────────────────┘   │
 │        │                                                    │
 │        ▼                                                    │
 │  ┌─────────────────────────────────────────────────────┐   │
 │  │                 SQLite (libsql)                      │   │
 │  │  notes │ note_history │ notes_fts │ note_embeddings  │   │
-│  │                       (FTS5)      (1536次元ベクトル)   │   │
+│  │  note_relations │ clusters   (384次元ベクトル)        │   │
+│  │                       (FTS5)  (MiniLM local)         │   │
 │  └─────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -198,6 +225,24 @@ pnpm dev
 | GET | `/api/gpt/tasks` | タスクタイプ一覧 |
 | GET | `/api/gpt/health` | ヘルスチェック（DB接続・ストレージ状態） |
 
+### クラスタ API（v2 新機能）
+
+| メソッド | エンドポイント | 説明 |
+|---------|---------------|------|
+| GET | `/api/clusters` | クラスタ一覧取得 |
+| GET | `/api/clusters/:id` | クラスタ詳細（所属ノート付き） |
+| POST | `/api/clusters/rebuild` | クラスタ再構築（K-Means実行） |
+
+### Analytics API（v2 新機能）
+
+| メソッド | エンドポイント | 説明 |
+|---------|---------------|------|
+| GET | `/api/analytics/summary` | サマリー統計（総ノート数、平均Semantic Diff等） |
+| GET | `/api/analytics/timeline?range=30d` | Semantic Diff 時系列データ |
+| GET | `/api/analytics/journey?range=90d` | クラスタ遷移履歴 |
+| GET | `/api/analytics/heatmap?year=2025` | 年間活動ヒートマップ（GitHub風） |
+| GET | `/api/analytics/trends?unit=month&range=6m` | クラスタ別トレンド |
+
 ---
 
 ## 検索スコアリングの仕組み
@@ -214,9 +259,10 @@ pnpm dev
 
 ### セマンティック検索
 
-- **モデル**: OpenAI text-embedding-3-small
-- **次元数**: 1536
+- **モデル**: MiniLM（`Xenova/all-MiniLM-L6-v2`、ローカル実行）
+- **次元数**: 384
 - **類似度**: Cosine 類似度（0〜1）
+- **API不要**: OPENAI_API_KEY なしで動作
 
 ### ハイブリッド検索
 
@@ -300,7 +346,8 @@ GPT が実行できる定型タスク:
 | Database | SQLite (libsql) |
 | ORM | Drizzle ORM |
 | 全文検索 | SQLite FTS5 |
-| Embedding | OpenAI text-embedding-3-small (1536次元) |
+| Embedding | @xenova/transformers (MiniLM, 384次元, ローカル) |
+| クラスタリング | ml-kmeans (K-Means++) |
 | 形態素解析 | TinySegmenter |
 | 差分計算 | diff-match-patch |
 | ロギング | Pino + pino-pretty |
@@ -334,7 +381,7 @@ pnpm integrity-check -- --dir /path/to/notes
 # FTS5 インデックス初期化
 pnpm init-fts
 
-# Embedding 一括生成（要 OPENAI_API_KEY）
+# Embedding 一括生成（ローカル MiniLM、API不要）
 pnpm init-embeddings
 
 # テスト実行
@@ -356,11 +403,17 @@ brain-cabinet/
 │   ├── routes/                   # HTTP ルーティング
 │   │   ├── notes/                # ノート操作 API
 │   │   ├── search/               # 検索 API
-│   │   └── gpt/                  # GPT統合 API
+│   │   ├── gpt/                  # GPT統合 API
+│   │   ├── clusters/             # クラスタ API（v2 新規）
+│   │   └── analytics/            # Analytics API（v2 新規）
 │   ├── services/                 # ビジネスロジック
 │   │   ├── searchService.ts      # TF-IDF + 構造スコア
-│   │   ├── embeddingService.ts   # Embedding 生成・類似度計算
-│   │   └── gptService.ts         # GPT向けデータ整形
+│   │   ├── embeddingService.ts   # Embedding 生成・類似度計算（MiniLM）
+│   │   ├── gptService.ts         # GPT向けデータ整形
+│   │   ├── analyticsService.ts   # Analytics エンジン（v2 新規）
+│   │   └── jobs/                 # 非同期ジョブ（v2 新規）
+│   │       ├── job-queue.ts      # ジョブキュー管理
+│   │       └── job-worker.ts     # ワーカー（embedding/diff/relations/clustering）
 │   ├── repositories/             # データアクセス層
 │   ├── utils/                    # ユーティリティ（テスト付き）
 │   │   ├── slugify/              # ファイル名安全化
@@ -397,14 +450,14 @@ brain-cabinet/
 
 ## ロードマップ
 
-### Phase 1（完了）
+### Phase 1（v1.0 完了）
 - [x] ノート CRUD
 - [x] 差分保存・履歴管理
 - [x] TF-IDF 検索
 - [x] メタデータ自動抽出
 - [x] GPT 統合 API
 
-### Phase 2（完了）
+### Phase 2 v1（v1.1 完了）
 - [x] セマンティック検索（Embedding + Cosine類似度）
 - [x] ハイブリッド検索（キーワード + 意味検索）
 - [x] FTS5 全文検索インデックス
@@ -414,23 +467,44 @@ brain-cabinet/
 - [x] 構造化ロギング（Pino）
 - [x] ユーティリティのユニットテスト（Vitest, 220テスト）
 
-### Phase 3（予定）
-- [ ] 関連ノート推薦
-- [ ] タグ・カテゴリ統計 API
+### Phase 2 v2（v2.0 完了）
+- [x] ローカル Embedding（MiniLM, API不要）
+- [x] Semantic Diff（意味的変化率追跡）
+- [x] Relation Graph（類似/派生ノート自動検出）
+- [x] 非同期ジョブキュー（NOTE_ANALYZE, CLUSTER_REBUILD）
+- [x] Topic Clustering（K-Means, k=8）
+- [x] Cluster Boost（同一クラスタ +10%, 異なる -5%）
+- [x] Cluster API（一覧、詳細、再構築）
+
+### Phase 3（v2.0 完了）
+- [x] Analytics Engine
+  - [x] Summary（統計サマリー）
+  - [x] Timeline（Semantic Diff 時系列）
+  - [x] Heatmap（GitHub風年間活動）
+  - [x] Journey（クラスタ遷移）
+  - [x] Trends（トピック興亡）
+
+### Phase 4（予定）
 - [ ] 要約生成・保存
 - [ ] RAG（質問応答）
-- [ ] ノート間リンク分析
-
-### Phase 4（将来）
 - [ ] Webhook / 自動インポート
-- [ ] マルチユーザー対応
 - [ ] Web UI
 
 ---
 
 ## バージョン履歴
 
-### v1.1.0 (Phase 2 完了)
+### v2.0.0 (Phase 2 v2 + Phase 3 完了)
+- **ローカル Embedding**: OpenAI API不要、MiniLM（384次元）に移行
+- **Semantic Diff**: ノート更新時の意味的変化率を自動計算
+- **Relation Graph**: ノート間の類似（0.85+）・派生（0.92+）関係を自動検出
+- **非同期ジョブキュー**: NOTE_ANALYZE（embedding/diff/relations）、CLUSTER_REBUILD
+- **Topic Clustering**: K-Means（k=8）による自動分類
+- **Cluster Boost**: 同一クラスタ +10%、異なるクラスタ -5% の関連度調整
+- **Cluster API**: `/api/clusters`（一覧、詳細、再構築）
+- **Analytics Engine**: Summary、Timeline、Heatmap、Journey、Trends
+
+### v1.1.0 (Phase 2 v1 完了)
 - セマンティック検索（OpenAI Embedding）
 - ハイブリッド検索（キーワード + 意味検索）
 - FTS5 全文検索インデックス

@@ -1,8 +1,9 @@
 import { db } from "../db/client";
 import { sql } from "drizzle-orm";
 
-const DEFAULT_MODEL = "text-embedding-3-small";
-const DEFAULT_DIMENSIONS = 1536;
+export const DEFAULT_MODEL = "minilm-v1";
+export const DEFAULT_DIMENSIONS = 384; // MiniLM-L6-v2 は 384次元
+export const EMBEDDING_VERSION = "minilm-v1";
 
 /**
  * Embeddingを保存
@@ -10,19 +11,21 @@ const DEFAULT_DIMENSIONS = 1536;
 export const saveEmbedding = async (
   noteId: string,
   embedding: number[],
-  model = DEFAULT_MODEL
+  model = DEFAULT_MODEL,
+  version = EMBEDDING_VERSION
 ) => {
   const now = Math.floor(Date.now() / 1000);
   const embeddingBlob = float32ArrayToBuffer(embedding);
 
   // UPSERT（存在すれば更新、なければ挿入）
   await db.run(sql`
-    INSERT INTO note_embeddings (note_id, embedding, model, dimensions, created_at, updated_at)
-    VALUES (${noteId}, ${embeddingBlob}, ${model}, ${embedding.length}, ${now}, ${now})
+    INSERT INTO note_embeddings (note_id, embedding, model, dimensions, embedding_version, created_at, updated_at)
+    VALUES (${noteId}, ${embeddingBlob}, ${model}, ${embedding.length}, ${version}, ${now}, ${now})
     ON CONFLICT(note_id) DO UPDATE SET
       embedding = ${embeddingBlob},
       model = ${model},
       dimensions = ${embedding.length},
+      embedding_version = ${version},
       updated_at = ${now}
   `);
 };
@@ -80,8 +83,9 @@ export const createEmbeddingTable = async () => {
     CREATE TABLE IF NOT EXISTS note_embeddings (
       note_id TEXT PRIMARY KEY,
       embedding BLOB NOT NULL,
-      model TEXT NOT NULL DEFAULT 'text-embedding-3-small',
-      dimensions INTEGER NOT NULL DEFAULT 1536,
+      model TEXT NOT NULL DEFAULT 'minilm-v1',
+      dimensions INTEGER NOT NULL DEFAULT 384,
+      embedding_version TEXT NOT NULL DEFAULT 'minilm-v1',
       created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
       updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
     )
@@ -126,11 +130,23 @@ const float32ArrayToBuffer = (arr: number[]): Buffer => {
 /**
  * BufferをFloat32配列に変換
  */
-const bufferToFloat32Array = (buffer: Buffer): number[] => {
-  const float32 = new Float32Array(
-    buffer.buffer,
-    buffer.byteOffset,
-    buffer.byteLength / 4
-  );
+const bufferToFloat32Array = (buffer: Buffer | ArrayBuffer | Uint8Array): number[] => {
+  // libsql は ArrayBuffer を返すことがある
+  let uint8: Uint8Array;
+
+  if (buffer instanceof ArrayBuffer) {
+    uint8 = new Uint8Array(buffer);
+  } else if (buffer instanceof Uint8Array) {
+    uint8 = buffer;
+  } else if (Buffer.isBuffer(buffer)) {
+    uint8 = new Uint8Array(buffer);
+  } else {
+    // 予期しない型の場合は空配列を返す
+    return [];
+  }
+
+  // Uint8Array から新しい ArrayBuffer を作成して Float32Array に変換
+  const arrayBuffer = uint8.buffer.slice(uint8.byteOffset, uint8.byteOffset + uint8.byteLength);
+  const float32 = new Float32Array(arrayBuffer);
   return Array.from(float32);
 };
