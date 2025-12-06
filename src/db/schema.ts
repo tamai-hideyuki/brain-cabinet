@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, blob } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 
 // カテゴリ定義
@@ -65,4 +65,86 @@ export const clusters = sqliteTable("clusters", {
   sampleNoteId: text("sample_note_id"),                  // 代表ノートID（中心に最も近いノート）
   createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
   updatedAt: integer("updated_at").notNull().default(sql`(strftime('%s','now'))`),
+});
+
+// Embeddingテーブル（v3拡張カラム含む）
+export const noteEmbeddings = sqliteTable("note_embeddings", {
+  noteId: text("note_id").primaryKey(),
+  embedding: blob("embedding").notNull(),
+  model: text("model").notNull().default("text-embedding-3-small"),
+  dimensions: integer("dimensions").notNull().default(1536),
+  vectorNorm: real("vector_norm"),                       // v3: ベクトルの長さ（ノルム）
+  semanticDiff: real("semantic_diff"),                   // v3: 前バージョンとの意味差分
+  clusterId: integer("cluster_id"),                      // v3: 現在のクラスタID
+  createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
+  updatedAt: integer("updated_at").notNull().default(sql`(strftime('%s','now'))`),
+});
+
+// ============================================================
+// v3 新規テーブル
+// ============================================================
+
+// クラスタ遷移履歴
+export const clusterHistory = sqliteTable("cluster_history", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  noteId: text("note_id").notNull(),
+  clusterId: integer("cluster_id").notNull(),
+  assignedAt: integer("assigned_at").notNull().default(sql`(strftime('%s','now'))`),
+});
+
+// クラスタ間の影響グラフ（Concept Influence Graph）
+export const conceptGraphEdges = sqliteTable("concept_graph_edges", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  sourceCluster: integer("source_cluster").notNull(),
+  targetCluster: integer("target_cluster").notNull(),
+  weight: real("weight").notNull(),                      // 0.0〜1.0
+  mutual: real("mutual").notNull(),                      // 双方向性の強さ
+  lastUpdated: integer("last_updated").notNull().default(sql`(strftime('%s','now'))`),
+});
+
+// 日次メトリクス時系列
+export const metricsTimeSeries = sqliteTable("metrics_time_series", {
+  date: text("date").primaryKey(),                       // '2025-12-07'
+  noteCount: integer("note_count").notNull(),
+  avgSemanticDiff: real("avg_semantic_diff"),
+  dominantCluster: integer("dominant_cluster"),
+  entropy: real("entropy"),                              // 思考分散度
+  growthVector: blob("growth_vector"),
+  createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
+});
+
+// ドリフトイベントタイプ
+export const DRIFT_SEVERITY = ["low", "mid", "high"] as const;
+export type DriftSeverity = (typeof DRIFT_SEVERITY)[number];
+
+export const DRIFT_TYPES = [
+  "cluster_bias",   // 特定クラスタへの偏り
+  "drift_drop",     // 思考活動の低下
+  "over_focus",     // 過集中
+  "stagnation",     // 停滞
+  "divergence",     // 発散（多方向に分散しすぎ）
+] as const;
+export type DriftType = (typeof DRIFT_TYPES)[number];
+
+// ドリフト・偏り検出イベント
+export const driftEvents = sqliteTable("drift_events", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  detectedAt: integer("detected_at").notNull().default(sql`(strftime('%s','now'))`),
+  severity: text("severity").notNull(),                  // 'low' | 'mid' | 'high'
+  type: text("type").notNull(),                          // DriftType
+  message: text("message").notNull(),
+  relatedCluster: integer("related_cluster"),
+  resolvedAt: integer("resolved_at"),                    // 解消日時（NULLなら未解消）
+});
+
+// Personal Thinking Model スナップショット
+export const ptmSnapshots = sqliteTable("ptm_snapshots", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  capturedAt: integer("captured_at").notNull().default(sql`(strftime('%s','now'))`),
+  centerOfGravity: blob("center_of_gravity"),            // 思考の重心ベクトル
+  clusterStrengths: blob("cluster_strengths"),           // クラスタ別スコア
+  influenceMap: blob("influence_map"),                   // クラスタ間影響行列
+  imbalanceScore: real("imbalance_score"),               // 偏り度 0.0〜1.0
+  growthDirection: blob("growth_direction"),             // 成長ベクトル
+  summary: text("summary"),                              // GPT生成レポート
 });
