@@ -1,26 +1,9 @@
 import { findAllNotes, updateNoteInDB, findNoteById, createNoteInDB, deleteNoteInDB } from "../repositories/notesRepo";
-import { saveNoteHistory, getHistoryById } from "./historyService";
-import { computeDiff } from "../utils/diff";
-import { generateAndSaveNoteEmbedding, removeNoteEmbedding } from "./embeddingService";
-import { checkEmbeddingTableExists } from "../repositories/embeddingRepo";
+import { getHistoryById } from "./historyService";
+import { removeNoteEmbedding } from "./embeddingService";
+import { deleteAllRelationsForNote } from "../repositories/relationRepo";
+import { enqueueJob } from "./jobs/job-queue";
 import { logger } from "../utils/logger";
-
-// Embedding生成が有効かどうか（環境変数で制御）
-const EMBEDDING_ENABLED = !!process.env.OPENAI_API_KEY;
-
-/**
- * Embedding生成をバックグラウンドでスケジュール（レスポンスをブロックしない）
- */
-const scheduleEmbeddingGeneration = async (noteId: string) => {
-  // テーブル存在確認
-  const tableExists = await checkEmbeddingTableExists();
-  if (!tableExists) return;
-
-  // 非同期で実行（エラーはログのみ）
-  generateAndSaveNoteEmbedding(noteId).catch((err) => {
-    logger.error({ err, noteId }, "Failed to generate embedding");
-  });
-};
 
 /**
  * JSON文字列を配列にパース（安全に）
@@ -75,9 +58,12 @@ export const createNote = async (title: string, content: string) => {
   }
   const note = await createNoteInDB(title, content);
 
-  // Embedding生成（非同期・エラーは無視）
-  if (note && EMBEDDING_ENABLED) {
-    scheduleEmbeddingGeneration(note.id);
+  if (note) {
+    // 非同期ジョブをキューに追加（Embedding生成 + Relation構築）
+    enqueueJob("NOTE_ANALYZE", {
+      noteId: note.id,
+      updatedAt: note.updatedAt,
+    });
   }
 
   return note ? formatNoteForAPI(note) : null;
@@ -90,11 +76,14 @@ export const deleteNote = async (id: string) => {
   }
 
   // Embedding削除（非同期・エラーはログのみ）
-  if (EMBEDDING_ENABLED) {
-    removeNoteEmbedding(id).catch((err) => {
-      logger.error({ err, noteId: id }, "Failed to remove embedding");
-    });
-  }
+  removeNoteEmbedding(id).catch((err) => {
+    logger.error({ err, noteId: id }, "Failed to remove embedding");
+  });
+
+  // Relation削除（非同期・エラーはログのみ）
+  deleteAllRelationsForNote(id).catch((err) => {
+    logger.error({ err, noteId: id }, "Failed to remove relations");
+  });
 
   return formatNoteForAPI(deleted);
 };
@@ -114,22 +103,17 @@ export const updateNote = async (id: string, newContent: string, newTitle?: stri
     return formatNoteForAPI(old);
   }
 
-  // ② 履歴保存（前の内容 + 差分）- 内容が変わった場合のみ
-  if (contentChanged) {
-    const diff = computeDiff(old.content, newContent);
-    await saveNoteHistory({
-      noteId: id,
-      content: old.content,
-      diff,
-    });
-  }
-
-  // ③ 本体を更新
+  // ② 本体を更新（履歴保存はジョブ側でsemantic diffを見て判断）
   const updated = await updateNoteInDB(id, newContent, newTitle);
 
-  // Embedding再生成（非同期・エラーは無視）
-  if (updated && EMBEDDING_ENABLED) {
-    scheduleEmbeddingGeneration(updated.id);
+  if (updated) {
+    // 非同期ジョブをキューに追加
+    // previousContentを渡すことでsemantic diffを計算
+    enqueueJob("NOTE_ANALYZE", {
+      noteId: updated.id,
+      previousContent: contentChanged ? old.content : null,
+      updatedAt: updated.updatedAt,
+    });
   }
 
   return updated ? formatNoteForAPI(updated) : null;

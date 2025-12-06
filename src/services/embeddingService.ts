@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+import { pipeline, type FeatureExtractionPipeline } from "@xenova/transformers";
 import {
   saveEmbedding,
   getEmbedding,
@@ -6,38 +6,56 @@ import {
   getAllEmbeddings,
   createEmbeddingTable,
   checkEmbeddingTableExists,
+  DEFAULT_MODEL,
+  EMBEDDING_VERSION,
 } from "../repositories/embeddingRepo";
 import { findNoteById, findAllNotes } from "../repositories/notesRepo";
 import { normalizeText } from "../utils/normalize";
+import { logger } from "../utils/logger";
 
-const MODEL = "text-embedding-3-small";
+// MiniLM モデル（遅延初期化）
+let embedder: FeatureExtractionPipeline | null = null;
+let isModelLoading = false;
 
-// OpenAI クライアント（遅延初期化）
-let openaiClient: OpenAI | null = null;
+/**
+ * MiniLM モデルを取得（遅延ロード）
+ */
+const getEmbedder = async (): Promise<FeatureExtractionPipeline> => {
+  if (embedder) return embedder;
 
-const getOpenAIClient = (): OpenAI => {
-  if (!openaiClient) {
-    if (!process.env.OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY is not set");
+  if (isModelLoading) {
+    // 他のリクエストがロード中の場合は待機
+    while (isModelLoading) {
+      await sleep(100);
     }
-    openaiClient = new OpenAI();
+    if (embedder) return embedder;
   }
-  return openaiClient;
+
+  isModelLoading = true;
+  try {
+    logger.info("[Embedding] Loading MiniLM model...");
+    embedder = await pipeline(
+      "feature-extraction",
+      "Xenova/all-MiniLM-L6-v2"
+    );
+    logger.info("[Embedding] MiniLM model loaded");
+    return embedder;
+  } finally {
+    isModelLoading = false;
+  }
 };
 
 /**
- * テキストからEmbeddingを生成
+ * テキストからEmbeddingを生成（MiniLM）
  */
 export const generateEmbedding = async (text: string): Promise<number[]> => {
   const normalized = normalizeText(text).slice(0, 8000); // トークン制限対策
 
-  const client = getOpenAIClient();
-  const response = await client.embeddings.create({
-    model: MODEL,
-    input: normalized,
-  });
+  const model = await getEmbedder();
+  const output = await model(normalized, { pooling: "mean", normalize: true });
 
-  return response.data[0].embedding;
+  // Float32Array を number[] に変換
+  return Array.from(output.data as Float32Array);
 };
 
 /**
@@ -53,7 +71,7 @@ export const generateAndSaveNoteEmbedding = async (noteId: string): Promise<void
   const text = `${note.title}\n\n${note.content}`;
   const embedding = await generateEmbedding(text);
 
-  await saveEmbedding(noteId, embedding, MODEL);
+  await saveEmbedding(noteId, embedding, DEFAULT_MODEL, EMBEDDING_VERSION);
 };
 
 /**
@@ -147,9 +165,9 @@ export const generateAllEmbeddings = async (
       errors.push(`${note.id}: ${message}`);
     }
 
-    // Rate limit対策（1秒あたり3000リクエストまでだが念のため）
+    // MiniLMはローカルなのでRate limit不要だが、CPU負荷軽減のため少し待機
     if (i < allNotes.length - 1) {
-      await sleep(100);
+      await sleep(10);
     }
   }
 
@@ -161,7 +179,7 @@ export const generateAllEmbeddings = async (
 /**
  * Cosine類似度を計算
  */
-const cosineSimilarity = (a: number[], b: number[]): number => {
+export const cosineSimilarity = (a: number[], b: number[]): number => {
   if (a.length !== b.length) {
     throw new Error("Vectors must have the same length");
   }
@@ -180,6 +198,14 @@ const cosineSimilarity = (a: number[], b: number[]): number => {
   if (denominator === 0) return 0;
 
   return dotProduct / denominator;
+};
+
+/**
+ * Semantic変化スコアを計算（0 = 変化なし, 1 = 全く違う）
+ */
+export const semanticChangeScore = (a: number[], b: number[]): number => {
+  const sim = cosineSimilarity(a, b);
+  return 1 - sim;
 };
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

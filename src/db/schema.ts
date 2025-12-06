@@ -33,5 +33,25 @@ export const noteHistory = sqliteTable("note_history", {
   noteId: text("note_id").notNull(),           // 紐づく元のメモ
   content: text("content").notNull(),          // 変更時点の全文スナップショット
   diff: text("diff"),                           // 差分（任意）
+  semanticDiff: text("semantic_diff"),          // 意味的差分スコア（0.0〜1.0）JSON文字列
   createdAt: integer("created_at").notNull(),   // 履歴保存日時
+});
+
+// Relation タイプ
+export const RELATION_TYPES = [
+  "similar",    // 類似ノート（0.85以上）
+  "derived",    // 派生ノート（0.92以上）
+  "reference",  // 参照（将来用）
+  "summary_of", // 要約（将来用）
+] as const;
+
+export type RelationType = (typeof RELATION_TYPES)[number];
+
+export const noteRelations = sqliteTable("note_relations", {
+  id: text("id").primaryKey(),                          // UUID
+  sourceNoteId: text("source_note_id").notNull(),       // 関係元ノート
+  targetNoteId: text("target_note_id").notNull(),       // 関係先ノート
+  relationType: text("relation_type").notNull(),        // "similar" | "derived" | etc.
+  score: text("score").notNull(),                        // 類似度スコア（JSON文字列）
+  createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
 });
