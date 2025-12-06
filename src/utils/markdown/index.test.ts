@@ -124,6 +124,120 @@ code
       expect(result).toContain("[link](url)");
     });
   });
+
+  describe("処理順序の不変条件", () => {
+    /**
+     * normalizeMarkdownの処理順序:
+     * 1. normalizeHeadings - 見出しの#後にスペース追加
+     * 2. normalizeListItems - 箇条書きマーカーを-に統一
+     * 3. repairCodeBlocks - 閉じ忘れコードブロック修復
+     * 4. repairLinks - リンク内空白削除
+     * 5. removeExcessiveBlankLines - 3行以上の空行を2行に
+     * 6. trimLines - 行末空白削除、先頭末尾trim
+     */
+
+    it("見出し正規化は箇条書き正規化より先に実行される", () => {
+      // #* のような入力で、見出しとして認識されるか箇条書きとして認識されるか
+      // 見出し正規化が先なので「# *」になる
+      const input = "#* テスト";
+      const result = normalizeMarkdown(input);
+      // #の後に*があるので「# * テスト」になる（見出し正規化のみ適用）
+      expect(result).toBe("# * テスト");
+    });
+
+    it("コードブロック内のリンクも修復される（現在の実装の振る舞い）", () => {
+      // 現在の実装ではコードブロック内のリンクも処理される
+      const input = "```\n[text](  url  )\n```";
+      const result = normalizeMarkdown(input);
+      expect(result).toContain("[text](url)");
+    });
+
+    it("空行圧縮はtrimより先に実行される", () => {
+      // 空行圧縮後にtrimが実行されるため、末尾の空行は削除される
+      const input = "テキスト\n\n\n\n";
+      const result = normalizeMarkdown(input);
+      expect(result).toBe("テキスト");
+    });
+
+    it("trimは最後に実行される", () => {
+      // 他の処理で行末に空白が残っても最終的にtrimされる
+      const input = "# タイトル   \n- 項目   ";
+      const result = normalizeMarkdown(input);
+      expect(result).toBe("# タイトル\n- 項目");
+    });
+
+    it("処理順序により箇条書き内の見出し風テキストは見出し化されない", () => {
+      // 箇条書き正規化より先に見出し正規化が実行されるが
+      // 行頭の#のみが見出しとして認識される
+      const input = "- #タグ風テキスト";
+      const result = normalizeMarkdown(input);
+      // 行頭ではないので見出し正規化は適用されない
+      expect(result).toBe("- #タグ風テキスト");
+    });
+
+    it("閉じ忘れコードブロックの修復後もリンク修復が適用される", () => {
+      const input = "```js\ncode\n```\n[text](  url  )";
+      const result = normalizeMarkdown(input);
+      expect(result).toContain("[text](url)");
+    });
+
+    it("複数の処理が正しい順序で連鎖する", () => {
+      const input = `#タイトル
+
+* 項目1
+
+
+\`\`\`
+code
+[link](  url  )
+\`\`\``;
+      const result = normalizeMarkdown(input);
+      // 1. 見出し正規化: #タイトル → # タイトル
+      expect(result).toContain("# タイトル");
+      // 2. 箇条書き正規化: * → -
+      expect(result).toContain("- 項目1");
+      // 3. コードブロック: 正しく閉じられている
+      expect(result.match(/```/g)?.length).toBe(2);
+      // 4. リンク修復: 空白削除
+      expect(result).toContain("[link](url)");
+      // 5. 空行圧縮: 適用済み
+      expect(result).not.toMatch(/\n{3,}/);
+      // 6. trim: 末尾空白削除（全体の末尾のみ確認）
+      expect(result).not.toMatch(/\s$/);
+    });
+
+    it("冪等性: 2回適用しても結果が同じ", () => {
+      const input = `#タイトル
+
+* 項目1
++ 項目2
+
+
+\`\`\`js
+code
+
+[link](  url  )`;
+
+      const once = normalizeMarkdown(input);
+      const twice = normalizeMarkdown(once);
+      expect(twice).toBe(once);
+    });
+
+    it("冪等性: 正規化済みテキストは変化しない", () => {
+      const normalized = `# タイトル
+
+- 項目1
+- 項目2
+
+\`\`\`js
+code
+\`\`\`
+
+[link](url)`;
+
+      expect(normalizeMarkdown(normalized)).toBe(normalized);
+    });
+  });
 });
 
 describe("formatForGPT", () => {
