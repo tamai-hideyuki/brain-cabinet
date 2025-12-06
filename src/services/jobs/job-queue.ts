@@ -15,6 +15,7 @@ export type NoteAnalyzePayload = {
 // CLUSTER_REBUILD ジョブのペイロード
 export type ClusterRebuildPayload = {
   k?: number; // クラスタ数（デフォルト: 8）
+  regenerateEmbeddings?: boolean; // Embedding 未生成ノートを自動生成（デフォルト: true）
 };
 
 // ペイロードの型

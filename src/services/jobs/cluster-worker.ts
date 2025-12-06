@@ -1,12 +1,13 @@
 import { kmeans } from "ml-kmeans";
-import { getAllEmbeddings } from "../../repositories/embeddingRepo";
+import { getAllEmbeddings, getEmbedding } from "../../repositories/embeddingRepo";
 import {
   deleteAllClusters,
   saveClusters,
   updateAllNoteClusterIds,
   resetAllNoteClusterIds,
 } from "../../repositories/clusterRepo";
-import { cosineSimilarity } from "../embeddingService";
+import { findAllNotes } from "../../repositories/notesRepo";
+import { cosineSimilarity, generateAndSaveNoteEmbedding } from "../embeddingService";
 import { logger } from "../../utils/logger";
 import type { ClusterRebuildPayload } from "./job-queue";
 
@@ -17,19 +18,62 @@ const DEFAULT_K = 8;
 const MIN_NOTES_FOR_CLUSTERING = 3;
 
 /**
+ * 全ノートの Embedding を確保（未生成のものを自動生成）
+ */
+const ensureAllEmbeddings = async (): Promise<{ generated: number; skipped: number; failed: number }> => {
+  const allNotes = await findAllNotes();
+  let generated = 0;
+  let skipped = 0;
+  let failed = 0;
+
+  logger.info({ totalNotes: allNotes.length }, "[ClusterWorker] Checking embeddings for all notes");
+
+  for (const note of allNotes) {
+    const existing = await getEmbedding(note.id);
+    if (existing) {
+      skipped++;
+      continue;
+    }
+
+    try {
+      await generateAndSaveNoteEmbedding(note.id);
+      generated++;
+      logger.debug({ noteId: note.id }, "[ClusterWorker] Generated embedding for note");
+    } catch (err) {
+      failed++;
+      logger.warn({ noteId: note.id, err }, "[ClusterWorker] Failed to generate embedding");
+    }
+  }
+
+  logger.info(
+    { generated, skipped, failed, total: allNotes.length },
+    "[ClusterWorker] Embedding generation completed"
+  );
+
+  return { generated, skipped, failed };
+};
+
+/**
  * CLUSTER_REBUILD ジョブのメイン処理
  *
- * 1. 全ノートの embedding を取得
- * 2. K-Means でクラスタリング
- * 3. 各ノートに cluster_id を割り当て
- * 4. clusters テーブルを更新
+ * 1. Embedding 未生成ノートがあれば自動生成（regenerateEmbeddings: true の場合）
+ * 2. 全ノートの embedding を取得
+ * 3. K-Means でクラスタリング
+ * 4. 各ノートに cluster_id を割り当て
+ * 5. clusters テーブルを更新
  */
 export const handleClusterRebuildJob = async (payload: ClusterRebuildPayload) => {
   const k = payload.k ?? DEFAULT_K;
+  const regenerateEmbeddings = payload.regenerateEmbeddings ?? true; // デフォルトで有効
 
-  logger.info({ k }, "[ClusterWorker] Starting cluster rebuild");
+  logger.info({ k, regenerateEmbeddings }, "[ClusterWorker] Starting cluster rebuild");
 
-  // 1. 全 embedding を取得
+  // 1. Embedding 未生成ノートを自動生成
+  if (regenerateEmbeddings) {
+    await ensureAllEmbeddings();
+  }
+
+  // 2. 全 embedding を取得
   const allEmbeddings = await getAllEmbeddings();
 
   if (allEmbeddings.length < MIN_NOTES_FOR_CLUSTERING) {

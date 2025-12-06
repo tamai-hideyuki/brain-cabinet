@@ -130,11 +130,23 @@ const float32ArrayToBuffer = (arr: number[]): Buffer => {
 /**
  * BufferをFloat32配列に変換
  */
-const bufferToFloat32Array = (buffer: Buffer): number[] => {
-  const float32 = new Float32Array(
-    buffer.buffer,
-    buffer.byteOffset,
-    buffer.byteLength / 4
-  );
+const bufferToFloat32Array = (buffer: Buffer | ArrayBuffer | Uint8Array): number[] => {
+  // libsql は ArrayBuffer を返すことがある
+  let uint8: Uint8Array;
+
+  if (buffer instanceof ArrayBuffer) {
+    uint8 = new Uint8Array(buffer);
+  } else if (buffer instanceof Uint8Array) {
+    uint8 = buffer;
+  } else if (Buffer.isBuffer(buffer)) {
+    uint8 = new Uint8Array(buffer);
+  } else {
+    // 予期しない型の場合は空配列を返す
+    return [];
+  }
+
+  // Uint8Array から新しい ArrayBuffer を作成して Float32Array に変換
+  const arrayBuffer = uint8.buffer.slice(uint8.byteOffset, uint8.byteOffset + uint8.byteLength);
+  const float32 = new Float32Array(arrayBuffer);
   return Array.from(float32);
 };

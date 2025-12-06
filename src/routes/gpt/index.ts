@@ -4,6 +4,7 @@ import { contextRoute } from "./context";
 import { taskRoute } from "./task";
 import { overviewRoute } from "./overview";
 import { healthRoute } from "./health";
+import { embedRoute } from "./embed";
 
 export const gptRoute = new Hono();
 
@@ -21,3 +22,6 @@ gptRoute.route("/", overviewRoute);
 
 // GPT向けヘルスチェック
 gptRoute.route("/", healthRoute);
+
+// GPT向けEmbedding
+gptRoute.route("/", embedRoute);
