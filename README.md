@@ -304,6 +304,7 @@ GPT が実行できる定型タスク:
 | 形態素解析 | TinySegmenter |
 | 差分計算 | diff-match-patch |
 | ロギング | Pino + pino-pretty |
+| テスト | Vitest |
 | 言語 | TypeScript |
 | パッケージマネージャ | pnpm |
 
@@ -335,6 +336,12 @@ pnpm init-fts
 
 # Embedding 一括生成（要 OPENAI_API_KEY）
 pnpm init-embeddings
+
+# テスト実行
+pnpm test
+
+# テスト（ウォッチモード）
+pnpm test:watch
 ```
 
 ---
@@ -355,8 +362,26 @@ brain-cabinet/
 │   │   ├── embeddingService.ts   # Embedding 生成・類似度計算
 │   │   └── gptService.ts         # GPT向けデータ整形
 │   ├── repositories/             # データアクセス層
-│   ├── utils/                    # ユーティリティ
-│   │   └── metadata.ts           # 自動メタデータ抽出
+│   ├── utils/                    # ユーティリティ（テスト付き）
+│   │   ├── slugify/              # ファイル名安全化
+│   │   │   ├── index.ts
+│   │   │   └── index.test.ts
+│   │   ├── normalize/            # テキスト正規化
+│   │   │   ├── index.ts
+│   │   │   └── index.test.ts
+│   │   ├── diff/                 # 差分計算
+│   │   │   ├── index.ts
+│   │   │   └── index.test.ts
+│   │   ├── markdown/             # Markdown正規化
+│   │   │   ├── index.ts
+│   │   │   └── index.test.ts
+│   │   ├── markdown-parser/      # Frontmatter解析
+│   │   │   ├── index.ts
+│   │   │   └── index.test.ts
+│   │   ├── metadata/             # メタデータ抽出
+│   │   │   ├── index.ts
+│   │   │   └── index.test.ts
+│   │   └── logger.ts             # ロガー設定
 │   ├── importer/                 # Markdown インポーター
 │   ├── exporter/                 # エクスポーター
 │   ├── syncer/                   # 差分同期
@@ -387,6 +412,7 @@ brain-cabinet/
 - [x] 整合性チェック機能
 - [x] 差分同期機能
 - [x] 構造化ロギング（Pino）
+- [x] ユーティリティのユニットテスト（Vitest, 220テスト）
 
 ### Phase 3（予定）
 - [ ] 関連ノート推薦
@@ -413,6 +439,8 @@ brain-cabinet/
 - 差分同期機能
 - 構造化ロギング（Pino + pino-pretty）
 - ルートファイル分割によるコード整理
+- ユーティリティのユニットテスト追加（Vitest, 220テスト）
+  - slugify, normalize, diff, markdown, markdown-parser, metadata
 
 ### v1.0.0 (Phase 1 完了)
 - ノート管理の基本機能
