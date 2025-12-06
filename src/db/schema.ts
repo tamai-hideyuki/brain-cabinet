@@ -24,6 +24,7 @@ export const notes = sqliteTable("notes", {
   tags: text("tags"),                    // JSON配列として保存 e.g. '["TypeScript","API"]'
   category: text("category"),            // カテゴリ e.g. "技術"
   headings: text("headings"),            // 見出し一覧（JSON） e.g. '["概要","実装"]'
+  clusterId: integer("cluster_id"),      // 所属クラスタID（自動更新）
   createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
   updatedAt: integer("updated_at").notNull().default(sql`(strftime('%s','now'))`),
 });
@@ -54,4 +55,14 @@ export const noteRelations = sqliteTable("note_relations", {
   relationType: text("relation_type").notNull(),        // "similar" | "derived" | etc.
   score: text("score").notNull(),                        // 類似度スコア（JSON文字列）
   createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
+});
+
+// クラスタテーブル
+export const clusters = sqliteTable("clusters", {
+  id: integer("id").primaryKey(),                        // クラスタID（0〜k-1）
+  centroid: text("centroid"),                            // クラスタ中心（BLOBをBase64で保存）
+  size: integer("size").notNull().default(0),            // クラスタ内のノート数
+  sampleNoteId: text("sample_note_id"),                  // 代表ノートID（中心に最も近いノート）
+  createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
+  updatedAt: integer("updated_at").notNull().default(sql`(strftime('%s','now'))`),
 });

@@ -1,8 +1,9 @@
 import { logger } from "../../utils/logger";
 import { handleNoteAnalyzeJob } from "./job-worker";
+import { handleClusterRebuildJob } from "./cluster-worker";
 
 // ジョブタイプ
-export type JobType = "NOTE_ANALYZE";
+export type JobType = "NOTE_ANALYZE" | "CLUSTER_REBUILD";
 
 // NOTE_ANALYZE ジョブのペイロード
 export type NoteAnalyzePayload = {
@@ -11,10 +12,18 @@ export type NoteAnalyzePayload = {
   updatedAt: number; // ジョブ順序チェック用
 };
 
+// CLUSTER_REBUILD ジョブのペイロード
+export type ClusterRebuildPayload = {
+  k?: number; // クラスタ数（デフォルト: 8）
+};
+
+// ペイロードの型
+type JobPayload = NoteAnalyzePayload | ClusterRebuildPayload;
+
 // ジョブ定義
 type Job = {
   type: JobType;
-  payload: NoteAnalyzePayload;
+  payload: JobPayload;
   createdAt: number;
 };
 
@@ -25,7 +34,9 @@ let isProcessing = false;
 /**
  * ジョブをキューに追加
  */
-export const enqueueJob = (type: JobType, payload: NoteAnalyzePayload) => {
+export function enqueueJob(type: "NOTE_ANALYZE", payload: NoteAnalyzePayload): void;
+export function enqueueJob(type: "CLUSTER_REBUILD", payload?: ClusterRebuildPayload): void;
+export function enqueueJob(type: JobType, payload: JobPayload = {}): void {
   const job: Job = {
     type,
     payload,
@@ -33,11 +44,11 @@ export const enqueueJob = (type: JobType, payload: NoteAnalyzePayload) => {
   };
 
   queue.push(job);
-  logger.debug({ type, noteId: payload.noteId }, "[JobQueue] Job enqueued");
+  logger.info({ type }, "[JobQueue] Job enqueued");
 
   // 非同期でキュー処理開始
   processQueue();
-};
+}
 
 /**
  * キューを処理（シングルワーカー）
@@ -50,22 +61,13 @@ const processQueue = async () => {
     const job = queue.shift()!;
 
     try {
-      logger.debug(
-        { type: job.type, noteId: job.payload.noteId },
-        "[JobQueue] Processing job"
-      );
+      logger.info({ type: job.type }, "[JobQueue] Processing job");
 
       await handleJob(job);
 
-      logger.debug(
-        { type: job.type, noteId: job.payload.noteId },
-        "[JobQueue] Job completed"
-      );
+      logger.info({ type: job.type }, "[JobQueue] Job completed");
     } catch (err) {
-      logger.error(
-        { err, type: job.type, noteId: job.payload.noteId },
-        "[JobQueue] Job failed"
-      );
+      logger.error({ err, type: job.type }, "[JobQueue] Job failed");
     }
   }
 
@@ -78,7 +80,9 @@ const processQueue = async () => {
 const handleJob = async (job: Job) => {
   switch (job.type) {
     case "NOTE_ANALYZE":
-      return handleNoteAnalyzeJob(job.payload);
+      return handleNoteAnalyzeJob(job.payload as NoteAnalyzePayload);
+    case "CLUSTER_REBUILD":
+      return handleClusterRebuildJob(job.payload as ClusterRebuildPayload);
     default:
       logger.warn({ type: job.type }, "[JobQueue] Unknown job type");
   }

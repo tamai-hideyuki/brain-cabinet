@@ -3,6 +3,7 @@ import { serve } from "@hono/node-server";
 import { notesRoute } from "./routes/notes/index";
 import { searchRoute } from "./routes/search/index";
 import { gptRoute } from "./routes/gpt/index";
+import { clustersRoute } from "./routes/clusters/index";
 import { logger } from "./utils/logger";
 import fs from "fs";
 import path from "path";
@@ -45,6 +46,7 @@ app.get("/openapi.json", (c) => c.json(openapi));
 app.route("/api/notes", notesRoute);
 app.route("/api/search", searchRoute);
 app.route("/api/gpt", gptRoute);
+app.route("/api/clusters", clustersRoute);
 app.get("/", (c) => c.text("brain-cabinet API running"));
 
 serve({ fetch: app.fetch, port: 3000 }, (info) => {

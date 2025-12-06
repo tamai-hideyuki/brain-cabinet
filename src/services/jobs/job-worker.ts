@@ -22,6 +22,10 @@ const RELATION_SIMILAR_THRESHOLD = 0.85; // similar判定の閾値
 const RELATION_DERIVED_THRESHOLD = 0.92; // derived判定の閾値
 const RELATION_LIMIT = 10; // 1ノートあたりの最大relation数
 
+// Cluster boost 設定値
+const CLUSTER_BOOST_SAME = 0.10;  // 同一クラスタなら +0.10
+const CLUSTER_PENALTY_DIFF = 0.05; // 異なるクラスタなら -0.05
+
 /**
  * NOTE_ANALYZE ジョブのメイン処理
  *
@@ -103,19 +107,34 @@ export const handleNoteAnalyzeJob = async (payload: NoteAnalyzePayload) => {
 
 /**
  * ノートのRelationを再構築
+ * cluster_boostを適用：同一クラスタは+0.10、異なるクラスタは-0.05
  */
 const rebuildRelationsForNote = async (
   noteId: string,
   currentEmb: number[]
 ) => {
+  // ソースノートのcluster_idを取得
+  const sourceNote = await findNoteById(noteId);
+  const sourceClusterId = sourceNote?.clusterId ?? null;
+
   // 他の全ノートのEmbeddingを取得
   const allEmbeddings = await getAllEmbeddings();
+
+  // 全ノートのcluster_idを取得（バッチ処理のため）
+  const noteClusterMap = new Map<string, number | null>();
+  for (const { noteId: otherId } of allEmbeddings) {
+    if (otherId !== noteId) {
+      const otherNote = await findNoteById(otherId);
+      noteClusterMap.set(otherId, otherNote?.clusterId ?? null);
+    }
+  }
 
   // 類似度を計算してフィルタ
   const candidates: Array<{
     targetNoteId: string;
     relationType: RelationType;
     score: number;
+    boostedScore: number;
   }> = [];
 
   for (const { noteId: otherId, embedding } of allEmbeddings) {
@@ -124,36 +143,54 @@ const rebuildRelationsForNote = async (
 
     const sim = cosineSimilarity(currentEmb, embedding);
 
-    // しきい値以上のものだけ
-    if (sim >= RELATION_SIMILAR_THRESHOLD) {
+    // cluster_boostを適用
+    const targetClusterId = noteClusterMap.get(otherId) ?? null;
+    let boost = 0;
+    if (sourceClusterId !== null && targetClusterId !== null) {
+      if (sourceClusterId === targetClusterId) {
+        boost = CLUSTER_BOOST_SAME; // +0.10
+      } else {
+        boost = -CLUSTER_PENALTY_DIFF; // -0.05
+      }
+    }
+    const boostedScore = Math.min(1.0, Math.max(0, sim + boost));
+
+    // しきい値判定はブースト後のスコアで行う
+    if (boostedScore >= RELATION_SIMILAR_THRESHOLD) {
       const relationType: RelationType =
-        sim >= RELATION_DERIVED_THRESHOLD ? "derived" : "similar";
+        boostedScore >= RELATION_DERIVED_THRESHOLD ? "derived" : "similar";
 
       candidates.push({
         targetNoteId: otherId,
         relationType,
-        score: sim,
+        score: sim, // 元のスコアも保持
+        boostedScore,
       });
     }
   }
 
-  // スコア降順でソートして上位N件に絞る
+  // ブースト後スコア降順でソートして上位N件に絞る
   const topRelations = candidates
-    .sort((a, b) => b.score - a.score)
+    .sort((a, b) => b.boostedScore - a.boostedScore)
     .slice(0, RELATION_LIMIT);
 
   // 既存のRelationを削除
   await deleteRelationsBySourceNote(noteId);
 
-  // 新しいRelationを作成
+  // 新しいRelationを作成（保存するのはブースト後のスコア）
   if (topRelations.length > 0) {
     await createRelations(
       topRelations.map((r) => ({
         sourceNoteId: noteId,
         targetNoteId: r.targetNoteId,
         relationType: r.relationType,
-        score: r.score,
+        score: r.boostedScore,
       }))
+    );
+
+    logger.debug(
+      { noteId, sourceClusterId, relationCount: topRelations.length },
+      "[JobWorker] Relations created with cluster boost"
     );
   }
 };
