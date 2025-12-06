@@ -4,6 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsx src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "migrate": "drizzle-kit push",
     "import-notes": "tsx src/importer/import-notes.ts",
     "export-notes": "tsx src/exporter/export-notes.ts",
@@ -28,6 +30,7 @@
     "@types/node": "^24.10.1",
     "drizzle-kit": "^0.31.7",
     "tsx": "^4.7.0",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vitest": "^4.0.15"
   }
 }
