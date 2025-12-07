@@ -139,6 +139,17 @@ export const driftEvents = sqliteTable("drift_events", {
   resolvedAt: integer("resolved_at"),                    // 解消日時（NULLなら未解消）
 });
 
+// ノート間の影響グラフ（Concept Influence Graph - C モデル）
+export const noteInfluenceEdges = sqliteTable("note_influence_edges", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  sourceNoteId: text("source_note_id").notNull(),    // 影響元のノート
+  targetNoteId: text("target_note_id").notNull(),    // 影響先のノート（ドリフトしたノート）
+  weight: real("weight").notNull(),                  // 影響の強さ (0.0〜1.0)
+  cosineSim: real("cosine_sim").notNull(),           // コサイン類似度
+  driftScore: real("drift_score").notNull(),         // ドリフトスコア
+  createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
+});
+
 // Personal Thinking Model スナップショット
 export const ptmSnapshots = sqliteTable("ptm_snapshots", {
   id: integer("id").primaryKey({ autoIncrement: true }),

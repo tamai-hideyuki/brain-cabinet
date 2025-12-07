@@ -15,6 +15,7 @@ import { logger } from "../../utils/logger";
 import { randomUUID } from "crypto";
 import type { NoteAnalyzePayload } from "./job-queue";
 import type { RelationType } from "../../db/schema";
+import { generateInfluenceEdges } from "../influence/influenceService";
 
 // 設定値
 const SEMANTIC_DIFF_THRESHOLD = 0.05; // 5%以上変化したときだけ履歴を切る
@@ -109,6 +110,23 @@ export const handleNoteAnalyzeJob = async (payload: NoteAnalyzePayload) => {
   if (shouldRebuildRelations) {
     await rebuildRelationsForNote(noteId, embedding);
     logger.debug({ noteId }, "[JobWorker] Relations rebuilt");
+  }
+
+  // 5. Concept Influence Graph 更新（ドリフトがあった場合）
+  if (semanticDiff !== null && semanticDiff >= SEMANTIC_DIFF_THRESHOLD) {
+    const newClusterId = note.clusterId ?? null;
+    const edgesCreated = await generateInfluenceEdges(
+      noteId,
+      semanticDiff,
+      previousClusterId ?? null,
+      newClusterId
+    );
+    if (edgesCreated > 0) {
+      logger.debug(
+        { noteId, edgesCreated, semanticDiff },
+        "[JobWorker] Influence edges generated"
+      );
+    }
   }
 };
 
