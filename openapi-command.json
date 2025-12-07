@@ -1,0 +1,463 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Brain Cabinet v3 Command API",
+    "version": "3.0.0",
+    "description": "Brain Cabinet v3 の統合コマンドAPI。\nすべての操作を POST /api/command で受け付け、action ベースでディスパッチする。\n\n## GPT向けガイド\n\n### メモを探したい場合\n1. **gpt.search** - キーワードでメモを検索（最も汎用的、推奨）\n2. **search.byTitle** - タイトル名で検索（日付ログ「2025/12/07」など）\n\n### メモの内容を見たい場合\n1. **note.get** - IDでメモの全文を取得\n2. **note.list** - 全メモ一覧を取得\n\n### 思考パターンや傾向を知りたい場合\n1. **insight.lite** - 簡易インサイト\n2. **ptm.today** - 今日の思考モデル\n3. **cluster.map** - 思考クラスタのマップ\n"
+  },
+  "servers": [
+    {
+      "url": "https://api.brain-cabinet.com",
+      "description": "Cloudflare Tunnel 経由のローカル API"
+    }
+  ],
+  "security": [],
+  "paths": {
+    "/api/command": {
+      "post": {
+        "operationId": "executeCommand",
+        "x-openai-isConsequential": false,
+        "summary": "統合コマンド実行",
+        "description": "Brain Cabinetのすべての操作を実行する統合エンドポイント。\nactionでコマンドを指定し、payloadでパラメータを渡す。\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "action"
+                ],
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "description": "実行するアクション。以下から選択:\n\n【メモ検索】※ユーザーがメモを探している場合はこれを使う\n- gpt.search: キーワードでメモを検索（推奨）。payload.query に検索語を渡す\n- search.byTitle: タイトルで検索。payload.title に検索したいタイトル（部分一致可）を渡す\n- search.query: 詳細検索。mode で keyword/semantic/hybrid を選択可能\n\n【メモ操作】\n- note.list: 全メモ一覧を取得（payload不要）\n- note.get: 特定のメモを取得。payload.id にノートIDを渡す\n- note.create: メモを作成。payload.title と payload.content を渡す\n- note.update: メモを更新。payload.id と payload.content を渡す\n- note.delete: メモを削除。payload.id を渡す\n\n【インサイト・分析】\n- insight.lite: 思考パターンの簡易分析（payload不要）\n- insight.coach: コーチング向けインサイト（payload不要）\n- ptm.today: 今日の思考モデル（payload不要）\n- ptm.summary: 思考モデルのサマリー（payload不要）\n- analytics.summary: 統計サマリー（payload不要）\n\n【クラスタ】\n- cluster.list: クラスタ一覧（payload不要）\n- cluster.map: 思考マップ（payload不要）\n- cluster.identity: クラスタの特徴。payload.id にクラスタIDを渡す\n\n【ドリフト（思考の変化）】\n- drift.insight: 思考変化のインサイト（payload不要）\n- drift.summary: 変化のサマリー（payload不要）\n\n【システム】\n- system.health: ヘルスチェック（payload不要）\n- system.rebuildFts: FTS（全文検索）インデックスを再構築（payload不要）\n",
+                    "enum": [
+                      "gpt.search",
+                      "search.byTitle",
+                      "search.query",
+                      "search.categories",
+                      "note.list",
+                      "note.get",
+                      "note.create",
+                      "note.update",
+                      "note.delete",
+                      "note.history",
+                      "note.revert",
+                      "insight.lite",
+                      "insight.full",
+                      "insight.coach",
+                      "ptm.today",
+                      "ptm.summary",
+                      "ptm.history",
+                      "ptm.insight",
+                      "ptm.core",
+                      "ptm.influence",
+                      "ptm.dynamics",
+                      "ptm.stability",
+                      "ptm.capture",
+                      "cluster.list",
+                      "cluster.get",
+                      "cluster.map",
+                      "cluster.identity",
+                      "cluster.representatives",
+                      "cluster.rebuild",
+                      "drift.insight",
+                      "drift.summary",
+                      "drift.timeline",
+                      "drift.events",
+                      "drift.angle",
+                      "drift.forecast",
+                      "drift.warning",
+                      "analytics.summary",
+                      "analytics.timeline",
+                      "analytics.journey",
+                      "analytics.heatmap",
+                      "analytics.trends",
+                      "gpt.context",
+                      "gpt.task",
+                      "gpt.overview",
+                      "influence.stats",
+                      "influence.influencers",
+                      "influence.influenced",
+                      "clusterDynamics.summary",
+                      "clusterDynamics.snapshot",
+                      "clusterDynamics.timeline",
+                      "clusterDynamics.capture",
+                      "system.health",
+                      "system.embed",
+                      "system.rebuildFts",
+                      "embedding.recalcAll",
+                      "debug.healthcheck",
+                      "workflow.reconstruct"
+                    ]
+                  },
+                  "payload": {
+                    "type": "object",
+                    "description": "アクション固有のパラメータ。アクションによって必要なプロパティが異なる。\n\n【gpt.search / search.query】\n- query (必須): 検索キーワード\n- mode: \"keyword\" | \"semantic\" | \"hybrid\"（デフォルト: gpt.searchはhybrid、search.queryはkeyword）\n- limit: 取得件数\n\n【search.byTitle】\n- title (必須): 検索するタイトル（部分一致）\n- exact: true で完全一致（デフォルト: false）\n\n【note.get / note.update / note.delete】\n- id (必須): ノートID\n\n【note.create】\n- title (必須): タイトル\n- content (必須): 本文\n- category: カテゴリ\n- tags: タグ配列\n\n【cluster.identity / cluster.representatives】\n- id (必須): クラスタID\n\n【drift.* / ptm.dynamics】\n- rangeDays: 対象日数（デフォルト: 30）\n",
+                    "properties": {
+                      "query": {
+                        "type": "string",
+                        "description": "検索キーワード（gpt.search, search.query用）"
+                      },
+                      "title": {
+                        "type": "string",
+                        "description": "タイトル（search.byTitle, note.create用）"
+                      },
+                      "id": {
+                        "type": "string",
+                        "description": "ノートID（note.get, update, delete用）"
+                      },
+                      "content": {
+                        "type": "string",
+                        "description": "本文（note.create, update用）"
+                      },
+                      "mode": {
+                        "type": "string",
+                        "enum": [
+                          "keyword",
+                          "semantic",
+                          "hybrid"
+                        ],
+                        "description": "検索モード"
+                      },
+                      "exact": {
+                        "type": "boolean",
+                        "description": "完全一致検索（search.byTitle用、デフォルトfalse）"
+                      },
+                      "limit": {
+                        "type": "integer",
+                        "description": "取得件数"
+                      },
+                      "rangeDays": {
+                        "type": "integer",
+                        "description": "対象日数（drift系、analytics系用）"
+                      },
+                      "category": {
+                        "type": "string",
+                        "description": "カテゴリ"
+                      },
+                      "tags": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "タグ配列"
+                      }
+                    }
+                  }
+                }
+              },
+              "examples": {
+                "gptSearch": {
+                  "summary": "メモをキーワード検索（推奨）",
+                  "value": {
+                    "action": "gpt.search",
+                    "payload": {
+                      "query": "TypeScript"
+                    }
+                  }
+                },
+                "gptSearchJapanese": {
+                  "summary": "日本語でメモを検索",
+                  "value": {
+                    "action": "gpt.search",
+                    "payload": {
+                      "query": "プログラミング 学習"
+                    }
+                  }
+                },
+                "searchByTitleDate": {
+                  "summary": "日付でログを検索",
+                  "value": {
+                    "action": "search.byTitle",
+                    "payload": {
+                      "title": "2025/12/07"
+                    }
+                  }
+                },
+                "searchByTitlePartial": {
+                  "summary": "タイトル部分一致検索",
+                  "value": {
+                    "action": "search.byTitle",
+                    "payload": {
+                      "title": "週次レビュー"
+                    }
+                  }
+                },
+                "searchByTitleExact": {
+                  "summary": "タイトル完全一致検索",
+                  "value": {
+                    "action": "search.byTitle",
+                    "payload": {
+                      "title": "週次レビュー 2025年第1週",
+                      "exact": true
+                    }
+                  }
+                },
+                "noteList": {
+                  "summary": "全メモ一覧を取得",
+                  "value": {
+                    "action": "note.list"
+                  }
+                },
+                "noteGet": {
+                  "summary": "特定のメモを取得",
+                  "value": {
+                    "action": "note.get",
+                    "payload": {
+                      "id": "abc123"
+                    }
+                  }
+                },
+                "noteCreate": {
+                  "summary": "新しいメモを作成",
+                  "value": {
+                    "action": "note.create",
+                    "payload": {
+                      "title": "新しいアイデア",
+                      "content": "これはメモの内容です"
+                    }
+                  }
+                },
+                "insightLite": {
+                  "summary": "簡易インサイトを取得",
+                  "value": {
+                    "action": "insight.lite"
+                  }
+                },
+                "ptmToday": {
+                  "summary": "今日の思考モデルを取得",
+                  "value": {
+                    "action": "ptm.today"
+                  }
+                },
+                "clusterMap": {
+                  "summary": "思考クラスタのマップを取得",
+                  "value": {
+                    "action": "cluster.map"
+                  }
+                },
+                "systemHealth": {
+                  "summary": "システムヘルスチェック",
+                  "value": {
+                    "action": "system.health"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "コマンド実行成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "action": {
+                      "type": "string",
+                      "description": "実行されたアクション",
+                      "example": "gpt.search"
+                    },
+                    "result": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/SearchResult"
+                        },
+                        {
+                          "$ref": "#/components/schemas/NoteResult"
+                        },
+                        {
+                          "$ref": "#/components/schemas/NoteListResult"
+                        },
+                        {
+                          "$ref": "#/components/schemas/InsightResult"
+                        },
+                        {
+                          "type": "object"
+                        }
+                      ],
+                      "description": "アクション固有の結果"
+                    },
+                    "timestamp": {
+                      "type": "integer",
+                      "description": "実行時刻（UNIX timestamp）",
+                      "example": 1733580000000
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "コマンド実行失敗",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": false
+                    },
+                    "action": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "description": "エラーコード",
+                          "example": "UNKNOWN_ACTION"
+                        },
+                        "message": {
+                          "type": "string",
+                          "description": "エラーメッセージ",
+                          "example": "Unknown action: unknown.action"
+                        }
+                      }
+                    },
+                    "timestamp": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "SearchResult": {
+        "type": "array",
+        "description": "検索結果（gpt.search, search.query, search.byTitle）",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "ノートID"
+            },
+            "title": {
+              "type": "string",
+              "description": "ノートタイトル"
+            },
+            "content": {
+              "type": "string",
+              "description": "ノート本文（または先頭200文字）"
+            },
+            "snippet": {
+              "type": "string",
+              "description": "マッチした箇所のスニペット（検索語がmarkタグで強調）"
+            },
+            "score": {
+              "type": "number",
+              "description": "関連度スコア"
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "updatedAt": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        }
+      },
+      "NoteResult": {
+        "type": "object",
+        "description": "ノート詳細（note.get）",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string",
+            "description": "ノート全文"
+          },
+          "category": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "NoteListResult": {
+        "type": "array",
+        "description": "ノート一覧（note.list）",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "category": {
+              "type": "string"
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "updatedAt": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        }
+      },
+      "InsightResult": {
+        "type": "object",
+        "description": "インサイト結果（insight.lite, insight.coach）",
+        "properties": {
+          "summary": {
+            "type": "string",
+            "description": "インサイトの要約"
+          },
+          "patterns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "検出された思考パターン"
+          },
+          "recommendations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "推奨アクション"
+          }
+        }
+      }
+    }
+  }
+}
