@@ -166,6 +166,44 @@ export type PtmSnapshot = {
 };
 
 // ============================================================
+// Cluster Identity
+// ============================================================
+
+export type RepresentativeNote = {
+  id: string;
+  title: string;
+  category: string | null;
+  cosine: number;
+};
+
+export type ClusterDriftSummary = {
+  contribution: number; // 0.0〜1.0（全体への寄与率）
+  trend: "rising" | "falling" | "flat";
+  recentDriftSum: number;
+};
+
+export type ClusterInfluenceSummary = {
+  inDegree: number;   // 受けた影響の総量
+  outDegree: number;  // 与えた影響の総量
+  hubness: number;    // outDegree / (inDegree + outDegree)
+  authority: number;  // inDegree / (inDegree + outDegree)
+};
+
+export type ClusterIdentity = {
+  clusterId: number;
+  identity: {
+    name: string | null;       // GPT側で生成
+    summary: string | null;    // GPT側で生成
+    keywords: string[];
+    representatives: RepresentativeNote[];
+    drift: ClusterDriftSummary;
+    influence: ClusterInfluenceSummary;
+    cohesion: number;
+    noteCount: number;
+  };
+};
+
+// ============================================================
 // API Response Types
 // ============================================================
 

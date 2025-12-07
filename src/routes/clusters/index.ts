@@ -8,6 +8,7 @@ import { enqueueJob } from "../../services/jobs/job-queue";
 import { logger } from "../../utils/logger";
 import { db } from "../../db/client";
 import { sql } from "drizzle-orm";
+import { getClusterIdentity } from "../../services/cluster/identityService";
 
 // ヘルパー関数
 function bufferToFloat32Array(buffer: Buffer | ArrayBuffer | Uint8Array): number[] {
@@ -110,6 +111,23 @@ clustersRoute.get("/:id", async (c) => {
  * Query:
  *   - top?: number (デフォルト: 5)
  */
+clustersRoute.get("/:id/identity", async (c) => {
+  const idParam = c.req.param("id");
+  const clusterId = parseInt(idParam, 10);
+
+  if (isNaN(clusterId)) {
+    return c.json({ error: "Invalid cluster ID" }, 400);
+  }
+
+  const identity = await getClusterIdentity(clusterId);
+
+  if (!identity) {
+    return c.json({ error: "Cluster not found or no dynamics data available" }, 404);
+  }
+
+  return c.json(identity);
+});
+
 clustersRoute.get("/:id/representatives", async (c) => {
   const idParam = c.req.param("id");
   const clusterId = parseInt(idParam, 10);
