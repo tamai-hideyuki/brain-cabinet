@@ -150,6 +150,19 @@ export const noteInfluenceEdges = sqliteTable("note_influence_edges", {
   createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
 });
 
+// クラスタ動態（日次スナップショット）
+export const clusterDynamics = sqliteTable("cluster_dynamics", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  date: text("date").notNull(),                              // ISO日付 'YYYY-MM-DD'
+  clusterId: integer("cluster_id").notNull(),                // クラスタID
+  centroid: blob("centroid").notNull(),                      // クラスタ重心（Float32Array）
+  cohesion: real("cohesion").notNull(),                      // 凝集度（0.0〜1.0）
+  noteCount: integer("note_count").notNull(),                // クラスタ内ノート数
+  interactions: text("interactions"),                        // 他クラスタとの距離（JSON）
+  stabilityScore: real("stability_score"),                   // 前日からの変化量
+  createdAt: text("created_at").notNull(),
+});
+
 // Personal Thinking Model スナップショット
 export const ptmSnapshots = sqliteTable("ptm_snapshots", {
   id: integer("id").primaryKey({ autoIncrement: true }),
