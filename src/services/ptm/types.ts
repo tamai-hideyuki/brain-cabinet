@@ -224,3 +224,62 @@ export type PtmInsightResponse = {
     recommendation: string;
   };
 };
+
+// ============================================================
+// PTM MetaState (Final Integration)
+// ============================================================
+
+export type ClusterRole = "driver" | "stabilizer" | "bridge" | "isolated";
+
+export type ClusterPersonaSummary = {
+  clusterId: number;
+  keywords: string[];
+  noteCount: number;
+  cohesion: number;
+  role: ClusterRole;
+  drift: {
+    contribution: number;
+    trend: "rising" | "falling" | "flat";
+  };
+  influence: {
+    hubness: number;
+    authority: number;
+  };
+};
+
+export type ClusterInteraction = {
+  source: number;
+  target: number;
+  weight: number;
+  type: "strong" | "moderate" | "weak";
+};
+
+export type CoachAdvice = {
+  today: string;
+  tomorrow: string;
+  balance: string;
+  warning: string | null;
+};
+
+// Lite version (GPT用・簡潔)
+export type PtmMetaStateLite = {
+  date: string;
+  mode: ThinkingMode;
+  season: ThinkingSeason;
+  state: "stable" | "overheat" | "stagnation";
+  growthAngle: number;
+  trend: "rising" | "falling" | "flat";
+  dominantCluster: number | null;
+  topClusters: ClusterPersonaSummary[];
+  coach: CoachAdvice;
+};
+
+// Full version (研究モード・全データ)
+export type PtmMetaStateFull = {
+  date: string;
+  snapshot: PtmSnapshot;
+  clusters: ClusterIdentity[];
+  interactions: ClusterInteraction[];
+  roleMap: Record<number, ClusterRole>;
+  coach: CoachAdvice;
+};
