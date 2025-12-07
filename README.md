@@ -115,10 +115,58 @@ GPTが直接参照できる統合エンドポイント：
 
 ## GPTでの使い方
 
+### OpenAPI ファイル構成
+
+GPT Actions には「1ドメインあたり最大30操作」の制限があるため、OpenAPI仕様を分割しています。
+
+| ファイル | 操作数 | 用途 | 内容 |
+|---------|-------|------|------|
+| `openapi-gpt.json` | 25件 | **GPT Actions用（推奨）** | 必須+便利機能を厳選。日常のGPT会話に最適化 |
+| `openapi-admin.json` | 30件 | 管理・詳細分析用 | 週次レビュー、デバッグ、手動キャプチャ、詳細メトリクス |
+| `openapi.json` | 55件 | 開発・ドキュメント用 | 全API（GPT Actionsでは使用不可） |
+
+#### openapi-gpt.json に含まれるAPI（25件）
+
+**Notes操作**
+- `search_notes`, `get_note`, `get_note_context`, `create_note`, `update_note`, `get_note_history`
+
+**Clusters**
+- `list_clusters`, `get_cluster`, `get_cluster_identity`, `get_cluster_map_gpt`, `get_cluster_representatives`
+
+**Insight（GPT推奨）**
+- `get_insight_lite`, `get_insight_coach`, `get_insight_full`
+
+**PTM**
+- `get_ptm_summary`, `get_ptm_insight`
+
+**Drift**
+- `get_drift_insight`, `get_drift_summary`, `get_drift_forecast`
+
+**Influence**
+- `get_influence_summary`, `get_note_influence`
+
+**Cluster Dynamics**
+- `get_cluster_dynamics_insight`, `get_cluster_dynamics_summary`
+
+**その他**
+- `get_analytics_summary`, `semantic_search`
+
+#### openapi-admin.json に含まれるAPI（30件）
+
+- Notes: `list_notes`, `delete_note`
+- Clusters: `get_cluster_map`, `rebuild_clusters`
+- PTM詳細: `get_ptm_today`, `get_ptm_history`, `capture_ptm_snapshot`, `get_ptm_core`, `get_ptm_influence`, `get_ptm_dynamics`, `get_ptm_stability`
+- Drift詳細: `get_drift_timeline`, `get_drift_events`, `get_drift_angle`, `get_drift_warning`
+- Influence詳細: `get_influence_stats`, `get_note_influencers`, `get_note_influenced`
+- Dynamics詳細: `get_cluster_dynamics_snapshot`, `get_cluster_dynamics_timeline`, `capture_cluster_dynamics`, `get_cluster_dynamics_matrix`
+- Analytics詳細: `get_analytics_timeline`, `get_analytics_heatmap`, `get_analytics_journey`, `get_analytics_trends`
+- GPT Tools: `check_health`, `generate_embedding`, `calculate_similarity`, `get_embedding_stats`
+
 ### セットアップ
 
 1. **OpenAPI仕様をインポート**
-   - `openapi.json` を ChatGPT の Custom GPT / Actions にアップロード
+   - `openapi-gpt.json` を ChatGPT の Custom GPT / Actions にアップロード
+   - 管理機能が必要な場合は別GPTに `openapi-admin.json` をインポート
 
 2. **サーバーを公開**
    - ngrok や Cloudflare Tunnel でローカルサーバーを公開
@@ -523,9 +571,11 @@ brain-cabinet/
 │   └── utils/                    # ユーティリティ
 ├── docs/                         # ドキュメント
 ├── drizzle/                      # マイグレーションファイル
-├── openapi.json                  # OpenAPI 仕様書（v3 更新）
-├── brain-cabinet-mode.md         # GPT 人格設定
-└── brain-cabinet-tools.json      # OpenAI Actions 定義
+├── openapi.json                  # OpenAPI 仕様書（全55件、開発・ドキュメント用）
+├── openapi-gpt.json              # GPT Actions用（25件、推奨）
+├── openapi-admin.json            # 管理・詳細分析用（30件）
+├── brain-cabinet-mode.md         # GPT 人格設定（v2.0）
+└── brain-cabinet-tools.json      # OpenAI Actions 定義（v2）
 ```
 
 ---

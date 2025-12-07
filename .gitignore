@@ -41,6 +41,11 @@ notes/
 docs/
 
 openapi.json
+openapi-gpt.json
+openapi-admin.json 
+openapi-core.json
+openapi-insight.json
+openapi-analytics.json
 brain-cabinet-mode.md 
 brain-cabinet-tools.json
 data.backup.v2.sqlite
