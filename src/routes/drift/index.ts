@@ -3,6 +3,13 @@ import {
   buildDriftTimeline,
   getStateDescription,
 } from "../../services/drift/driftService";
+import {
+  getDailyDriftData,
+  calcGrowthAngle,
+  calcDriftForecast,
+  detectWarning,
+  generateDriftInsight,
+} from "../../services/drift/driftCore";
 import { db } from "../../db/client";
 import { sql } from "drizzle-orm";
 
@@ -197,3 +204,127 @@ function generateAdvice(summary: {
 
   return "安定した成長を続けています。";
 }
+
+/**
+ * GET /api/drift/angle
+ * Growth Angle（成長角度）を取得
+ *
+ * A. 成長の方向と速度を分析
+ */
+driftRoute.get("/angle", async (c) => {
+  const rangeParam = c.req.query("range") ?? "30d";
+  const match = rangeParam.match(/^(\d+)d$/);
+  const rangeDays = match ? parseInt(match[1], 10) : 30;
+
+  const data = await getDailyDriftData(rangeDays);
+  const angle = calcGrowthAngle(data);
+
+  const description = getAngleDescription(angle);
+
+  return c.json({
+    range: `${rangeDays}d`,
+    ...angle,
+    description,
+  });
+});
+
+function getAngleDescription(angle: {
+  trend: string;
+  angleDegrees: number;
+  velocity: number;
+}): string {
+  if (angle.trend === "rising") {
+    if (angle.angleDegrees > 30) {
+      return "今日は成長角度が非常に鋭く、理解が急速に深まっています。";
+    }
+    return "成長が加速しています。良いリズムです。";
+  }
+
+  if (angle.trend === "falling") {
+    if (angle.angleDegrees < -30) {
+      return "成長ペースが大きく落ちています。休息が必要かもしれません。";
+    }
+    return "成長ペースが落ち着いてきました。定着フェーズに入っています。";
+  }
+
+  return "安定した成長リズムを維持しています。";
+}
+
+/**
+ * GET /api/drift/forecast
+ * Drift Forecast（ドリフト予測）を取得
+ *
+ * B. 3日後・7日後の成長予測
+ */
+driftRoute.get("/forecast", async (c) => {
+  const rangeParam = c.req.query("range") ?? "30d";
+  const match = rangeParam.match(/^(\d+)d$/);
+  const rangeDays = match ? parseInt(match[1], 10) : 30;
+
+  const data = await getDailyDriftData(rangeDays);
+  const angle = calcGrowthAngle(data);
+  const forecast = calcDriftForecast(data, angle);
+
+  const interpretation = getForecastInterpretation(forecast, angle);
+
+  return c.json({
+    range: `${rangeDays}d`,
+    ...forecast,
+    currentEMA: data.length > 0 ? data[data.length - 1].ema : 0,
+    interpretation,
+  });
+});
+
+function getForecastInterpretation(
+  forecast: { forecast3d: number; forecast7d: number; confidence: string },
+  angle: { trend: string }
+): string {
+  if (angle.trend === "rising") {
+    return "今のペースを維持すれば成長が加速する見込みです。";
+  }
+
+  if (angle.trend === "falling") {
+    return "成長ペースが落ち着く見込みです。統合・振り返りの良いタイミングかもしれません。";
+  }
+
+  return "安定した成長が続く見込みです。";
+}
+
+/**
+ * GET /api/drift/warning
+ * Warning System（警告システム）を取得
+ *
+ * C. 過熱・停滞の検出
+ */
+driftRoute.get("/warning", async (c) => {
+  const rangeParam = c.req.query("range") ?? "30d";
+  const match = rangeParam.match(/^(\d+)d$/);
+  const rangeDays = match ? parseInt(match[1], 10) : 30;
+
+  const data = await getDailyDriftData(rangeDays);
+  const warning = detectWarning(data);
+
+  return c.json({
+    range: `${rangeDays}d`,
+    ...warning,
+  });
+});
+
+/**
+ * GET /api/drift/insight
+ * 統合 Insight（GPT向け完全版）
+ *
+ * A（角度）+ B（予測）+ C（警告）+ モード + アドバイス
+ */
+driftRoute.get("/insight", async (c) => {
+  const rangeParam = c.req.query("range") ?? "30d";
+  const match = rangeParam.match(/^(\d+)d$/);
+  const rangeDays = match ? parseInt(match[1], 10) : 30;
+
+  const insight = await generateDriftInsight(rangeDays);
+
+  return c.json({
+    range: `${rangeDays}d`,
+    ...insight,
+  });
+})
