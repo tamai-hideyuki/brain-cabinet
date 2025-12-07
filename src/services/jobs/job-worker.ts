@@ -15,6 +15,7 @@ import { logger } from "../../utils/logger";
 import { randomUUID } from "crypto";
 import type { NoteAnalyzePayload } from "./job-queue";
 import type { RelationType } from "../../db/schema";
+import { generateInfluenceEdges } from "../influence/influenceService";
 
 // 設定値
 const SEMANTIC_DIFF_THRESHOLD = 0.05; // 5%以上変化したときだけ履歴を切る
@@ -35,7 +36,7 @@ const CLUSTER_PENALTY_DIFF = 0.05; // 異なるクラスタなら -0.05
  * 4. Relation Graph再構築
  */
 export const handleNoteAnalyzeJob = async (payload: NoteAnalyzePayload) => {
-  const { noteId, previousContent, updatedAt } = payload;
+  const { noteId, previousContent, previousClusterId, updatedAt } = payload;
 
   // ノート取得
   const note = await findNoteById(noteId);
@@ -84,15 +85,22 @@ export const handleNoteAnalyzeJob = async (payload: NoteAnalyzePayload) => {
   // 3. 履歴保存（意味的に大きな変化があった場合のみ）
   if (shouldSaveHistory && previousContent) {
     const textDiff = computeDiff(previousContent, note.content);
+    const newClusterId = note.clusterId ?? null;
+
     await insertHistory({
       id: randomUUID(),
       noteId,
       content: previousContent,
       diff: textDiff,
       semanticDiff: semanticDiff !== null ? String(semanticDiff) : null,
+      prevClusterId: previousClusterId ?? null,  // v3: クラスタ遷移追跡
+      newClusterId,                               // v3: 現在のクラスタID
       createdAt: Math.floor(Date.now() / 1000),
     });
-    logger.debug({ noteId, semanticDiff }, "[JobWorker] History saved");
+    logger.debug(
+      { noteId, semanticDiff, prevClusterId: previousClusterId, newClusterId },
+      "[JobWorker] History saved with cluster info"
+    );
   }
 
   // 4. Relation Graph再構築
@@ -102,6 +110,23 @@ export const handleNoteAnalyzeJob = async (payload: NoteAnalyzePayload) => {
   if (shouldRebuildRelations) {
     await rebuildRelationsForNote(noteId, embedding);
     logger.debug({ noteId }, "[JobWorker] Relations rebuilt");
+  }
+
+  // 5. Concept Influence Graph 更新（ドリフトがあった場合）
+  if (semanticDiff !== null && semanticDiff >= SEMANTIC_DIFF_THRESHOLD) {
+    const newClusterId = note.clusterId ?? null;
+    const edgesCreated = await generateInfluenceEdges(
+      noteId,
+      semanticDiff,
+      previousClusterId ?? null,
+      newClusterId
+    );
+    if (edgesCreated > 0) {
+      logger.debug(
+        { noteId, edgesCreated, semanticDiff },
+        "[JobWorker] Influence edges generated"
+      );
+    }
   }
 };
 
