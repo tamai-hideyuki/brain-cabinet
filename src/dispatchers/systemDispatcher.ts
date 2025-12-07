@@ -4,6 +4,8 @@
 
 import * as healthService from "../services/healthService";
 import * as embeddingService from "../services/embeddingService";
+import { findAllNotes } from "../repositories/notesRepo";
+import { rebuildFTS } from "../repositories/ftsRepo";
 
 export const systemDispatcher = {
   // system.health
@@ -43,6 +45,17 @@ export const systemDispatcher = {
     return {
       message: "Embedding recalculation started",
       force,
+    };
+  },
+
+  // system.rebuildFts
+  async rebuildFts() {
+    const allNotes = await findAllNotes();
+    await rebuildFTS(allNotes);
+
+    return {
+      message: "FTS index rebuilt successfully",
+      indexedCount: allNotes.length,
     };
   },
 };

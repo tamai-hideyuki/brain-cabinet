@@ -423,6 +423,11 @@ type DebugHealthcheckCommand = {
   payload?: Record<string, never>;
 };
 
+type SystemRebuildFtsCommand = {
+  action: "system.rebuildFts";
+  payload?: Record<string, never>;
+};
+
 // ============================================
 // 統合型
 // ============================================
@@ -494,6 +499,7 @@ export type BrainCommand =
   // System/Debug
   | SystemHealthCommand
   | SystemEmbedCommand
+  | SystemRebuildFtsCommand
   | DebugHealthcheckCommand;
 
 // ============================================
