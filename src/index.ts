@@ -5,6 +5,7 @@ import { searchRoute } from "./routes/search/index";
 import { gptRoute } from "./routes/gpt/index";
 import { clustersRoute } from "./routes/clusters/index";
 import { analyticsRoute } from "./routes/analytics/index";
+import { driftRoute } from "./routes/drift/index";
 import { logger } from "./utils/logger";
 import fs from "fs";
 import path from "path";
@@ -49,6 +50,7 @@ app.route("/api/search", searchRoute);
 app.route("/api/gpt", gptRoute);
 app.route("/api/clusters", clustersRoute);
 app.route("/api/analytics", analyticsRoute);
+app.route("/api/drift", driftRoute);
 app.get("/", (c) => c.text("brain-cabinet API running"));
 
 serve({ fetch: app.fetch, port: 3000 }, (info) => {
