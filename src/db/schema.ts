@@ -35,6 +35,8 @@ export const noteHistory = sqliteTable("note_history", {
   content: text("content").notNull(),          // 変更時点の全文スナップショット
   diff: text("diff"),                           // 差分（任意）
   semanticDiff: text("semantic_diff"),          // 意味的差分スコア（0.0〜1.0）JSON文字列
+  prevClusterId: integer("prev_cluster_id"),    // v3: 変更前のクラスタID
+  newClusterId: integer("new_cluster_id"),      // v3: 変更後のクラスタID
   createdAt: integer("created_at").notNull(),   // 履歴保存日時
 });
 

@@ -9,6 +9,7 @@ export type JobType = "NOTE_ANALYZE" | "CLUSTER_REBUILD";
 export type NoteAnalyzePayload = {
   noteId: string;
   previousContent?: string | null;
+  previousClusterId?: number | null; // v3: クラスタ遷移追跡用
   updatedAt: number; // ジョブ順序チェック用
 };
 

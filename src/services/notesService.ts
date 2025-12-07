@@ -109,9 +109,11 @@ export const updateNote = async (id: string, newContent: string, newTitle?: stri
   if (updated) {
     // 非同期ジョブをキューに追加
     // previousContentを渡すことでsemantic diffを計算
+    // v3: previousClusterIdも渡してクラスタ遷移を追跡
     enqueueJob("NOTE_ANALYZE", {
       noteId: updated.id,
       previousContent: contentChanged ? old.content : null,
+      previousClusterId: old.clusterId ?? null,
       updatedAt: updated.updatedAt,
     });
   }
