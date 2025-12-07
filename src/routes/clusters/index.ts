@@ -6,6 +6,36 @@ import {
 } from "../../repositories/clusterRepo";
 import { enqueueJob } from "../../services/jobs/job-queue";
 import { logger } from "../../utils/logger";
+import { db } from "../../db/client";
+import { sql } from "drizzle-orm";
+
+// ヘルパー関数
+function bufferToFloat32Array(buffer: Buffer | ArrayBuffer | Uint8Array): number[] {
+  let uint8: Uint8Array;
+
+  if (buffer instanceof ArrayBuffer) {
+    uint8 = new Uint8Array(buffer);
+  } else if (buffer instanceof Uint8Array) {
+    uint8 = buffer;
+  } else if (Buffer.isBuffer(buffer)) {
+    uint8 = new Uint8Array(buffer);
+  } else {
+    return [];
+  }
+
+  const arrayBuffer = uint8.buffer.slice(uint8.byteOffset, uint8.byteOffset + uint8.byteLength);
+  const float32 = new Float32Array(arrayBuffer);
+  return Array.from(float32);
+}
+
+function cosineSimilarity(a: number[], b: number[]): number {
+  if (a.length !== b.length || a.length === 0) return 0;
+  let dot = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+  }
+  return dot;
+}
 
 export const clustersRoute = new Hono();
 
@@ -61,6 +91,108 @@ clustersRoute.get("/:id", async (c) => {
       category: n.category,
       tags: n.tags ? JSON.parse(n.tags) : [],
     })),
+  });
+});
+
+/**
+ * POST /api/clusters/rebuild
+ * クラスタ再構築ジョブをキューに追加
+ *
+ * Body:
+ *   - k?: number (2-50, デフォルト: 8)
+ *   - regenerateEmbeddings?: boolean (デフォルト: true)
+ *     true の場合、Embedding 未生成のノートを自動生成してからクラスタリング
+ */
+/**
+ * GET /api/clusters/:id/representatives
+ * クラスタの代表ノート（重心に最も近いノート Top N）を取得
+ *
+ * Query:
+ *   - top?: number (デフォルト: 5)
+ */
+clustersRoute.get("/:id/representatives", async (c) => {
+  const idParam = c.req.param("id");
+  const clusterId = parseInt(idParam, 10);
+  const topParam = c.req.query("top");
+  const top = topParam ? parseInt(topParam, 10) : 5;
+
+  if (isNaN(clusterId)) {
+    return c.json({ error: "Invalid cluster ID" }, 400);
+  }
+
+  if (isNaN(top) || top < 1 || top > 20) {
+    return c.json({ error: "top must be between 1 and 20" }, 400);
+  }
+
+  // 最新の cluster_dynamics から centroid を取得
+  const dynamicsRows = await db.all<{
+    centroid: Buffer;
+    date: string;
+  }>(sql`
+    SELECT centroid, date FROM cluster_dynamics
+    WHERE cluster_id = ${clusterId}
+    ORDER BY date DESC
+    LIMIT 1
+  `);
+
+  if (dynamicsRows.length === 0 || !dynamicsRows[0].centroid) {
+    return c.json({ error: "No centroid available for this cluster" }, 404);
+  }
+
+  const centroidBuffer = dynamicsRows[0].centroid;
+  const centroid = bufferToFloat32Array(centroidBuffer);
+
+  if (centroid.length === 0) {
+    return c.json({ error: "Invalid centroid data" }, 500);
+  }
+
+  // クラスタ所属ノートの embedding を取得
+  const noteRows = await db.all<{
+    note_id: string;
+    title: string;
+    embedding: Buffer;
+    updated_at: number;
+    category: string | null;
+  }>(sql`
+    SELECT n.id as note_id, n.title, n.category, n.updated_at, ne.embedding
+    FROM notes n
+    JOIN note_embeddings ne ON n.id = ne.note_id
+    WHERE n.cluster_id = ${clusterId}
+  `);
+
+  if (noteRows.length === 0) {
+    return c.json({
+      clusterId,
+      top,
+      notes: [],
+    });
+  }
+
+  // 各ノートの cosine 類似度を計算
+  const scoredNotes = noteRows
+    .map((row) => {
+      const embedding = bufferToFloat32Array(row.embedding);
+      if (embedding.length === 0) return null;
+
+      const cosineScore = cosineSimilarity(centroid, embedding);
+
+      return {
+        id: row.note_id,
+        title: row.title,
+        category: row.category,
+        cosine: Math.round(cosineScore * 10000) / 10000,
+        updatedAt: new Date(row.updated_at * 1000).toISOString(),
+      };
+    })
+    .filter((n): n is NonNullable<typeof n> => n !== null)
+    .sort((a, b) => b.cosine - a.cosine)
+    .slice(0, top);
+
+  return c.json({
+    clusterId,
+    date: dynamicsRows[0].date,
+    top,
+    notes: scoredNotes,
   });
 });
 
