@@ -340,3 +340,104 @@ export async function getClusterIdentity(clusterId: number): Promise<ClusterIden
     },
   };
 }
+
+// ============================================================
+// 全クラスタ Identity Map 取得
+// ============================================================
+
+export async function getAllClusterIdentities(): Promise<ClusterIdentity[]> {
+  // 全クラスタIDを取得
+  const clusterIds = await db.all<{ cluster_id: number }>(sql`
+    SELECT DISTINCT cluster_id FROM cluster_dynamics
+    ORDER BY cluster_id
+  `);
+
+  // 並列で全クラスタの identity を取得
+  const identities = await Promise.all(
+    clusterIds.map((row) => getClusterIdentity(row.cluster_id))
+  );
+
+  return identities.filter((id): id is ClusterIdentity => id !== null);
+}
+
+// ============================================================
+// GPT 人格化プロンプト用フォーマット
+// ============================================================
+
+export type GptIdentityRequest = {
+  task: "cluster_identity";
+  clusterId: number;
+  identityData: {
+    keywords: string[];
+    representatives: Array<{ title: string; cosine: number }>;
+    drift: {
+      contribution: number;
+      trend: string;
+      recentDriftSum: number;
+    };
+    influence: {
+      outDegree: number;
+      inDegree: number;
+      hubness: number;
+      authority: number;
+    };
+    cohesion: number;
+    noteCount: number;
+  };
+};
+
+export function formatForGpt(identity: ClusterIdentity): GptIdentityRequest {
+  return {
+    task: "cluster_identity",
+    clusterId: identity.clusterId,
+    identityData: {
+      keywords: identity.identity.keywords,
+      representatives: identity.identity.representatives.map((r) => ({
+        title: r.title,
+        cosine: r.cosine,
+      })),
+      drift: {
+        contribution: identity.identity.drift.contribution,
+        trend: identity.identity.drift.trend,
+        recentDriftSum: identity.identity.drift.recentDriftSum,
+      },
+      influence: {
+        outDegree: identity.identity.influence.outDegree,
+        inDegree: identity.identity.influence.inDegree,
+        hubness: identity.identity.influence.hubness,
+        authority: identity.identity.influence.authority,
+      },
+      cohesion: identity.identity.cohesion,
+      noteCount: identity.identity.noteCount,
+    },
+  };
+}
+
+// GPT プロンプトテンプレート
+export const GPT_IDENTITY_PROMPT = `あなたは Brain Cabinet の「クラスタ人格化エンジン」です。
+以下のクラスタデータを読み取り、クラスタの人格・役割・特徴・未来予測を
+標準出力フォーマットに従って生成してください。
+
+抽象化しすぎず、データに基づいた解釈を行い、
+ユーザーが自分の思考の構造を理解し成長を促進できるように説明してください。
+
+【出力フォーマット】
+{
+  "clusterId": number,
+  "name": "クラスタの人格名（例：構造化実践エンジン）",
+  "oneLiner": "一言での説明",
+  "persona": {
+    "identity": "このクラスタの本質的な人格",
+    "thinkingStyle": "思考スタイルの特徴",
+    "motivation": "何に強く反応するか",
+    "strength": "強み",
+    "risk": "リスクや弱点",
+    "roleInGrowth": "成長における役割",
+    "currentState": {
+      "trend": "rising/falling/flat",
+      "driftContribution": number,
+      "cohesion": number
+    },
+    "future": "未来予測"
+  }
+}`;

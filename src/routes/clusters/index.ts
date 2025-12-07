@@ -8,7 +8,12 @@ import { enqueueJob } from "../../services/jobs/job-queue";
 import { logger } from "../../utils/logger";
 import { db } from "../../db/client";
 import { sql } from "drizzle-orm";
-import { getClusterIdentity } from "../../services/cluster/identityService";
+import {
+  getClusterIdentity,
+  getAllClusterIdentities,
+  formatForGpt,
+  GPT_IDENTITY_PROMPT,
+} from "../../services/cluster/identityService";
 
 // ヘルパー関数
 function bufferToFloat32Array(buffer: Buffer | ArrayBuffer | Uint8Array): number[] {
@@ -56,6 +61,33 @@ clustersRoute.get("/", async (c) => {
       updatedAt: cl.updatedAt,
     })),
     count: clusters.length,
+  });
+});
+
+/**
+ * GET /api/clusters/map
+ * 全クラスタの identity 一覧を取得
+ */
+clustersRoute.get("/map", async (c) => {
+  const identities = await getAllClusterIdentities();
+
+  return c.json({
+    clusters: identities,
+    count: identities.length,
+  });
+});
+
+/**
+ * GET /api/clusters/map/gpt
+ * GPT 人格化エンジン用のフォーマットで全クラスタを取得
+ */
+clustersRoute.get("/map/gpt", async (c) => {
+  const identities = await getAllClusterIdentities();
+
+  return c.json({
+    prompt: GPT_IDENTITY_PROMPT,
+    clusters: identities.map(formatForGpt),
+    count: identities.length,
   });
 });
 
