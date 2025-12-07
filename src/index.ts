@@ -10,6 +10,7 @@ import { influenceRoute } from "./routes/influence/index";
 import { clusterDynamicsRoute } from "./routes/cluster-dynamics/index";
 import { ptmRoute } from "./routes/ptm/index";
 import { insightRoute } from "./routes/insight/index";
+import commandRoute from "./routes/command/index";
 import { logger } from "./utils/logger";
 import fs from "fs";
 import path from "path";
@@ -59,6 +60,7 @@ app.route("/api/influence", influenceRoute);
 app.route("/api/cluster-dynamics", clusterDynamicsRoute);
 app.route("/api/ptm", ptmRoute);
 app.route("/api/insight", insightRoute);
+app.route("/api/command", commandRoute);
 app.get("/", (c) => c.text("brain-cabinet API running"));
 
 serve({ fetch: app.fetch, port: 3000 }, (info) => {
