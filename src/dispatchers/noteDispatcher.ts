@@ -10,6 +10,8 @@ import {
   validateId,
   validateLimitAllowAll,
   validateOffset,
+  validateCategory,
+  validateIdArray,
 } from "../utils/validation";
 
 export const noteDispatcher = {
@@ -66,5 +68,20 @@ export const noteDispatcher = {
     const noteId = validateId(p?.noteId, "noteId");
     const historyId = validateId(p?.historyId, "historyId");
     return notesService.revertNote(noteId, historyId);
+  },
+
+  // バッチ操作
+
+  async batchDelete(payload: unknown) {
+    const p = payload as { ids?: string[] } | undefined;
+    const ids = validateIdArray(p?.ids);
+    return notesService.batchDeleteNotes(ids);
+  },
+
+  async batchUpdateCategory(payload: unknown) {
+    const p = payload as { ids?: string[]; category?: string } | undefined;
+    const ids = validateIdArray(p?.ids);
+    const category = validateCategory(p?.category);
+    return notesService.batchUpdateCategory(ids, category as any);
   },
 };

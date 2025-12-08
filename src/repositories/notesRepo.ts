@@ -1,6 +1,6 @@
 import { db } from "../db/client";
-import { notes, noteInfluenceEdges } from "../db/schema";
-import { eq, or, sql } from "drizzle-orm";
+import { notes, noteInfluenceEdges, type Category } from "../db/schema";
+import { eq, or, sql, inArray } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { extractMetadata } from "../utils/metadata";
 import { insertFTSRaw, updateFTSRaw, deleteFTSRaw } from "./ftsRepo";
@@ -130,4 +130,28 @@ export const deleteNoteInDB = async (id: string) => {
   });
 
   return note;
+};
+
+/**
+ * 複数ノートのカテゴリを一括更新
+ */
+export const updateNotesCategoryInDB = async (ids: string[], category: Category) => {
+  if (ids.length === 0) return { updated: 0 };
+
+  const now = Math.floor(Date.now() / 1000);
+
+  await db
+    .update(notes)
+    .set({ category, updatedAt: now })
+    .where(inArray(notes.id, ids));
+
+  return { updated: ids.length };
+};
+
+/**
+ * 複数ノートのIDを検証（存在するIDのみ返す）
+ */
+export const findNotesByIds = async (ids: string[]) => {
+  if (ids.length === 0) return [];
+  return await db.select().from(notes).where(inArray(notes.id, ids));
 };

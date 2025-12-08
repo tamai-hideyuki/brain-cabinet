@@ -1,6 +1,15 @@
-import { findAllNotes, updateNoteInDB, findNoteById, createNoteInDB, deleteNoteInDB } from "../../repositories/notesRepo";
+import {
+  findAllNotes,
+  updateNoteInDB,
+  findNoteById,
+  createNoteInDB,
+  deleteNoteInDB,
+  updateNotesCategoryInDB,
+  findNotesByIds,
+} from "../../repositories/notesRepo";
 import { getHistoryById } from "../historyService";
 import { enqueueJob } from "../jobs/job-queue";
+import type { Category } from "../../db/schema";
 
 /**
  * JSON文字列を配列にパース（安全に）
@@ -124,4 +133,92 @@ export const revertNote = async (noteId: string, historyId: string) => {
 
   // 履歴のcontentに巻き戻す（現在の内容も履歴として保存）
   return await updateNote(noteId, history.content);
+};
+
+// -------------------------------------
+// バッチ操作
+// -------------------------------------
+
+export type BatchDeleteResult = {
+  deleted: number;
+  failed: number;
+  errors: Array<{ id: string; error: string }>;
+};
+
+/**
+ * 複数ノートを一括削除
+ */
+export const batchDeleteNotes = async (ids: string[]): Promise<BatchDeleteResult> => {
+  if (ids.length === 0) {
+    return { deleted: 0, failed: 0, errors: [] };
+  }
+
+  // 上限チェック（一度に100件まで）
+  if (ids.length > 100) {
+    throw new Error("Batch delete is limited to 100 notes at a time");
+  }
+
+  const result: BatchDeleteResult = {
+    deleted: 0,
+    failed: 0,
+    errors: [],
+  };
+
+  for (const id of ids) {
+    try {
+      const deleted = await deleteNoteInDB(id);
+      if (deleted) {
+        result.deleted++;
+      } else {
+        result.failed++;
+        result.errors.push({ id, error: "Note not found" });
+      }
+    } catch (err) {
+      result.failed++;
+      result.errors.push({
+        id,
+        error: err instanceof Error ? err.message : "Unknown error",
+      });
+    }
+  }
+
+  return result;
+};
+
+export type BatchUpdateCategoryResult = {
+  updated: number;
+  notFound: string[];
+};
+
+/**
+ * 複数ノートのカテゴリを一括変更
+ */
+export const batchUpdateCategory = async (
+  ids: string[],
+  category: Category
+): Promise<BatchUpdateCategoryResult> => {
+  if (ids.length === 0) {
+    return { updated: 0, notFound: [] };
+  }
+
+  // 上限チェック（一度に100件まで）
+  if (ids.length > 100) {
+    throw new Error("Batch update is limited to 100 notes at a time");
+  }
+
+  // 存在するIDを確認
+  const existingNotes = await findNotesByIds(ids);
+  const existingIds = new Set(existingNotes.map(n => n.id));
+  const notFound = ids.filter(id => !existingIds.has(id));
+
+  // 存在するIDのみ更新
+  const idsToUpdate = ids.filter(id => existingIds.has(id));
+  if (idsToUpdate.length > 0) {
+    await updateNotesCategoryInDB(idsToUpdate, category);
+  }
+
+  return {
+    updated: idsToUpdate.length,
+    notFound,
+  };
 };

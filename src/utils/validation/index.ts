@@ -342,3 +342,57 @@ export const validateOptionalEnum = <T extends string>(
   }
   return validateEnum(value, field, allowedValues);
 };
+
+// カテゴリ定義（schema.tsと同期）
+const CATEGORIES = [
+  "技術",
+  "心理",
+  "健康",
+  "仕事",
+  "人間関係",
+  "学習",
+  "アイデア",
+  "走り書き",
+  "その他",
+] as const;
+
+/**
+ * カテゴリのバリデーション
+ */
+export const validateCategory = (value: unknown, field = "category"): string => {
+  return validateEnum(value, field, CATEGORIES);
+};
+
+/**
+ * ID配列のバリデーション（バッチ操作用）
+ */
+export const validateIdArray = (
+  value: unknown,
+  field = "ids",
+  maxLength = 100
+): string[] => {
+  const arr = validateArray<string>(value, field, (item, index) => {
+    if (typeof item !== "string") {
+      throw new ValidationError(
+        `${field}[${index}] must be a string`,
+        field,
+        "INVALID_ITEM"
+      );
+    }
+    return validateUUID(item, `${field}[${index}]`);
+  });
+
+  if (arr.length === 0) {
+    throw new ValidationError(`${field} must not be empty`, field, "EMPTY_ARRAY");
+  }
+
+  if (arr.length > maxLength) {
+    throw new ValidationError(
+      `${field} must contain at most ${maxLength} items`,
+      field,
+      "TOO_MANY_ITEMS"
+    );
+  }
+
+  return arr;
+};
