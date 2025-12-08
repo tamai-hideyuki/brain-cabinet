@@ -5,10 +5,22 @@
 import * as searchService from "../services/searchService";
 import { CATEGORIES, type Category } from "../db/schema";
 import { findAllNotes } from "../repositories/notesRepo";
+import {
+  validateQuery,
+  validateLimitAllowAll,
+  validateOptionalEnum,
+  validateOptionalArray,
+  validateStringLength,
+  requireString,
+  LIMITS,
+} from "../utils/validation";
+
+const SEARCH_MODES = ["keyword", "semantic", "hybrid"] as const;
+type SearchMode = (typeof SEARCH_MODES)[number];
 
 type SearchQueryPayload = {
   query?: string;
-  mode?: "keyword" | "semantic" | "hybrid";
+  mode?: SearchMode;
   category?: Category;
   tags?: string[];
   limit?: number;
@@ -17,29 +29,34 @@ type SearchQueryPayload = {
 type TitleSearchPayload = {
   title?: string;
   exact?: boolean;
+  limit?: number;
 };
 
 export const searchDispatcher = {
   async query(payload: unknown) {
     const p = payload as SearchQueryPayload | undefined;
-    if (!p?.query) {
-      throw new Error("query is required");
-    }
+    const query = validateQuery(p?.query);
+    const mode = validateOptionalEnum(p?.mode, "mode", SEARCH_MODES) ?? "keyword";
+    const category = validateOptionalEnum(p?.category, "category", CATEGORIES);
+    const tags = validateOptionalArray<string>(p?.tags, "tags", (item, i) =>
+      validateStringLength(requireString(item, `tags[${i}]`), `tags[${i}]`, 100)
+    );
+    const limit = validateLimitAllowAll(p?.limit, LIMITS.LIMIT_DEFAULT);
 
-    const mode = p.mode ?? "keyword";
     const options = {
-      category: p.category,
-      tags: p.tags,
+      category,
+      tags,
+      limit: limit === 0 ? undefined : limit,
     };
 
     switch (mode) {
       case "semantic":
-        return searchService.searchNotesSemantic(p.query, options);
+        return searchService.searchNotesSemantic(query, options);
       case "hybrid": {
         // ハイブリッド検索: キーワード + セマンティックを組み合わせ
         const [keywordResults, semanticResults] = await Promise.all([
-          searchService.searchNotes(p.query, options),
-          searchService.searchNotesSemantic(p.query, options),
+          searchService.searchNotes(query, options),
+          searchService.searchNotesSemantic(query, options),
         ]);
         // スコアで統合
         const merged = new Map<string, { note: unknown; score: number }>();
@@ -60,7 +77,7 @@ export const searchDispatcher = {
       }
       case "keyword":
       default:
-        return searchService.searchNotes(p.query, options);
+        return searchService.searchNotes(query, options);
     }
   },
 
@@ -73,18 +90,22 @@ export const searchDispatcher = {
   // タイトル検索（完全一致 or 部分一致）
   async byTitle(payload: unknown) {
     const p = payload as TitleSearchPayload | undefined;
-    if (!p?.title) {
-      throw new Error("title is required");
-    }
+    const title = validateQuery(p?.title, "title");
+    const exact = p?.exact ?? false;
+    const limit = validateLimitAllowAll(p?.limit, 0);
 
     const allNotes = await findAllNotes();
-    const query = p.title.toLowerCase();
-    const exact = p.exact ?? false;
+    const queryLower = title.toLowerCase();
 
-    const results = allNotes.filter((note) => {
+    let results = allNotes.filter((note) => {
       const noteTitle = note.title.toLowerCase();
-      return exact ? noteTitle === query : noteTitle.includes(query);
+      return exact ? noteTitle === queryLower : noteTitle.includes(queryLower);
     });
+
+    // limit適用（0なら全件）
+    if (limit > 0) {
+      results = results.slice(0, limit);
+    }
 
     return results.map((note) => ({
       id: note.id,

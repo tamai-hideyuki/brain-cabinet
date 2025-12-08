@@ -15,7 +15,13 @@ import {
   cleanupOldJobs,
   type JobRecord,
 } from "../repositories/jobStatusRepo";
-import type { JobStatus, JobType } from "../db/schema";
+import { JOB_STATUSES, JOB_TYPES } from "../db/schema";
+import {
+  validateId,
+  validateLimit,
+  validateEnum,
+  validateNumberRange,
+} from "../utils/validation";
 
 export const jobDispatcher = {
   /**
@@ -24,10 +30,8 @@ export const jobDispatcher = {
    */
   async get(payload: unknown): Promise<JobRecord | null> {
     const p = payload as { jobId?: string } | undefined;
-    if (!p?.jobId) {
-      throw new Error("jobId is required");
-    }
-    return await getJob(p.jobId);
+    const jobId = validateId(p?.jobId, "jobId");
+    return await getJob(jobId);
   },
 
   /**
@@ -36,7 +40,7 @@ export const jobDispatcher = {
    */
   async list(payload: unknown): Promise<JobRecord[]> {
     const p = payload as { limit?: number } | undefined;
-    const limit = p?.limit ?? 20;
+    const limit = validateLimit(p?.limit, 20);
     return await getRecentJobs(limit);
   },
 
@@ -53,7 +57,7 @@ export const jobDispatcher = {
    */
   async failed(payload: unknown): Promise<JobRecord[]> {
     const p = payload as { limit?: number } | undefined;
-    const limit = p?.limit ?? 20;
+    const limit = validateLimit(p?.limit, 20);
     return await getFailedJobs(limit);
   },
 
@@ -62,12 +66,10 @@ export const jobDispatcher = {
    * payload: { status: JobStatus, limit?: number }
    */
   async byStatus(payload: unknown): Promise<JobRecord[]> {
-    const p = payload as { status?: JobStatus; limit?: number } | undefined;
-    if (!p?.status) {
-      throw new Error("status is required");
-    }
-    const limit = p.limit ?? 20;
-    return await getJobsByStatus(p.status, limit);
+    const p = payload as { status?: string; limit?: number } | undefined;
+    const status = validateEnum(p?.status, "status", JOB_STATUSES);
+    const limit = validateLimit(p?.limit, 20);
+    return await getJobsByStatus(status, limit);
   },
 
   /**
@@ -75,12 +77,10 @@ export const jobDispatcher = {
    * payload: { type: JobType, limit?: number }
    */
   async byType(payload: unknown): Promise<JobRecord[]> {
-    const p = payload as { type?: JobType; limit?: number } | undefined;
-    if (!p?.type) {
-      throw new Error("type is required");
-    }
-    const limit = p.limit ?? 20;
-    return await getJobsByType(p.type, limit);
+    const p = payload as { type?: string; limit?: number } | undefined;
+    const type = validateEnum(p?.type, "type", JOB_TYPES);
+    const limit = validateLimit(p?.limit, 20);
+    return await getJobsByType(type, limit);
   },
 
   /**
@@ -96,7 +96,7 @@ export const jobDispatcher = {
    */
   async cleanup(payload: unknown): Promise<{ deletedCount: number }> {
     const p = payload as { retentionDays?: number } | undefined;
-    const retentionDays = p?.retentionDays ?? 7;
+    const retentionDays = validateNumberRange(p?.retentionDays, "retentionDays", 1, 365, 7);
     const deletedCount = await cleanupOldJobs(retentionDays);
     return { deletedCount };
   },
