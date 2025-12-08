@@ -4,6 +4,8 @@
  * 各dispatcherで使用する共通のバリデーション関数
  */
 
+import { ValidationError, ErrorCodes } from "../errors";
+
 // 制限値定数
 export const LIMITS = {
   TITLE_MAX_LENGTH: 500,
@@ -18,24 +20,15 @@ export const LIMITS = {
   K_DEFAULT: 8,
 } as const;
 
-// バリデーションエラー
-export class ValidationError extends Error {
-  constructor(
-    message: string,
-    public field: string,
-    public code: string
-  ) {
-    super(message);
-    this.name = "ValidationError";
-  }
-}
+// ValidationError を再エクスポート（後方互換性）
+export { ValidationError };
 
 /**
  * 必須フィールドのチェック
  */
 export const requireField = <T>(value: T | undefined | null, field: string): T => {
   if (value === undefined || value === null) {
-    throw new ValidationError(`${field} is required`, field, "REQUIRED");
+    throw new ValidationError(`${field} is required`, field, ErrorCodes.VALIDATION_REQUIRED);
   }
   return value;
 };
@@ -45,7 +38,11 @@ export const requireField = <T>(value: T | undefined | null, field: string): T =
  */
 export const requireString = (value: unknown, field: string): string => {
   if (typeof value !== "string" || value.trim() === "") {
-    throw new ValidationError(`${field} is required and must be a non-empty string`, field, "REQUIRED_STRING");
+    throw new ValidationError(
+      `${field} is required and must be a non-empty string`,
+      field,
+      ErrorCodes.VALIDATION_REQUIRED_STRING
+    );
   }
   return value;
 };
@@ -63,14 +60,14 @@ export const validateStringLength = (
     throw new ValidationError(
       `${field} must be at least ${minLength} characters`,
       field,
-      "TOO_SHORT"
+      ErrorCodes.VALIDATION_TOO_SHORT
     );
   }
   if (value.length > maxLength) {
     throw new ValidationError(
       `${field} must be at most ${maxLength} characters`,
       field,
-      "TOO_LONG"
+      ErrorCodes.VALIDATION_TOO_LONG
     );
   }
   return value;
@@ -175,7 +172,11 @@ export const validateUUID = (value: unknown, field = "id"): string => {
   const id = requireString(value, field);
 
   if (!UUID_REGEX.test(id)) {
-    throw new ValidationError(`${field} must be a valid UUID`, field, "INVALID_UUID");
+    throw new ValidationError(
+      `${field} must be a valid UUID`,
+      field,
+      ErrorCodes.VALIDATION_INVALID_UUID
+    );
   }
 
   return id;
@@ -218,14 +219,18 @@ export const validateDate = (value: unknown, field = "date"): string => {
     throw new ValidationError(
       `${field} must be in YYYY-MM-DD format`,
       field,
-      "INVALID_DATE_FORMAT"
+      ErrorCodes.VALIDATION_INVALID_DATE
     );
   }
 
   // 有効な日付かチェック
   const date = new Date(dateStr);
   if (isNaN(date.getTime())) {
-    throw new ValidationError(`${field} is not a valid date`, field, "INVALID_DATE");
+    throw new ValidationError(
+      `${field} is not a valid date`,
+      field,
+      ErrorCodes.VALIDATION_INVALID_DATE
+    );
   }
 
   return dateStr;
@@ -255,20 +260,28 @@ export const validateNumberRange = (
     if (defaultValue !== undefined) {
       return defaultValue;
     }
-    throw new ValidationError(`${field} is required`, field, "REQUIRED");
+    throw new ValidationError(
+      `${field} is required`,
+      field,
+      ErrorCodes.VALIDATION_REQUIRED
+    );
   }
 
   const num = typeof value === "number" ? value : parseFloat(String(value));
 
   if (isNaN(num)) {
-    throw new ValidationError(`${field} must be a valid number`, field, "INVALID_NUMBER");
+    throw new ValidationError(
+      `${field} must be a valid number`,
+      field,
+      ErrorCodes.VALIDATION_INVALID_NUMBER
+    );
   }
 
   if (num < min || num > max) {
     throw new ValidationError(
       `${field} must be between ${min} and ${max}`,
       field,
-      "OUT_OF_RANGE"
+      ErrorCodes.VALIDATION_OUT_OF_RANGE
     );
   }
 
@@ -284,7 +297,11 @@ export const validateArray = <T>(
   itemValidator?: (item: unknown, index: number) => T
 ): T[] => {
   if (!Array.isArray(value)) {
-    throw new ValidationError(`${field} must be an array`, field, "NOT_ARRAY");
+    throw new ValidationError(
+      `${field} must be an array`,
+      field,
+      ErrorCodes.VALIDATION_NOT_ARRAY
+    );
   }
 
   if (itemValidator) {
@@ -322,7 +339,7 @@ export const validateEnum = <T extends string>(
     throw new ValidationError(
       `${field} must be one of: ${allowedValues.join(", ")}`,
       field,
-      "INVALID_ENUM"
+      ErrorCodes.VALIDATION_INVALID_ENUM
     );
   }
 
@@ -376,21 +393,25 @@ export const validateIdArray = (
       throw new ValidationError(
         `${field}[${index}] must be a string`,
         field,
-        "INVALID_ITEM"
+        ErrorCodes.VALIDATION_INVALID_ITEM
       );
     }
     return validateUUID(item, `${field}[${index}]`);
   });
 
   if (arr.length === 0) {
-    throw new ValidationError(`${field} must not be empty`, field, "EMPTY_ARRAY");
+    throw new ValidationError(
+      `${field} must not be empty`,
+      field,
+      ErrorCodes.VALIDATION_EMPTY_ARRAY
+    );
   }
 
   if (arr.length > maxLength) {
     throw new ValidationError(
       `${field} must contain at most ${maxLength} items`,
       field,
-      "TOO_MANY_ITEMS"
+      ErrorCodes.VALIDATION_TOO_MANY_ITEMS
     );
   }
 

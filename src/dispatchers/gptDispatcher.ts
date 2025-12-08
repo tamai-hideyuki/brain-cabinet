@@ -4,6 +4,7 @@
 
 import * as gptService from "../services/gptService";
 import * as searchService from "../services/searchService";
+import { AppError, ErrorCodes } from "../utils/errors";
 import type { Category } from "../db/schema";
 
 type GptSearchPayload = {
@@ -18,7 +19,7 @@ export const gptDispatcher = {
   async search(payload: unknown) {
     const p = payload as GptSearchPayload | undefined;
     if (!p?.query) {
-      throw new Error("query is required");
+      throw new AppError(ErrorCodes.SEARCH_QUERY_REQUIRED, "query is required", { field: "query" });
     }
 
     const mode = p.mode ?? "hybrid";
@@ -62,7 +63,7 @@ export const gptDispatcher = {
   async context(payload: unknown) {
     const p = payload as { noteId?: string } | undefined;
     if (!p?.noteId) {
-      throw new Error("noteId is required");
+      throw new AppError(ErrorCodes.VALIDATION_REQUIRED, "noteId is required", { field: "noteId" });
     }
     return gptService.getContextForGPT(p.noteId);
   },

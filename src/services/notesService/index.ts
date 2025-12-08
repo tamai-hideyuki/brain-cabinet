@@ -10,6 +10,7 @@ import {
 import { getHistoryById } from "../historyService";
 import { enqueueJob } from "../jobs/job-queue";
 import { invalidateIDFCache } from "../searchService";
+import { NotFoundError, AppError, ErrorCodes } from "../../utils/errors";
 import type { Category } from "../../db/schema";
 
 /**
@@ -54,14 +55,14 @@ export const getAllNotes = async () => {
 export const getNoteById = async (id: string) => {
   const note = await findNoteById(id);
   if (!note) {
-    throw new Error("Note not found");
+    throw new NotFoundError("Note", id, ErrorCodes.NOTE_NOT_FOUND);
   }
   return formatNoteForAPI(note);
 };
 
 export const createNote = async (title: string, content: string) => {
   if (!title || !content) {
-    throw new Error("Title and content are required");
+    throw new AppError(ErrorCodes.NOTE_CREATE_FAILED, "Title and content are required");
   }
   const note = await createNoteInDB(title, content);
 
@@ -84,7 +85,7 @@ export const deleteNote = async (id: string) => {
   // トランザクション内で一括削除する
   const deleted = await deleteNoteInDB(id);
   if (!deleted) {
-    throw new Error("Note not found");
+    throw new NotFoundError("Note", id, ErrorCodes.NOTE_NOT_FOUND);
   }
 
   // IDFキャッシュを無効化（ノート削除でDF値が変わる）
@@ -98,7 +99,7 @@ export const updateNote = async (id: string, newContent: string, newTitle?: stri
   const old = await findNoteById(id);
 
   if (!old) {
-    throw new Error("Note not found");
+    throw new NotFoundError("Note", id, ErrorCodes.NOTE_NOT_FOUND);
   }
 
   // 内容もタイトルも変わっていない場合はスキップ
@@ -135,12 +136,14 @@ export const revertNote = async (noteId: string, historyId: string) => {
   // 履歴を取得
   const history = await getHistoryById(historyId);
   if (!history) {
-    throw new Error("History not found");
+    throw new NotFoundError("History", historyId, ErrorCodes.HISTORY_NOT_FOUND);
   }
 
   // noteIdが一致するか確認
   if (history.noteId !== noteId) {
-    throw new Error("History does not belong to this note");
+    throw new AppError(ErrorCodes.HISTORY_MISMATCH, "History does not belong to this note", {
+      details: { noteId, historyId },
+    });
   }
 
   // 履歴のcontentに巻き戻す（現在の内容も履歴として保存）
@@ -167,7 +170,9 @@ export const batchDeleteNotes = async (ids: string[]): Promise<BatchDeleteResult
 
   // 上限チェック（一度に100件まで）
   if (ids.length > 100) {
-    throw new Error("Batch delete is limited to 100 notes at a time");
+    throw new AppError(ErrorCodes.BATCH_LIMIT_EXCEEDED, "Batch delete is limited to 100 notes at a time", {
+      details: { limit: 100, actual: ids.length },
+    });
   }
 
   const result: BatchDeleteResult = {
@@ -220,7 +225,9 @@ export const batchUpdateCategory = async (
 
   // 上限チェック（一度に100件まで）
   if (ids.length > 100) {
-    throw new Error("Batch update is limited to 100 notes at a time");
+    throw new AppError(ErrorCodes.BATCH_LIMIT_EXCEEDED, "Batch update is limited to 100 notes at a time", {
+      details: { limit: 100, actual: ids.length },
+    });
   }
 
   // 存在するIDを確認

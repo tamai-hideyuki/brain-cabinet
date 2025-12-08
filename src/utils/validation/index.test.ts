@@ -271,10 +271,10 @@ describe("validation utilities", () => {
 
   describe("ValidationError", () => {
     it("フィールド名とコードを含む", () => {
-      const error = new ValidationError("message", "myField", "MY_CODE");
+      const error = new ValidationError("message", "myField");
       expect(error.message).toBe("message");
       expect(error.field).toBe("myField");
-      expect(error.code).toBe("MY_CODE");
+      expect(error.code).toBe("VALIDATION_REQUIRED"); // デフォルトコード
       expect(error.name).toBe("ValidationError");
     });
   });
