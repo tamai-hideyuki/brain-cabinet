@@ -68,8 +68,8 @@ export const gptDispatcher = {
   },
 
   async task() {
-    // タスク推奨（シンプルな実装）
-    return gptService.getNotesOverviewForGPT();
+    // 思考パターン分析に基づくタスク推奨
+    return gptService.generateTaskRecommendations();
   },
 
   async overview() {
