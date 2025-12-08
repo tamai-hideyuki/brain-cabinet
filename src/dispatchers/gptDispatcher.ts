@@ -35,28 +35,8 @@ export const gptDispatcher = {
       case "keyword":
         return searchService.searchNotes(p.query, options);
       case "hybrid":
-      default: {
-        // ハイブリッド検索
-        const [keywordResults, semanticResults] = await Promise.all([
-          searchService.searchNotes(p.query, options),
-          searchService.searchNotesSemantic(p.query, options),
-        ]);
-        const merged = new Map<string, { note: unknown; score: number }>();
-        for (const note of keywordResults as Array<{ id: string; score: number }>) {
-          merged.set(note.id, { note, score: note.score * 0.6 });
-        }
-        for (const note of semanticResults as Array<{ id: string; score: number }>) {
-          const existing = merged.get(note.id);
-          if (existing) {
-            existing.score += note.score * 0.4;
-          } else {
-            merged.set(note.id, { note, score: note.score * 0.4 });
-          }
-        }
-        return Array.from(merged.values())
-          .sort((a, b) => b.score - a.score)
-          .map((item) => item.note);
-      }
+      default:
+        return searchService.searchNotesHybrid(p.query, options);
     }
   },
 

@@ -487,3 +487,72 @@ export const searchNotesSemantic = async (
 
   return filtered;
 };
+
+// -------------------------------------
+// ハイブリッド検索（キーワード + セマンティック）
+// -------------------------------------
+import type { Category } from "../../db/schema";
+
+export interface HybridSearchOptions {
+  category?: Category;
+  tags?: string[];
+  keywordWeight?: number;  // デフォルト 0.6
+  semanticWeight?: number; // デフォルト 0.4
+}
+
+/**
+ * キーワード検索とセマンティック検索を組み合わせたハイブリッド検索
+ * 両方の結果をマージし、重み付けスコアでソート
+ */
+export const searchNotesHybrid = async (
+  query: string,
+  options?: HybridSearchOptions
+) => {
+  const keywordWeight = options?.keywordWeight ?? 0.6;
+  const semanticWeight = options?.semanticWeight ?? 0.4;
+
+  const searchOptions = {
+    category: options?.category,
+    tags: options?.tags,
+  };
+
+  // 並行実行
+  const [keywordResults, semanticResults] = await Promise.all([
+    searchNotes(query, searchOptions),
+    searchNotesSemantic(query, searchOptions),
+  ]);
+
+  // 結果をマージ（IDをキーにスコアを統合）
+  const merged = new Map<string, { note: unknown; score: number; sources: string[] }>();
+
+  for (const note of keywordResults as Array<{ id: string; score: number }>) {
+    merged.set(note.id, {
+      note,
+      score: note.score * keywordWeight,
+      sources: ["keyword"],
+    });
+  }
+
+  for (const note of semanticResults as Array<{ id: string; score: number }>) {
+    const existing = merged.get(note.id);
+    if (existing) {
+      existing.score += note.score * semanticWeight;
+      existing.sources.push("semantic");
+    } else {
+      merged.set(note.id, {
+        note,
+        score: note.score * semanticWeight,
+        sources: ["semantic"],
+      });
+    }
+  }
+
+  // スコア順にソートして返す
+  return Array.from(merged.values())
+    .sort((a, b) => b.score - a.score)
+    .map((item) => ({
+      ...item.note as object,
+      hybridScore: Number(item.score.toFixed(2)),
+      _hybridSources: item.sources,
+    }));
+};
