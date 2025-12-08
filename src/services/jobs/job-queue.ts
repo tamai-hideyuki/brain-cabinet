@@ -1,6 +1,7 @@
 import { logger } from "../../utils/logger";
 import { handleNoteAnalyzeJob } from "./job-worker";
 import { handleClusterRebuildJob } from "./cluster-worker";
+import { buildSearchIndex } from "../embeddingService";
 import {
   createJob,
   startJob,
@@ -10,7 +11,7 @@ import {
 import type { JobType as SchemaJobType } from "../../db/schema";
 
 // ジョブタイプ
-export type JobType = "NOTE_ANALYZE" | "CLUSTER_REBUILD";
+export type JobType = "NOTE_ANALYZE" | "CLUSTER_REBUILD" | "INDEX_REBUILD";
 
 // NOTE_ANALYZE ジョブのペイロード
 export type NoteAnalyzePayload = {
@@ -26,8 +27,13 @@ export type ClusterRebuildPayload = {
   regenerateEmbeddings?: boolean; // Embedding 未生成ノートを自動生成（デフォルト: true）
 };
 
+// INDEX_REBUILD ジョブのペイロード
+export type IndexRebuildPayload = {
+  // 現時点ではオプションなし
+};
+
 // ペイロードの型
-type JobPayload = NoteAnalyzePayload | ClusterRebuildPayload;
+type JobPayload = NoteAnalyzePayload | ClusterRebuildPayload | IndexRebuildPayload;
 
 // ジョブ定義
 type Job = {
@@ -46,6 +52,7 @@ let isProcessing = false;
  */
 export function enqueueJob(type: "NOTE_ANALYZE", payload: NoteAnalyzePayload): Promise<string>;
 export function enqueueJob(type: "CLUSTER_REBUILD", payload?: ClusterRebuildPayload): Promise<string>;
+export function enqueueJob(type: "INDEX_REBUILD", payload?: IndexRebuildPayload): Promise<string>;
 export async function enqueueJob(type: JobType, payload: JobPayload = {}): Promise<string> {
   // DBにジョブを作成
   const jobId = await createJob(type as SchemaJobType, payload as Record<string, unknown>);
@@ -106,6 +113,8 @@ const handleJob = async (job: Job) => {
       return handleNoteAnalyzeJob(job.payload as NoteAnalyzePayload);
     case "CLUSTER_REBUILD":
       return handleClusterRebuildJob(job.payload as ClusterRebuildPayload);
+    case "INDEX_REBUILD":
+      return buildSearchIndex();
     default:
       logger.warn({ type: job.type }, "[JobQueue] Unknown job type");
   }

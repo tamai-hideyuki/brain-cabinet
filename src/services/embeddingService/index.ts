@@ -12,6 +12,26 @@ import {
 import { findNoteById, findAllNotes } from "../../repositories/notesRepo";
 import { normalizeText } from "../../utils/normalize";
 import { logger } from "../../utils/logger";
+import {
+  isIndexInitialized,
+  addToIndex,
+  removeFromIndex,
+  searchSimilarHNSW,
+  buildIndex as buildHNSWIndex,
+  getIndexStats,
+  clearIndex,
+  shouldRebuild,
+  type HNSWIndexStats,
+} from "./hnswIndex";
+
+// HNSWインデックス関連のエクスポート
+export {
+  isIndexInitialized,
+  getIndexStats,
+  clearIndex,
+  shouldRebuild,
+  type HNSWIndexStats,
+};
 
 // MiniLM モデル（遅延初期化）
 let embedder: FeatureExtractionPipeline | null = null;
@@ -60,6 +80,7 @@ export const generateEmbedding = async (text: string): Promise<number[]> => {
 
 /**
  * ノートのEmbeddingを生成・保存
+ * HNSWインデックスにも自動追加
  */
 export const generateAndSaveNoteEmbedding = async (noteId: string): Promise<void> => {
   const note = await findNoteById(noteId);
@@ -71,18 +92,32 @@ export const generateAndSaveNoteEmbedding = async (noteId: string): Promise<void
   const text = `${note.title}\n\n${note.content}`;
   const embedding = await generateEmbedding(text);
 
+  // DBに保存
   await saveEmbedding(noteId, embedding, DEFAULT_MODEL, EMBEDDING_VERSION);
+
+  // HNSWインデックスにも追加（初期化済みの場合のみ）
+  if (isIndexInitialized()) {
+    addToIndex(noteId, embedding);
+  }
 };
 
 /**
  * ノートのEmbeddingを削除
+ * HNSWインデックスからも削除
  */
 export const removeNoteEmbedding = async (noteId: string): Promise<void> => {
   await deleteEmbedding(noteId);
+
+  // HNSWインデックスからも削除
+  if (isIndexInitialized()) {
+    removeFromIndex(noteId);
+  }
 };
 
 /**
- * 類似ノートを検索（Cosine類似度）
+ * 類似ノートを検索
+ * HNSWインデックスが利用可能な場合は O(log n) の近似最近傍探索
+ * 利用不可の場合は O(n) の線形探索にフォールバック
  */
 export const searchSimilarNotes = async (
   query: string,
@@ -91,14 +126,20 @@ export const searchSimilarNotes = async (
   // クエリのEmbeddingを生成
   const queryEmbedding = await generateEmbedding(query);
 
-  // 全ノートのEmbeddingを取得
+  // HNSWインデックスが初期化済みなら使用
+  if (isIndexInitialized()) {
+    logger.debug("[Embedding] Using HNSW index for similarity search");
+    return searchSimilarHNSW(queryEmbedding, limit);
+  }
+
+  // フォールバック: 線形探索
+  logger.debug("[Embedding] Using linear search (HNSW index not initialized)");
   const allEmbeddings = await getAllEmbeddings();
 
   if (allEmbeddings.length === 0) {
     return [];
   }
 
-  // Cosine類似度を計算してソート
   const results = allEmbeddings
     .map(({ noteId, embedding }) => ({
       noteId,
@@ -112,6 +153,7 @@ export const searchSimilarNotes = async (
 
 /**
  * 特定ノートに類似したノートを検索
+ * HNSWインデックスが利用可能な場合は O(log n) の近似最近傍探索
  */
 export const findSimilarNotes = async (
   noteId: string,
@@ -122,6 +164,14 @@ export const findSimilarNotes = async (
     throw new Error(`Embedding not found for note: ${noteId}`);
   }
 
+  // HNSWインデックスが初期化済みなら使用
+  if (isIndexInitialized()) {
+    // 自身を除外するため1つ多く取得
+    const results = await searchSimilarHNSW(targetEmbedding, limit + 1);
+    return results.filter((r) => r.noteId !== noteId).slice(0, limit);
+  }
+
+  // フォールバック: 線形探索
   const allEmbeddings = await getAllEmbeddings();
 
   const results = allEmbeddings
@@ -209,3 +259,26 @@ export const semanticChangeScore = (a: number[], b: number[]): number => {
 };
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * HNSWインデックスを構築・再構築
+ */
+export const buildSearchIndex = async (): Promise<{
+  indexed: number;
+  durationMs: number;
+}> => {
+  return buildHNSWIndex();
+};
+
+/**
+ * HNSWインデックスの自動リビルドチェック
+ * 削除済みエントリが多い場合は自動リビルド
+ */
+export const autoRebuildIndexIfNeeded = async (): Promise<boolean> => {
+  if (shouldRebuild()) {
+    logger.info("[Embedding] Auto-rebuilding HNSW index due to high deletion ratio");
+    await buildHNSWIndex();
+    return true;
+  }
+  return false;
+};

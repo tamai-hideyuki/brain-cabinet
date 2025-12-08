@@ -10,6 +10,7 @@ import {
   createJobStatusTable,
   checkJobStatusTableExists,
 } from "../repositories/jobStatusRepo";
+import { enqueueJob } from "../services/jobs/job-queue";
 
 export const systemDispatcher = {
   // system.health
@@ -77,6 +78,29 @@ export const systemDispatcher = {
     return {
       message: "Job status table created successfully",
       created: true,
+    };
+  },
+
+  // system.indexStats - HNSWインデックスの統計情報を取得
+  async indexStats() {
+    return embeddingService.getIndexStats();
+  },
+
+  // system.buildIndex - HNSWインデックスを構築・再構築
+  async buildIndex() {
+    const result = await embeddingService.buildSearchIndex();
+    return {
+      message: "HNSW index built successfully",
+      ...result,
+    };
+  },
+
+  // system.rebuildIndex - 非同期でHNSWインデックスを再構築（ジョブキュー経由）
+  async rebuildIndex() {
+    const jobId = await enqueueJob("INDEX_REBUILD");
+    return {
+      message: "HNSW index rebuild job enqueued",
+      jobId,
     };
   },
 };

@@ -179,7 +179,7 @@ export const ptmSnapshots = sqliteTable("ptm_snapshots", {
 export const JOB_STATUSES = ["pending", "running", "completed", "failed"] as const;
 export type JobStatus = (typeof JOB_STATUSES)[number];
 
-export const JOB_TYPES = ["NOTE_ANALYZE", "CLUSTER_REBUILD", "EMBEDDING_RECALC"] as const;
+export const JOB_TYPES = ["NOTE_ANALYZE", "CLUSTER_REBUILD", "EMBEDDING_RECALC", "INDEX_REBUILD"] as const;
 export type JobType = (typeof JOB_TYPES)[number];
 
 export const jobStatuses = sqliteTable("job_statuses", {
