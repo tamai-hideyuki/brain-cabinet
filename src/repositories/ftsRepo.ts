@@ -1,6 +1,9 @@
 import { db } from "../db/client";
 import { sql } from "drizzle-orm";
 
+// トランザクション用の型定義
+type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 /**
  * FTS5テーブルにノートを追加
  */
@@ -22,6 +25,26 @@ export const insertFTS = async (
 };
 
 /**
+ * FTS5テーブルにノートを追加（トランザクション対応版）
+ */
+export const insertFTSRaw = async (
+  tx: Transaction,
+  noteId: string,
+  title: string,
+  content: string,
+  tags: string | null,
+  headings: string | null
+) => {
+  const tagsText = parseJsonToText(tags);
+  const headingsText = parseJsonToText(headings);
+
+  await tx.run(sql`
+    INSERT INTO notes_fts (note_id, title, content, tags, headings)
+    VALUES (${noteId}, ${title}, ${content}, ${tagsText}, ${headingsText})
+  `);
+};
+
+/**
  * FTS5テーブルのノートを更新（DELETE + INSERT）
  */
 export const updateFTS = async (
@@ -36,10 +59,34 @@ export const updateFTS = async (
 };
 
 /**
+ * FTS5テーブルのノートを更新（トランザクション対応版）
+ */
+export const updateFTSRaw = async (
+  tx: Transaction,
+  noteId: string,
+  title: string,
+  content: string,
+  tags: string | null,
+  headings: string | null
+) => {
+  await deleteFTSRaw(tx, noteId);
+  await insertFTSRaw(tx, noteId, title, content, tags, headings);
+};
+
+/**
  * FTS5テーブルからノートを削除
  */
 export const deleteFTS = async (noteId: string) => {
   await db.run(sql`
+    DELETE FROM notes_fts WHERE note_id = ${noteId}
+  `);
+};
+
+/**
+ * FTS5テーブルからノートを削除（トランザクション対応版）
+ */
+export const deleteFTSRaw = async (tx: Transaction, noteId: string) => {
+  await tx.run(sql`
     DELETE FROM notes_fts WHERE note_id = ${noteId}
   `);
 };
@@ -74,6 +121,7 @@ export const searchFTS = async (
 
 /**
  * FTS5テーブルを再構築（全データを再インデックス）
+ * トランザクション内で全削除→全追加を原子的に実行
  */
 export const rebuildFTS = async (
   notes: Array<{
@@ -84,13 +132,15 @@ export const rebuildFTS = async (
     headings: string | null;
   }>
 ) => {
-  // 全削除
-  await db.run(sql`DELETE FROM notes_fts`);
+  await db.transaction(async (tx) => {
+    // 全削除
+    await tx.run(sql`DELETE FROM notes_fts`);
 
-  // 全追加
-  for (const note of notes) {
-    await insertFTS(note.id, note.title, note.content, note.tags, note.headings);
-  }
+    // 全追加
+    for (const note of notes) {
+      await insertFTSRaw(tx, note.id, note.title, note.content, note.tags, note.headings);
+    }
+  });
 };
 
 /**
