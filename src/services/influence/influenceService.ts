@@ -179,6 +179,65 @@ export async function getInfluencedBy(
 }
 
 /**
+ * Influence Graph を再構築
+ *
+ * note_history から drift イベントを持つ履歴を取得し、
+ * 影響エッジを再生成する
+ */
+export async function rebuildInfluenceGraph(): Promise<{
+  cleared: number;
+  edgesCreated: number;
+  notesProcessed: number;
+}> {
+  // 既存のエッジを削除
+  const existingCount = await db.all<{ count: number }>(sql`
+    SELECT COUNT(*) as count FROM note_influence_edges
+  `);
+  const cleared = existingCount[0]?.count || 0;
+
+  await db.run(sql`DELETE FROM note_influence_edges`);
+
+  // note_history から semantic_diff がある履歴を取得
+  const historyRows = await db.all<{
+    note_id: string;
+    semantic_diff: string | null;
+    prev_cluster_id: number | null;
+    new_cluster_id: number | null;
+  }>(sql`
+    SELECT note_id, semantic_diff, prev_cluster_id, new_cluster_id
+    FROM note_history
+    WHERE semantic_diff IS NOT NULL
+    ORDER BY created_at ASC
+  `);
+
+  let edgesCreated = 0;
+  const processedNotes = new Set<string>();
+
+  for (const row of historyRows) {
+    if (!row.semantic_diff) continue;
+
+    const semanticDiff = parseFloat(row.semantic_diff);
+    if (isNaN(semanticDiff)) continue;
+
+    const edges = await generateInfluenceEdges(
+      row.note_id,
+      semanticDiff,
+      row.prev_cluster_id,
+      row.new_cluster_id
+    );
+
+    edgesCreated += edges;
+    processedNotes.add(row.note_id);
+  }
+
+  return {
+    cleared,
+    edgesCreated,
+    notesProcessed: processedNotes.size,
+  };
+}
+
+/**
  * グラフ全体の統計を取得
  */
 export async function getInfluenceStats(): Promise<{
