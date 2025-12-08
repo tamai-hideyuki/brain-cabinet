@@ -1,9 +1,13 @@
 import { db } from "../db/client";
-import { notes } from "../db/schema";
-import { eq } from "drizzle-orm";
+import { notes, noteInfluenceEdges } from "../db/schema";
+import { eq, or, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { extractMetadata } from "../utils/metadata";
 import { insertFTSRaw, updateFTSRaw, deleteFTSRaw } from "./ftsRepo";
+import { deleteHistoryByNoteIdRaw } from "./historyRepo";
+import { deleteAllRelationsForNoteRaw } from "./relationRepo";
+import { deleteClusterHistoryByNoteIdRaw } from "./clusterRepo";
+import { deleteEmbeddingRaw } from "./embeddingRepo";
 
 export const findAllNotes = async () => {
   return await db.select().from(notes);
@@ -81,18 +85,48 @@ export const updateNoteInDB = async (id: string, newContent: string, newTitle?: 
 };
 
 /**
- * ノートを削除（トランザクション内でnotes + FTS5を同期）
+ * ノートを削除（トランザクション内で全関連データを一括削除）
+ *
+ * 削除対象:
+ * - notes (本体)
+ * - notes_fts (全文検索インデックス)
+ * - note_history (変更履歴)
+ * - note_relations (類似・派生関係)
+ * - note_embeddings (ベクトル埋め込み)
+ * - cluster_history (クラスタ遷移履歴)
+ * - note_influence_edges (影響グラフ)
  */
 export const deleteNoteInDB = async (id: string) => {
   const note = await findNoteById(id);
   if (!note) return null;
 
-  // トランザクションでnotes削除とFTS5削除を原子的に実行
+  // トランザクションで全関連データを原子的に削除
   await db.transaction(async (tx) => {
-    await tx.delete(notes).where(eq(notes.id, id));
+    // 1. 影響グラフのエッジを削除（source/target両方）
+    await tx.delete(noteInfluenceEdges).where(
+      or(
+        eq(noteInfluenceEdges.sourceNoteId, id),
+        eq(noteInfluenceEdges.targetNoteId, id)
+      )
+    );
 
-    // FTS5から削除（トランザクション内）
+    // 2. クラスタ履歴を削除
+    await deleteClusterHistoryByNoteIdRaw(tx, id);
+
+    // 3. ノート関連を削除（類似・派生関係）
+    await deleteAllRelationsForNoteRaw(tx, id);
+
+    // 4. 変更履歴を削除
+    await deleteHistoryByNoteIdRaw(tx, id);
+
+    // 5. Embeddingを削除
+    await deleteEmbeddingRaw(tx, id);
+
+    // 6. FTS5インデックスを削除
     await deleteFTSRaw(tx, id);
+
+    // 7. 本体を削除（最後に実行）
+    await tx.delete(notes).where(eq(notes.id, id));
   });
 
   return note;

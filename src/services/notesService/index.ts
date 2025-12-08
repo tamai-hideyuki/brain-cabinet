@@ -1,9 +1,6 @@
 import { findAllNotes, updateNoteInDB, findNoteById, createNoteInDB, deleteNoteInDB } from "../../repositories/notesRepo";
 import { getHistoryById } from "../historyService";
-import { removeNoteEmbedding } from "../embeddingService";
-import { deleteAllRelationsForNote } from "../../repositories/relationRepo";
 import { enqueueJob } from "../jobs/job-queue";
-import { logger } from "../../utils/logger";
 
 /**
  * JSON文字列を配列にパース（安全に）
@@ -70,20 +67,12 @@ export const createNote = async (title: string, content: string) => {
 };
 
 export const deleteNote = async (id: string) => {
+  // deleteNoteInDBが全関連データ（Embedding, Relations, History, ClusterHistory, InfluenceEdges, FTS）を
+  // トランザクション内で一括削除する
   const deleted = await deleteNoteInDB(id);
   if (!deleted) {
     throw new Error("Note not found");
   }
-
-  // Embedding削除（非同期・エラーはログのみ）
-  removeNoteEmbedding(id).catch((err) => {
-    logger.error({ err, noteId: id }, "Failed to remove embedding");
-  });
-
-  // Relation削除（非同期・エラーはログのみ）
-  deleteAllRelationsForNote(id).catch((err) => {
-    logger.error({ err, noteId: id }, "Failed to remove relations");
-  });
 
   return formatNoteForAPI(deleted);
 };

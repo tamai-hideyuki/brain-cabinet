@@ -1,6 +1,9 @@
 import { db } from "../db/client";
 import { sql } from "drizzle-orm";
 
+// トランザクション用の型定義
+type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 export const DEFAULT_MODEL = "minilm-v1";
 export const DEFAULT_DIMENSIONS = 384; // MiniLM-L6-v2 は 384次元
 export const EMBEDDING_VERSION = "minilm-v1";
@@ -149,4 +152,14 @@ const bufferToFloat32Array = (buffer: Buffer | ArrayBuffer | Uint8Array): number
   const arrayBuffer = uint8.buffer.slice(uint8.byteOffset, uint8.byteOffset + uint8.byteLength);
   const float32 = new Float32Array(arrayBuffer);
   return Array.from(float32);
+};
+
+/**
+ * Embeddingを削除（トランザクション対応）
+ */
+export const deleteEmbeddingRaw = async (
+  tx: Transaction,
+  noteId: string
+) => {
+  await tx.run(sql`DELETE FROM note_embeddings WHERE note_id = ${noteId}`);
 };

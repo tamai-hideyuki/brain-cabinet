@@ -3,6 +3,9 @@ import { noteRelations, type RelationType } from "../db/schema";
 import { eq, or, desc } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
+// トランザクション用の型定義
+type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 type CreateRelationInput = {
   sourceNoteId: string;
   targetNoteId: string;
@@ -103,4 +106,19 @@ export const findAllRelationsForNote = async (noteId: string) => {
       )
     )
     .orderBy(desc(noteRelations.createdAt));
+};
+
+/**
+ * ノートに関連する全Relationを削除（トランザクション対応）
+ */
+export const deleteAllRelationsForNoteRaw = async (
+  tx: Transaction,
+  noteId: string
+) => {
+  await tx.delete(noteRelations).where(
+    or(
+      eq(noteRelations.sourceNoteId, noteId),
+      eq(noteRelations.targetNoteId, noteId)
+    )
+  );
 };

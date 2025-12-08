@@ -1,6 +1,9 @@
 import { db } from "../db/client";
-import { clusters, notes } from "../db/schema";
+import { clusters, notes, clusterHistory } from "../db/schema";
 import { eq, sql } from "drizzle-orm";
+
+// トランザクション用の型定義
+type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 type ClusterInput = {
   id: number;
@@ -133,4 +136,14 @@ const base64ToArray = (base64: string): number[] => {
     buffer.byteLength / 4
   );
   return Array.from(float32);
+};
+
+/**
+ * 特定ノートのクラスタ履歴を削除（トランザクション対応）
+ */
+export const deleteClusterHistoryByNoteIdRaw = async (
+  tx: Transaction,
+  noteId: string
+) => {
+  await tx.delete(clusterHistory).where(eq(clusterHistory.noteId, noteId));
 };
