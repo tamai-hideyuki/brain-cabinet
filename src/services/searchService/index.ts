@@ -1,6 +1,6 @@
-import { searchNotesInDB, SearchOptions } from "../repositories/searchRepo";
-import { findAllNotes } from "../repositories/notesRepo";
-import { normalizeText } from "../utils/normalize";
+import { searchNotesInDB, SearchOptions } from "../../repositories/searchRepo";
+import { findAllNotes } from "../../repositories/notesRepo";
+import { normalizeText } from "../../utils/normalize";
 import TinySegmenter from "tiny-segmenter";
 
 const segmenter = new TinySegmenter();
@@ -427,8 +427,8 @@ export const clearIDFCache = () => {
 // -------------------------------------
 // 意味検索（Semantic Search）
 // -------------------------------------
-import { searchSimilarNotes } from "./embeddingService";
-import { findNoteById } from "../repositories/notesRepo";
+import { searchSimilarNotes } from "../embeddingService";
+import { findNoteById } from "../../repositories/notesRepo";
 
 export const searchNotesSemantic = async (
   query: string,

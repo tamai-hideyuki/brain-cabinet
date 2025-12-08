@@ -8,10 +8,10 @@ import {
   checkEmbeddingTableExists,
   DEFAULT_MODEL,
   EMBEDDING_VERSION,
-} from "../repositories/embeddingRepo";
-import { findNoteById, findAllNotes } from "../repositories/notesRepo";
-import { normalizeText } from "../utils/normalize";
-import { logger } from "../utils/logger";
+} from "../../repositories/embeddingRepo";
+import { findNoteById, findAllNotes } from "../../repositories/notesRepo";
+import { normalizeText } from "../../utils/normalize";
+import { logger } from "../../utils/logger";
 
 // MiniLM モデル（遅延初期化）
 let embedder: FeatureExtractionPipeline | null = null;

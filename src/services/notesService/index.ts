@@ -1,9 +1,9 @@
-import { findAllNotes, updateNoteInDB, findNoteById, createNoteInDB, deleteNoteInDB } from "../repositories/notesRepo";
-import { getHistoryById } from "./historyService";
-import { removeNoteEmbedding } from "./embeddingService";
-import { deleteAllRelationsForNote } from "../repositories/relationRepo";
-import { enqueueJob } from "./jobs/job-queue";
-import { logger } from "../utils/logger";
+import { findAllNotes, updateNoteInDB, findNoteById, createNoteInDB, deleteNoteInDB } from "../../repositories/notesRepo";
+import { getHistoryById } from "../historyService";
+import { removeNoteEmbedding } from "../embeddingService";
+import { deleteAllRelationsForNote } from "../../repositories/relationRepo";
+import { enqueueJob } from "../jobs/job-queue";
+import { logger } from "../../utils/logger";
 
 /**
  * JSON文字列を配列にパース（安全に）

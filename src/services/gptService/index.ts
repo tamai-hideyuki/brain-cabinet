@@ -5,11 +5,11 @@
  * - コンテキスト抽出
  */
 
-import { searchNotesInDB } from "../repositories/searchRepo";
-import { findNoteById, findAllNotes } from "../repositories/notesRepo";
-import { findHistoryByNoteId } from "../repositories/historyRepo";
-import { normalizeMarkdown, formatForGPT, extractOutline, extractBulletPoints } from "../utils/markdown";
-import { normalizeForGPT } from "../utils/normalize";
+import { searchNotesInDB } from "../../repositories/searchRepo";
+import { findNoteById, findAllNotes } from "../../repositories/notesRepo";
+import { findHistoryByNoteId } from "../../repositories/historyRepo";
+import { normalizeMarkdown, formatForGPT, extractOutline, extractBulletPoints } from "../../utils/markdown";
+import { normalizeForGPT } from "../../utils/normalize";
 
 // -------------------------------------
 // GPT向け複合検索
