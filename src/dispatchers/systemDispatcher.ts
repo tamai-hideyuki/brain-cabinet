@@ -6,6 +6,10 @@ import * as healthService from "../services/healthService";
 import * as embeddingService from "../services/embeddingService";
 import { findAllNotes } from "../repositories/notesRepo";
 import { rebuildFTS } from "../repositories/ftsRepo";
+import {
+  createJobStatusTable,
+  checkJobStatusTableExists,
+} from "../repositories/jobStatusRepo";
 
 export const systemDispatcher = {
   // system.health
@@ -56,6 +60,23 @@ export const systemDispatcher = {
     return {
       message: "FTS index rebuilt successfully",
       indexedCount: allNotes.length,
+    };
+  },
+
+  // system.initJobTable
+  async initJobTable() {
+    const exists = await checkJobStatusTableExists();
+    if (exists) {
+      return {
+        message: "Job status table already exists",
+        created: false,
+      };
+    }
+
+    await createJobStatusTable();
+    return {
+      message: "Job status table created successfully",
+      created: true,
     };
   },
 };

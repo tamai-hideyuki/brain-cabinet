@@ -174,3 +174,24 @@ export const ptmSnapshots = sqliteTable("ptm_snapshots", {
   growthDirection: blob("growth_direction"),             // 成長ベクトル
   summary: text("summary"),                              // GPT生成レポート
 });
+
+// ジョブステータス
+export const JOB_STATUSES = ["pending", "running", "completed", "failed"] as const;
+export type JobStatus = (typeof JOB_STATUSES)[number];
+
+export const JOB_TYPES = ["NOTE_ANALYZE", "CLUSTER_REBUILD", "EMBEDDING_RECALC"] as const;
+export type JobType = (typeof JOB_TYPES)[number];
+
+export const jobStatuses = sqliteTable("job_statuses", {
+  id: text("id").primaryKey(),                             // UUID
+  type: text("type").notNull(),                            // JobType
+  status: text("status").notNull(),                        // JobStatus
+  payload: text("payload"),                                // JSONペイロード
+  result: text("result"),                                  // 成功時の結果（JSON）
+  error: text("error"),                                    // 失敗時のエラーメッセージ
+  progress: integer("progress"),                           // 進捗（0-100）
+  progressMessage: text("progress_message"),               // 進捗メッセージ
+  createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
+  startedAt: integer("started_at"),                        // 実行開始日時
+  completedAt: integer("completed_at"),                    // 完了日時
+});
