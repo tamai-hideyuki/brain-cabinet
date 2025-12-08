@@ -525,6 +525,60 @@ brain-cabinet/
 
 ---
 
+## ドキュメント
+
+### 開発者向けドキュメント
+
+| ドキュメント | 説明 |
+|------------|------|
+| [API リファレンス v3](docs/api-reference-v3.md) | 統合 Command API の完全リファレンス |
+| [エラーコード一覧](docs/error-codes.md) | 全エラーコードとHTTPステータスマッピング |
+| [v3 移行ガイド](docs/migration-v3.md) | v2 → v3 への移行手順と破壊的変更 |
+
+### GPT/AIエージェント向け
+
+| ドキュメント | 説明 |
+|------------|------|
+| [GPT向け設定ガイド](docs/gpt-instructions-v2.md) | Custom GPT セットアップと推奨プロンプト |
+| `openapi-command.json` | GPT Actions 用 OpenAPI 仕様 |
+
+### API クイックリファレンス
+
+すべての操作は `POST /api/command` で実行：
+
+```json
+{
+  "domain": "note | search | cluster | relation | workflow | gpt",
+  "action": "操作名",
+  "payload": { ... }
+}
+```
+
+**主要ドメイン:**
+
+| ドメイン | 主な操作 |
+|---------|---------|
+| `note` | create, get, update, delete, list, history, revert, batchDelete |
+| `search` | keyword, semantic, hybrid |
+| `cluster` | list, get, build |
+| `relation` | similar, influence |
+| `workflow` | reconstruct（クラスタ/Embedding/FTS再構築） |
+| `gpt` | search, context, task, overview |
+
+**レスポンス形式:**
+
+```json
+// 成功
+{ "ok": true, "data": { ... } }
+
+// エラー
+{ "ok": false, "error": { "code": "ERROR_CODE", "message": "..." } }
+```
+
+詳細は [API リファレンス v3](docs/api-reference-v3.md) を参照。
+
+---
+
 ## バージョン履歴
 
 ### v3.0.0 (Phase 3 完了)
