@@ -7,6 +7,8 @@ import {
   findClusterById,
   findNotesByClusterId,
 } from "../repositories/clusterRepo";
+import { getEmbedding } from "../repositories/embeddingRepo";
+import { cosineSimilarity } from "../services/embeddingService";
 import * as identityService from "../services/cluster/identityService";
 import { enqueueJob } from "../services/jobs/job-queue";
 import {
@@ -64,11 +66,38 @@ export const clusterDispatcher = {
     const id = requireField(p?.id, "id");
     const limit = validateLimit(p?.limit, 5);
 
+    // クラスタとそのセントロイドを取得
+    const cluster = await findClusterById(id);
+    if (!cluster) {
+      throw new Error(`Cluster ${id} not found`);
+    }
+
     const notes = await findNotesByClusterId(id);
 
-    // 代表ノート（中心に近い順）を返す
-    // 現状はシンプルに最初のN件を返す
-    return notes.slice(0, limit);
+    // セントロイドがない場合は従来通り先頭N件を返す
+    if (!cluster.centroid) {
+      return notes.slice(0, limit);
+    }
+
+    // 各ノートのembeddingを取得してセントロイドとの類似度を計算
+    const notesWithSimilarity = await Promise.all(
+      notes.map(async (note) => {
+        const embedding = await getEmbedding(note.id);
+        const similarity = embedding
+          ? cosineSimilarity(cluster.centroid!, embedding)
+          : 0;
+        return { note, similarity };
+      })
+    );
+
+    // 類似度の高い順（セントロイドに近い順）にソート
+    notesWithSimilarity.sort((a, b) => b.similarity - a.similarity);
+
+    // 上位N件を返す（類似度スコア付き）
+    return notesWithSimilarity.slice(0, limit).map(({ note, similarity }) => ({
+      ...note,
+      centroidSimilarity: similarity,
+    }));
   },
 
   async rebuild(payload: unknown) {
