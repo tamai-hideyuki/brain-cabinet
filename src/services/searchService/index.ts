@@ -20,7 +20,8 @@ type IDFCache = {
 };
 
 let idfCache: IDFCache | null = null;
-const CACHE_TTL = 5 * 60 * 1000; // 5分
+// TTLは削除: Write-through方式に移行
+// ノートのCRUD操作時にinvalidateIDFCache()を呼び出す
 
 // -------------------------------------
 // IDF計算（全ノートをスキャン）
@@ -55,8 +56,9 @@ const buildIDFCache = async (): Promise<IDFCache> => {
 };
 
 const getIDFCache = async (): Promise<IDFCache> => {
-  const now = Date.now();
-  if (!idfCache || now - idfCache.lastUpdated > CACHE_TTL) {
+  // Write-through方式: キャッシュがなければ構築
+  // 無効化はinvalidateIDFCache()で明示的に行う
+  if (!idfCache) {
     idfCache = await buildIDFCache();
   }
   return idfCache;
@@ -418,11 +420,15 @@ export const searchNotes = async (query: string, options?: SearchOptions) => {
 };
 
 // -------------------------------------
-// IDFキャッシュを手動でクリア（インポート後など）
+// IDFキャッシュを無効化（Write-through方式）
+// ノートのCRUD操作時に呼び出す
 // -------------------------------------
-export const clearIDFCache = () => {
+export const invalidateIDFCache = () => {
   idfCache = null;
 };
+
+// 旧名称（後方互換性のため）
+export const clearIDFCache = invalidateIDFCache;
 
 // -------------------------------------
 // 意味検索（Semantic Search）

@@ -9,6 +9,7 @@ import {
 } from "../../repositories/notesRepo";
 import { getHistoryById } from "../historyService";
 import { enqueueJob } from "../jobs/job-queue";
+import { invalidateIDFCache } from "../searchService";
 import type { Category } from "../../db/schema";
 
 /**
@@ -65,6 +66,9 @@ export const createNote = async (title: string, content: string) => {
   const note = await createNoteInDB(title, content);
 
   if (note) {
+    // IDFキャッシュを無効化（新規ノート追加でDF値が変わる）
+    invalidateIDFCache();
+
     // 非同期ジョブをキューに追加（Embedding生成 + Relation構築）
     enqueueJob("NOTE_ANALYZE", {
       noteId: note.id,
@@ -82,6 +86,9 @@ export const deleteNote = async (id: string) => {
   if (!deleted) {
     throw new Error("Note not found");
   }
+
+  // IDFキャッシュを無効化（ノート削除でDF値が変わる）
+  invalidateIDFCache();
 
   return formatNoteForAPI(deleted);
 };
@@ -105,6 +112,11 @@ export const updateNote = async (id: string, newContent: string, newTitle?: stri
   const updated = await updateNoteInDB(id, newContent, newTitle);
 
   if (updated) {
+    // IDFキャッシュを無効化（コンテンツ変更でTF値が変わる可能性）
+    if (contentChanged) {
+      invalidateIDFCache();
+    }
+
     // 非同期ジョブをキューに追加
     // previousContentを渡すことでsemantic diffを計算
     // v3: previousClusterIdも渡してクラスタ遷移を追跡
@@ -180,6 +192,11 @@ export const batchDeleteNotes = async (ids: string[]): Promise<BatchDeleteResult
         error: err instanceof Error ? err.message : "Unknown error",
       });
     }
+  }
+
+  // 1件以上削除されたらIDFキャッシュを無効化
+  if (result.deleted > 0) {
+    invalidateIDFCache();
   }
 
   return result;
