@@ -409,6 +409,17 @@ type WorkflowStatusCommand = {
 };
 
 // ============================================
+// RAG ドメイン
+// ============================================
+type RagContextCommand = {
+  action: "rag.context";
+  payload: {
+    question: string;
+    limit?: number;
+  };
+};
+
+// ============================================
 // System/Debug ドメイン
 // ============================================
 type SystemHealthCommand = {
@@ -502,6 +513,8 @@ export type BrainCommand =
   // Workflow
   | WorkflowReconstructCommand
   | WorkflowStatusCommand
+  // RAG
+  | RagContextCommand
   // System/Debug
   | SystemHealthCommand
   | SystemEmbedCommand

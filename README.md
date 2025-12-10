@@ -1,10 +1,11 @@
-# Brain Cabinet v3.1.0
+# Brain Cabinet v3.3.2
 
 **思考ベースの検索型知識システム — あなたの思考を理解し、成長を見守る外部脳**
 
 > Brain Cabinet は単なるメモ帳ではありません。
 > ノートの**文脈を理解**し、質問に応じて**必要な部分だけを抽出・再構成**する仕組みです。
 > v3.0 では**PTM（Personal Thinking Model）**、**Drift分析**、**Influence Graph**、**Cluster Dynamics**、**クラスタ人格化エンジン**を搭載。
+> v3.3 では**RAG（質問応答）**と**Workflow（一括再構築）**を追加。
 > **統合Command API**により、GPT Actionsから全機能にアクセス可能。
 
 ---
@@ -24,6 +25,7 @@
 | 振り返りは困難 | **PTM Snapshot**で思考モデルを可視化 |
 | 成長が見えない | **Drift分析**で成長角度・予測を提供 |
 | 知識の関連が不明 | **Influence Graph**で概念の影響関係を追跡 |
+| 質問への回答が困難 | **RAG**でノートを参照して質問に回答 |
 
 ---
 
@@ -120,6 +122,34 @@ POST /api/command
 - **Identity**: 凝集度・安定性・代表ノートから生成
 - **Representatives**: 重心に最も近い代表ノートTop N
 - **GPT向けフォーマット**: システムプロンプト付きで出力
+
+### 8. RAG（質問応答）
+
+ノートを参照して質問に回答：
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      rag.context                             │
+├─────────────────────────────────────────────────────────────┤
+│  Input          │ question: 質問文                          │
+│  Processing     │ セマンティック検索で関連ノートを取得        │
+│  Output         │ 関連ノートのコンテキスト + GPTへの指示文    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+- **方式B（GPT Actions委譲）**: LLM呼び出しはGPT側で行う（追加API費用なし）
+- **セマンティック検索**: 質問に意味的に関連するノートを取得
+- **コンテキスト構築**: ノートの内容・関連度・カテゴリを返す
+- **limit調整可能**: デフォルト5件、パラメータで変更可能
+
+### 9. Workflow（一括再構築）
+
+思考分析システム全体を一括で再構築：
+
+- **workflow.reconstruct**: Embedding → クラスタ → FTS → Drift → Influence → PTM を順次実行
+- **workflow.status**: 再構築の進捗状況をリアルタイムで確認
+- **バックグラウンド実行**: 非同期ジョブで大量データも処理可能
+- **データ不整合の修復**: 定期メンテナンスやトラブルシューティングに有用
 
 ---
 
@@ -218,11 +248,23 @@ POST /api/command
 | `gpt.task` | タスク推奨 | - |
 | `gpt.overview` | 概要 | - |
 
+#### RAG ドメイン
+| アクション | 説明 | payload |
+|-----------|------|---------|
+| `rag.context` | 質問に関連するノートのコンテキスト取得 | `{question, limit?}` |
+
+#### Workflow ドメイン
+| アクション | 説明 | payload |
+|-----------|------|---------|
+| `workflow.reconstruct` | 思考分析システム全体を再構築 | - |
+| `workflow.status` | 再構築の進捗状況を取得 | - |
+
 #### System ドメイン
 | アクション | 説明 | payload |
 |-----------|------|---------|
 | `system.health` | ヘルスチェック | - |
 | `system.embed` | テキスト埋め込み | `{text}` |
+| `system.rebuildFts` | FTSインデックス再構築 | - |
 
 ### プロンプト例とAPI対応表
 
@@ -287,6 +329,18 @@ POST /api/command
 クラスタ2の人格と代表ノートを見せて。どんなテーマのクラスタか解説して。
 ```
 → `cluster.identity` + `cluster.representatives`
+
+#### RAG質問応答
+```
+TypeScriptの型ガードについて、私のノートを参照して教えて。
+```
+→ `rag.context`
+
+#### システム再構築
+```
+思考分析システム全体を再構築して。進捗も教えて。
+```
+→ `workflow.reconstruct` → `workflow.status`
 
 ---
 
@@ -476,6 +530,8 @@ brain-cabinet/
 │   │   ├── insightDispatcher.ts
 │   │   ├── influenceDispatcher.ts
 │   │   ├── clusterDynamicsDispatcher.ts
+│   │   ├── workflowDispatcher.ts
+│   │   ├── ragDispatcher.ts
 │   │   └── systemDispatcher.ts
 │   ├── types/
 │   │   └── command.ts            # Command型定義（v3 新規）
@@ -517,9 +573,15 @@ brain-cabinet/
 - [x] **統合 Command API**（単一エンドポイント、50+ アクション）
 - [x] **GPT Actions 最適化**（承認なし実行、パラメータ明確化）
 
+### Phase 3.2/3.3（v3.3 完了）
+- [x] **RAG（質問応答）** - ノートを参照して質問に回答
+- [x] **Workflow API** - 思考分析システム一括再構築
+- [x] **workflow.status** - 再構築進捗のリアルタイム確認
+- [x] **cluster.list GPT最適化** - centroid除外でGPT解釈改善
+- [x] **cluster-worker修正** - ワークフローステータス更新バグ修正
+
 ### Phase 4（予定）
 - [ ] 要約生成・保存
-- [ ] RAG（質問応答）
 - [ ] Webhook / 自動インポート
 - [ ] Web UI
 
@@ -562,8 +624,9 @@ brain-cabinet/
 | `search` | keyword, semantic, hybrid |
 | `cluster` | list, get, build |
 | `relation` | similar, influence |
-| `workflow` | reconstruct（クラスタ/Embedding/FTS再構築） |
+| `workflow` | reconstruct, status（クラスタ/Embedding/FTS再構築） |
 | `gpt` | search, context, task, overview |
+| `rag` | context（質問応答） |
 
 **レスポンス形式:**
 
@@ -580,6 +643,19 @@ brain-cabinet/
 ---
 
 ## バージョン履歴
+
+### v3.3.2
+- **cluster-worker修正**: ワークフローステータス更新バグ修正（getLatestWorkflowStatus使用）
+
+### v3.3.1
+- **cluster.list GPT最適化**: centroid（384次元ベクトル）を除外してGPT解釈改善
+
+### v3.3.0
+- **workflow.status API**: 再構築の進捗状況をリアルタイムで確認
+
+### v3.2.0
+- **RAG（質問応答）**: ノートを参照して質問に回答、方式B（GPT Actions委譲）で追加API費用なし
+- **Workflow API**: 思考分析システム全体の一括再構築（Embedding → クラスタ → FTS → Drift → Influence → PTM）
 
 ### v3.0.0 (Phase 3 完了)
 - **統合 Command API**: 全操作を `POST /api/command` で実行
@@ -608,4 +684,4 @@ brain-cabinet/
 
 ---
 
-**Brain Cabinet v3** — Your External Brain with Personal Thinking Model & Unified Command API
+**Brain Cabinet v3.3** — Your External Brain with Personal Thinking Model, RAG & Unified Command API

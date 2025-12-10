@@ -21,6 +21,7 @@ import { gptDispatcher } from "./gptDispatcher";
 import { systemDispatcher } from "./systemDispatcher";
 import { jobDispatcher } from "./jobDispatcher";
 import { workflowDispatcher } from "./workflowDispatcher";
+import { ragDispatcher } from "./ragDispatcher";
 
 // ============================================
 // ディスパッチャーレジストリ
@@ -56,6 +57,7 @@ register("job", jobDispatcher);
 register("debug", systemDispatcher); // debug は system と同じハンドラーを使用
 register("embedding", systemDispatcher); // embedding も system に含める
 register("workflow", workflowDispatcher);
+register("rag", ragDispatcher);
 
 // ============================================
 // メインディスパッチャー
