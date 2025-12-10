@@ -10,6 +10,10 @@ import {
   createJobStatusTable,
   checkJobStatusTableExists,
 } from "../repositories/jobStatusRepo";
+import {
+  createWorkflowStatusTable,
+  checkWorkflowStatusTableExists,
+} from "../repositories/workflowStatusRepo";
 import { enqueueJob } from "../services/jobs/job-queue";
 
 export const systemDispatcher = {
@@ -79,6 +83,51 @@ export const systemDispatcher = {
       message: "Job status table created successfully",
       created: true,
     };
+  },
+
+  // system.initWorkflowTable
+  async initWorkflowTable() {
+    const exists = await checkWorkflowStatusTableExists();
+    if (exists) {
+      return {
+        message: "Workflow status table already exists",
+        created: false,
+      };
+    }
+
+    await createWorkflowStatusTable();
+    return {
+      message: "Workflow status table created successfully",
+      created: true,
+    };
+  },
+
+  // system.initTables - すべてのシステムテーブルを初期化
+  async initTables() {
+    const results = {
+      jobStatusTable: { created: false, message: "" },
+      workflowStatusTable: { created: false, message: "" },
+    };
+
+    // Job status table
+    const jobExists = await checkJobStatusTableExists();
+    if (!jobExists) {
+      await createJobStatusTable();
+      results.jobStatusTable = { created: true, message: "Created" };
+    } else {
+      results.jobStatusTable = { created: false, message: "Already exists" };
+    }
+
+    // Workflow status table
+    const workflowExists = await checkWorkflowStatusTableExists();
+    if (!workflowExists) {
+      await createWorkflowStatusTable();
+      results.workflowStatusTable = { created: true, message: "Created" };
+    } else {
+      results.workflowStatusTable = { created: false, message: "Already exists" };
+    }
+
+    return results;
   },
 
   // system.indexStats - HNSWインデックスの統計情報を取得

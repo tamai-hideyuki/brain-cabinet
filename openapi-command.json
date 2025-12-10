@@ -31,7 +31,7 @@
                 "properties": {
                   "action": {
                     "type": "string",
-                    "description": "実行するアクション。以下から選択:\n\n【メモ検索】※ユーザーがメモを探している場合はこれを使う\n- gpt.search: キーワードでメモを検索（推奨）。payload.query に検索語を渡す\n- search.byTitle: タイトルで検索。payload.title に検索したいタイトル（部分一致可）を渡す\n- search.query: 詳細検索。mode で keyword/semantic/hybrid を選択可能\n\n【メモ操作】\n- note.list: 全メモ一覧を取得（payload不要）\n- note.get: 特定のメモを取得。payload.id にノートIDを渡す\n- note.create: メモを作成。payload.title と payload.content を渡す\n- note.update: メモを更新。payload.id と payload.content を渡す\n- note.delete: メモを削除。payload.id を渡す\n\n【インサイト・分析】\n- insight.lite: 思考パターンの簡易分析（payload不要）\n- insight.coach: コーチング向けインサイト（payload不要）\n- ptm.today: 今日の思考モデル（payload不要）\n- ptm.summary: 思考モデルのサマリー（payload不要）\n- analytics.summary: 統計サマリー（payload不要）\n\n【クラスタ】\n- cluster.list: クラスタ一覧（payload不要）\n- cluster.map: 思考マップ（payload不要）\n- cluster.identity: クラスタの特徴。payload.id にクラスタIDを渡す\n\n【ドリフト（思考の変化）】\n- drift.insight: 思考変化のインサイト（payload不要）\n- drift.summary: 変化のサマリー（payload不要）\n\n【システム】\n- system.health: ヘルスチェック（payload不要）\n- system.rebuildFts: FTS（全文検索）インデックスを再構築（payload不要）\n\n【ワークフロー】\n- workflow.reconstruct: 思考分析システム全体を再構築（payload不要）。Embedding、クラスタ、FTS、Drift、Influence、PTMを一括で再構築する。データ不整合の修復や定期メンテナンスに使用。\n",
+                    "description": "実行するアクション。以下から選択:\n\n【メモ検索】※ユーザーがメモを探している場合はこれを使う\n- gpt.search: キーワードでメモを検索（推奨）。payload.query に検索語を渡す\n- search.byTitle: タイトルで検索。payload.title に検索したいタイトル（部分一致可）を渡す\n- search.query: 詳細検索。mode で keyword/semantic/hybrid を選択可能\n\n【メモ操作】\n- note.list: 全メモ一覧を取得（payload不要）\n- note.get: 特定のメモを取得。payload.id にノートIDを渡す\n- note.create: メモを作成。payload.title と payload.content を渡す\n- note.update: メモを更新。payload.id と payload.content を渡す\n- note.delete: メモを削除。payload.id を渡す\n\n【インサイト・分析】\n- insight.lite: 思考パターンの簡易分析（payload不要）\n- insight.coach: コーチング向けインサイト（payload不要）\n- ptm.today: 今日の思考モデル（payload不要）\n- ptm.summary: 思考モデルのサマリー（payload不要）\n- analytics.summary: 統計サマリー（payload不要）\n\n【クラスタ】\n- cluster.list: クラスタ一覧（payload不要）\n- cluster.map: 思考マップ（payload不要）\n- cluster.identity: クラスタの特徴。payload.id にクラスタIDを渡す\n\n【ドリフト（思考の変化）】\n- drift.insight: 思考変化のインサイト（payload不要）\n- drift.summary: 変化のサマリー（payload不要）\n\n【システム】\n- system.health: ヘルスチェック（payload不要）\n- system.rebuildFts: FTS（全文検索）インデックスを再構築（payload不要）\n\n【ワークフロー】\n- workflow.reconstruct: 思考分析システム全体を再構築（payload不要）。Embedding、クラスタ、FTS、Drift、Influence、PTMを一括で再構築する。データ不整合の修復や定期メンテナンスに使用。\n- workflow.status: ワークフロー進捗状況を取得（payload不要）。再構築中の各ステップの進捗状況、経過時間、エラー情報を確認できる。再構築中に他のAPIを呼ぶ前にこのAPIでステータスを確認することを推奨。\n",
                     "enum": [
                       "gpt.search",
                       "search.byTitle",
@@ -89,7 +89,8 @@
                       "system.rebuildFts",
                       "embedding.recalcAll",
                       "debug.healthcheck",
-                      "workflow.reconstruct"
+                      "workflow.reconstruct",
+                      "workflow.status"
                     ]
                   },
                   "payload": {
@@ -243,6 +244,12 @@
                   "value": {
                     "action": "system.health"
                   }
+                },
+                "workflowStatus": {
+                  "summary": "ワークフロー進捗確認（再構築中に使用）",
+                  "value": {
+                    "action": "workflow.status"
+                  }
                 }
               }
             }
@@ -278,6 +285,9 @@
                         },
                         {
                           "$ref": "#/components/schemas/InsightResult"
+                        },
+                        {
+                          "$ref": "#/components/schemas/WorkflowStatusResult"
                         },
                         {
                           "type": "object"
@@ -455,6 +465,100 @@
               "type": "string"
             },
             "description": "推奨アクション"
+          }
+        }
+      },
+      "WorkflowStatusResult": {
+        "type": "object",
+        "description": "ワークフロー進捗状況（workflow.status）。再構築中は status が 'running' となり、progress で各ステップの進捗を確認できる。",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "description": "API呼び出しの成功/失敗"
+          },
+          "workflow": {
+            "type": "string",
+            "nullable": true,
+            "description": "実行中のワークフロー種別（'reconstruct' または null）",
+            "example": "reconstruct"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["idle", "running", "completed", "failed"],
+            "description": "ワークフローの状態。idle=未実行または完了後待機、running=実行中、completed=完了、failed=失敗"
+          },
+          "progress": {
+            "type": "object",
+            "nullable": true,
+            "description": "各ステップの進捗状況（実行中または完了後のみ）",
+            "properties": {
+              "embeddings": {
+                "$ref": "#/components/schemas/StepProgress"
+              },
+              "clusters": {
+                "$ref": "#/components/schemas/StepProgress"
+              },
+              "fts": {
+                "$ref": "#/components/schemas/StepProgress"
+              },
+              "driftEvents": {
+                "$ref": "#/components/schemas/StepProgress"
+              },
+              "influenceGraph": {
+                "$ref": "#/components/schemas/StepProgress"
+              },
+              "clusterDynamics": {
+                "$ref": "#/components/schemas/StepProgress"
+              },
+              "ptmSnapshot": {
+                "$ref": "#/components/schemas/StepProgress"
+              }
+            }
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "開始時刻（ISO 8601形式）"
+          },
+          "elapsed": {
+            "type": "integer",
+            "nullable": true,
+            "description": "経過時間（秒）"
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "完了時刻（ISO 8601形式）"
+          },
+          "error": {
+            "type": "string",
+            "nullable": true,
+            "description": "エラーメッセージ（失敗時のみ）"
+          }
+        }
+      },
+      "StepProgress": {
+        "type": "object",
+        "description": "ワークフローの各ステップの進捗",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["pending", "in_progress", "completed", "failed", "enqueued"],
+            "description": "ステップの状態"
+          },
+          "progress": {
+            "type": "integer",
+            "description": "進捗率（0-100、主にクラスタリングで使用）"
+          },
+          "message": {
+            "type": "string",
+            "description": "進捗メッセージ"
+          },
+          "details": {
+            "type": "object",
+            "description": "詳細情報（ステップ固有）"
           }
         }
       }

@@ -20,6 +20,7 @@ import { analyticsDispatcher } from "./analyticsDispatcher";
 import { gptDispatcher } from "./gptDispatcher";
 import { systemDispatcher } from "./systemDispatcher";
 import { jobDispatcher } from "./jobDispatcher";
+import { workflowDispatcher } from "./workflowDispatcher";
 
 // ============================================
 // ディスパッチャーレジストリ
@@ -54,7 +55,7 @@ register("system", systemDispatcher);
 register("job", jobDispatcher);
 register("debug", systemDispatcher); // debug は system と同じハンドラーを使用
 register("embedding", systemDispatcher); // embedding も system に含める
-register("workflow", insightDispatcher); // workflow は insight に含める
+register("workflow", workflowDispatcher);
 
 // ============================================
 // メインディスパッチャー

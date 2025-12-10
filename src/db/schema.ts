@@ -182,6 +182,27 @@ export type JobStatus = (typeof JOB_STATUSES)[number];
 export const JOB_TYPES = ["NOTE_ANALYZE", "CLUSTER_REBUILD", "EMBEDDING_RECALC", "INDEX_REBUILD"] as const;
 export type JobType = (typeof JOB_TYPES)[number];
 
+// ワークフローステータス
+export const WORKFLOW_TYPES = ["reconstruct"] as const;
+export type WorkflowType = (typeof WORKFLOW_TYPES)[number];
+
+export const WORKFLOW_STATUSES = ["idle", "running", "completed", "failed"] as const;
+export type WorkflowStatus = (typeof WORKFLOW_STATUSES)[number];
+
+export const WORKFLOW_STEP_STATUSES = ["pending", "in_progress", "completed", "failed", "enqueued"] as const;
+export type WorkflowStepStatus = (typeof WORKFLOW_STEP_STATUSES)[number];
+
+export const workflowStatus = sqliteTable("workflow_status", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  workflow: text("workflow").notNull(),              // "reconstruct"
+  status: text("status").notNull(),                  // WorkflowStatus
+  progress: text("progress"),                        // JSON: 各ステップの進捗
+  clusterJobId: text("cluster_job_id"),              // CLUSTER_REBUILD ジョブID（参照用）
+  startedAt: integer("started_at"),
+  completedAt: integer("completed_at"),
+  error: text("error"),
+});
+
 export const jobStatuses = sqliteTable("job_statuses", {
   id: text("id").primaryKey(),                             // UUID
   type: text("type").notNull(),                            // JobType

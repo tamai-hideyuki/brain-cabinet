@@ -403,6 +403,11 @@ type WorkflowReconstructCommand = {
   payload?: Record<string, never>;
 };
 
+type WorkflowStatusCommand = {
+  action: "workflow.status";
+  payload?: Record<string, never>;
+};
+
 // ============================================
 // System/Debug ドメイン
 // ============================================
@@ -496,6 +501,7 @@ export type BrainCommand =
   | EmbeddingRecalcAllCommand
   // Workflow
   | WorkflowReconstructCommand
+  | WorkflowStatusCommand
   // System/Debug
   | SystemHealthCommand
   | SystemEmbedCommand
