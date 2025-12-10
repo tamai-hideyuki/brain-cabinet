@@ -10,6 +10,10 @@ import { findAllNotes } from "../../repositories/notesRepo";
 import { cosineSimilarity, generateAndSaveNoteEmbedding } from "../embeddingService";
 import { logger } from "../../utils/logger";
 import type { ClusterRebuildPayload } from "./job-queue";
+import {
+  getLatestWorkflowStatus,
+  updateWorkflowProgress,
+} from "../../repositories/workflowStatusRepo";
 
 // デフォルトクラスタ数
 const DEFAULT_K = 8;
@@ -168,4 +172,25 @@ export const handleClusterRebuildJob = async (payload: ClusterRebuildPayload) =>
     },
     "[ClusterWorker] Cluster rebuild completed"
   );
+
+  // ワークフローの clusters ステップを完了に更新
+  try {
+    const latestWorkflow = await getLatestWorkflowStatus();
+    if (latestWorkflow) {
+      await updateWorkflowProgress(latestWorkflow.id, "clusters", {
+        status: "completed",
+        details: {
+          k: actualK,
+          noteCount: allEmbeddings.length,
+          clusterSizes: clusterInfos.map((c) => c.size),
+        },
+      });
+      logger.info(
+        { workflowId: latestWorkflow.id },
+        "[ClusterWorker] Updated workflow clusters step to completed"
+      );
+    }
+  } catch (err) {
+    logger.warn({ err }, "[ClusterWorker] Failed to update workflow status");
+  }
 };

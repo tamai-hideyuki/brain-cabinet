@@ -22,7 +22,9 @@ const MAP_FORMATS = ["full", "gpt"] as const;
 
 export const clusterDispatcher = {
   async list() {
-    return findAllClusters();
+    const clusters = await findAllClusters();
+    // GPT向けにcentroidを除外（大きな数値配列は解釈が難しい）
+    return clusters.map(({ centroid, ...rest }) => rest);
   },
 
   async get(payload: unknown) {
