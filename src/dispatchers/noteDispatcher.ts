@@ -44,17 +44,60 @@ export const noteDispatcher = {
   },
 
   async list(payload: unknown) {
-    const p = payload as { limit?: number; offset?: number } | undefined;
+    const p = payload as {
+      limit?: number;
+      offset?: number;
+      sort?: "updated" | "created" | "title";
+    } | undefined;
     const notes = await notesService.getAllNotes();
-    // limit: 0 で全件取得、未指定も全件取得
-    const limit = validateLimitAllowAll(p?.limit, 0);
+
+    // デフォルト50件（GPTのレスポンスサイズ制限対策）
+    // limit: 0 を明示的に指定した場合のみ全件取得
+    const limit = p?.limit === 0 ? 0 : validateLimitAllowAll(p?.limit, 50);
     const offset = validateOffset(p?.offset);
+    const sort = p?.sort ?? "updated";
+
+    // ソート処理
+    let sorted = [...notes];
+    if (sort === "updated") {
+      sorted.sort((a, b) => b.updatedAt - a.updatedAt);
+    } else if (sort === "created") {
+      sorted.sort((a, b) => b.createdAt - a.createdAt);
+    } else if (sort === "title") {
+      sorted.sort((a, b) => a.title.localeCompare(b.title, "ja"));
+    }
+
+    // 軽量化（contentを除外してsnippetに置き換え）
+    const formatNote = (note: any) => ({
+      id: note.id,
+      title: note.title,
+      category: note.category,
+      snippet: note.content ? note.content.slice(0, 100) + "..." : "",
+      updatedAt: note.updatedAt,
+      createdAt: note.createdAt,
+    });
 
     if (limit === 0) {
       // 全件取得（offsetのみ適用）
-      return notes.slice(offset);
+      const sliced = sorted.slice(offset);
+      return {
+        total: notes.length,
+        returned: sliced.length,
+        offset,
+        sort,
+        notes: sliced.map(formatNote),
+      };
     }
-    return notes.slice(offset, offset + limit);
+
+    const sliced = sorted.slice(offset, offset + limit);
+    return {
+      total: notes.length,
+      returned: sliced.length,
+      limit,
+      offset,
+      sort,
+      notes: sliced.map(formatNote),
+    };
   },
 
   async history(payload: unknown) {

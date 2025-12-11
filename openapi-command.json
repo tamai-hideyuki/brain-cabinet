@@ -31,7 +31,7 @@
                 "properties": {
                   "action": {
                     "type": "string",
-                    "description": "実行するアクション。以下から選択:\n\n【メモ検索】※ユーザーがメモを探している場合はこれを使う\n- gpt.search: キーワードでメモを検索（推奨）。payload.query に検索語を渡す\n- search.byTitle: タイトルで検索。payload.title に検索したいタイトル（部分一致可）を渡す\n- search.query: 詳細検索。mode で keyword/semantic/hybrid を選択可能\n\n【メモ操作】\n- note.list: 全メモ一覧を取得（payload不要）\n- note.get: 特定のメモを取得。payload.id にノートIDを渡す\n- note.create: メモを作成。payload.title と payload.content を渡す\n- note.update: メモを更新。payload.id と payload.content を渡す\n- note.delete: メモを削除。payload.id を渡す\n\n【インサイト・分析】\n- insight.lite: 思考パターンの簡易分析（payload不要）\n- insight.coach: コーチング向けインサイト（payload不要）\n- ptm.today: 今日の思考モデル（payload不要）\n- ptm.summary: 思考モデルのサマリー（payload不要）\n- analytics.summary: 統計サマリー（payload不要）\n\n【クラスタ】\n- cluster.list: クラスタ一覧（payload不要）\n- cluster.map: 思考マップ（payload不要）\n- cluster.identity: クラスタの特徴。payload.id にクラスタIDを渡す\n\n【ドリフト（思考の変化）】\n- drift.insight: 思考変化のインサイト（payload不要）\n- drift.summary: 変化のサマリー（payload不要）\n\n【システム】\n- system.health: ヘルスチェック（payload不要）\n- system.rebuildFts: FTS（全文検索）インデックスを再構築（payload不要）\n\n【ワークフロー】\n- workflow.reconstruct: 思考分析システム全体を再構築（payload不要）。Embedding、クラスタ、FTS、Drift、Influence、PTMを一括で再構築する。データ不整合の修復や定期メンテナンスに使用。\n- workflow.status: ワークフロー進捗状況を取得（payload不要）。再構築中の各ステップの進捗状況、経過時間、エラー情報を確認できる。再構築中に他のAPIを呼ぶ前にこのAPIでステータスを確認することを推奨。\n\n【RAG（質問応答）】\n- rag.context: 質問に関連するノートのコンテキストを取得。payload.question に質問を渡す。GPTはこのコンテキストを使ってノートに基づいた回答を生成できる。\n",
+                    "description": "実行するアクション。以下から選択:\n\n【メモ検索】※ユーザーがメモを探している場合はこれを使う\n- gpt.search: キーワードでメモを検索（推奨）。payload.query に検索語を渡す\n- search.byTitle: タイトルで検索。payload.title に検索したいタイトル（部分一致可）を渡す\n- search.query: 詳細検索。mode で keyword/semantic/hybrid を選択可能\n\n【メモ操作】\n- note.list: メモ一覧を取得。payload.limit（デフォルト50）、payload.sort（updated/created/title、デフォルトupdated）で絞り込み可能\n- note.get: 特定のメモを取得。payload.id にノートIDを渡す\n- note.create: メモを作成。payload.title と payload.content を渡す\n- note.update: メモを更新。payload.id と payload.content を渡す\n- note.delete: メモを削除。payload.id を渡す\n\n【インサイト・分析】\n- insight.lite: 思考パターンの簡易分析（payload不要）\n- insight.coach: コーチング向けインサイト（payload不要）\n- ptm.today: 今日の思考モデル（payload不要）\n- ptm.summary: 思考モデルのサマリー（payload不要）\n- analytics.summary: 統計サマリー（payload不要）\n\n【クラスタ】\n- cluster.list: クラスタ一覧（payload不要）\n- cluster.map: 思考マップ（payload不要）\n- cluster.identity: クラスタの特徴。payload.id にクラスタIDを渡す\n\n【ドリフト（思考の変化）】\n- drift.insight: 思考変化のインサイト（payload不要）\n- drift.summary: 変化のサマリー（payload不要）\n\n【システム】\n- system.health: ヘルスチェック（payload不要）\n- system.rebuildFts: FTS（全文検索）インデックスを再構築（payload不要）\n\n【ワークフロー】\n- workflow.reconstruct: 思考分析システム全体を再構築（payload不要）。Embedding、クラスタ、FTS、Drift、Influence、PTMを一括で再構築する。データ不整合の修復や定期メンテナンスに使用。\n- workflow.status: ワークフロー進捗状況を取得（payload不要）。再構築中の各ステップの進捗状況、経過時間、エラー情報を確認できる。再構築中に他のAPIを呼ぶ前にこのAPIでステータスを確認することを推奨。\n\n【RAG（質問応答）】\n- rag.context: 質問に関連するノートのコンテキストを取得。payload.question に質問を渡す。GPTはこのコンテキストを使ってノートに基づいた回答を生成できる。\n",
                     "enum": [
                       "gpt.search",
                       "search.byTitle",
@@ -96,7 +96,7 @@
                   },
                   "payload": {
                     "type": "object",
-                    "description": "アクション固有のパラメータ。アクションによって必要なプロパティが異なる。\n\n【gpt.search / search.query】\n- query (必須): 検索キーワード\n- mode: \"keyword\" | \"semantic\" | \"hybrid\"（デフォルト: gpt.searchはhybrid、search.queryはkeyword）\n- limit: 取得件数\n\n【search.byTitle】\n- title (必須): 検索するタイトル（部分一致）\n- exact: true で完全一致（デフォルト: false）\n\n【note.get / note.update / note.delete】\n- id (必須): ノートID\n\n【note.create】\n- title (必須): タイトル\n- content (必須): 本文\n- category: カテゴリ\n- tags: タグ配列\n\n【cluster.identity / cluster.representatives】\n- id (必須): クラスタID\n\n【drift.* / ptm.dynamics】\n- rangeDays: 対象日数（デフォルト: 30）\n",
+                    "description": "アクション固有のパラメータ。アクションによって必要なプロパティが異なる。\n\n【gpt.search / search.query】\n- query (必須): 検索キーワード\n- mode: \"keyword\" | \"semantic\" | \"hybrid\"（デフォルト: gpt.searchはhybrid、search.queryはkeyword）\n- limit: 取得件数（デフォルト: 20）\n- sort: \"relevance\" | \"updated\" | \"created\"（デフォルト: relevance）。updated=更新日時順、created=作成日時順\n\n【search.byTitle】\n- title (必須): 検索するタイトル（部分一致）\n- exact: true で完全一致（デフォルト: false）\n\n【note.get / note.update / note.delete】\n- id (必須): ノートID\n\n【note.create】\n- title (必須): タイトル\n- content (必須): 本文\n- category: カテゴリ\n- tags: タグ配列\n\n【cluster.identity / cluster.representatives】\n- id (必須): クラスタID\n\n【drift.* / ptm.dynamics】\n- rangeDays: 対象日数（デフォルト: 30）\n",
                     "properties": {
                       "query": {
                         "type": "string",
@@ -129,7 +129,12 @@
                       },
                       "limit": {
                         "type": "integer",
-                        "description": "取得件数"
+                        "description": "取得件数（デフォルト: 20）"
+                      },
+                      "sort": {
+                        "type": "string",
+                        "enum": ["relevance", "updated", "created"],
+                        "description": "ソート順: relevance=関連度順（デフォルト）, updated=更新日時順（新しい順）, created=作成日時順（新しい順）"
                       },
                       "rangeDays": {
                         "type": "integer",
