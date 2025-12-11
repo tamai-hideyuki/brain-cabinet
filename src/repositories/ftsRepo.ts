@@ -196,10 +196,14 @@ const parseJsonToText = (jsonStr: string | null): string => {
  * 検索クエリをFTS5形式に変換
  * - 各単語を前方一致検索（*付き）
  * - 特殊文字をエスケープ
+ * - FTS演算子（OR, AND, NOT）は特別扱い
  */
 const buildFTSQuery = (query: string): string => {
   const trimmed = query.trim();
   if (!trimmed) return "";
+
+  // FTS5の演算子（大文字小文字を区別しない）
+  const FTS_OPERATORS = new Set(["OR", "AND", "NOT"]);
 
   // 特殊文字を除去/エスケープ
   // FTS5がトークン区切りとして扱う文字（/ - . +など）も除去
@@ -217,5 +221,13 @@ const buildFTSQuery = (query: string): string => {
 
   // FTS5 のクエリ形式: "token1*" AND "token2*"
   // または prefix 検索: token1* token2* (暗黙のAND)
-  return tokens.map((t) => `${t}*`).join(" ");
+  // FTS演算子はそのまま保持（*を付けない）
+  return tokens
+    .map((t) => {
+      if (FTS_OPERATORS.has(t.toUpperCase())) {
+        return t.toUpperCase(); // 演算子は大文字で返す
+      }
+      return `${t}*`;
+    })
+    .join(" ");
 };
