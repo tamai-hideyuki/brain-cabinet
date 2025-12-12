@@ -12,6 +12,8 @@ import { normalizeMarkdown, formatForGPT, extractOutline, extractBulletPoints } 
 import { normalizeForGPT } from "../../utils/normalize";
 import { generateMetaStateLite } from "../ptm/engine";
 import type { PtmMetaStateLite } from "../ptm/types";
+import { getLatestInference, classify, getSearchPriority } from "../inference";
+import { searchDecisions, getDecisionContext } from "../decision";
 
 // -------------------------------------
 // GPT向け複合検索
@@ -713,3 +715,167 @@ async function generateFallbackTaskRecommendations(): Promise<TaskRecommendation
     summary: `Brain Cabinetには${overview.totalNotes}件のノートがあります。思考パターン分析のためにはクラスタ再構築が必要です。`,
   };
 }
+
+// -------------------------------------
+// GPT 判断コーチング
+// -------------------------------------
+
+export interface CoachDecisionResponse {
+  query: string;
+  pastDecisions: Array<{
+    noteId: string;
+    title: string;
+    confidence: number;
+    reasoning: string;
+    excerpt: string;
+  }>;
+  relatedLearnings: Array<{
+    noteId: string;
+    title: string;
+    excerpt: string;
+  }>;
+  coachingAdvice: string;
+}
+
+/**
+ * 判断コーチング - 過去の判断を参照して意思決定を支援
+ */
+export const coachDecision = async (query: string): Promise<CoachDecisionResponse> => {
+  // 1. 関連する過去の判断を検索
+  const decisions = await searchDecisions(query, {
+    minConfidence: 0.4,
+    limit: 5,
+  });
+
+  // 2. 関連する学習ノートを収集
+  const learningNotes: CoachDecisionResponse["relatedLearnings"] = [];
+  const seenLearningIds = new Set<string>();
+
+  for (const decision of decisions.slice(0, 3)) {
+    const context = await getDecisionContext(decision.noteId);
+    if (context) {
+      for (const learning of context.relatedLearnings) {
+        if (!seenLearningIds.has(learning.noteId)) {
+          seenLearningIds.add(learning.noteId);
+          learningNotes.push(learning);
+        }
+      }
+    }
+  }
+
+  // 3. コーチングアドバイスを生成
+  let coachingAdvice: string;
+
+  if (decisions.length === 0) {
+    coachingAdvice = `「${query}」に関連する過去の判断は見つかりませんでした。新しい判断を下す際は、理由と背景を明確にしてノートに残すことをお勧めします。`;
+  } else {
+    const topDecision = decisions[0];
+    const decisionCount = decisions.length;
+
+    coachingAdvice = `「${query}」に関連して、過去に${decisionCount}件の判断を行っています。
+
+【最も関連する過去の判断】
+${topDecision.title}
+- 信頼度: ${(topDecision.confidence * 100).toFixed(0)}%
+- 理由: ${topDecision.reasoning}
+
+${decisions.length > 1 ? `他にも${decisions.length - 1}件の関連判断があります。` : ""}
+${learningNotes.length > 0 ? `\n関連する学習ノートが${learningNotes.length}件あり、判断の根拠として参照できます。` : ""}
+
+今回も同様の状況であれば、過去の判断を参考にできます。状況が異なる場合は、その違いを明確にした上で新しい判断を下しましょう。`;
+  }
+
+  return {
+    query,
+    pastDecisions: decisions.map((d) => ({
+      noteId: d.noteId,
+      title: d.title,
+      confidence: d.confidence,
+      reasoning: d.reasoning,
+      excerpt: d.excerpt,
+    })),
+    relatedLearnings: learningNotes.slice(0, 5),
+    coachingAdvice,
+  };
+};
+
+// -------------------------------------
+// GPT検索（判断優先版）
+// -------------------------------------
+
+export interface GPTSearchWithInferenceResult extends GPTSearchResult {
+  noteType?: string;
+  intent?: string;
+  typeConfidence?: number;
+  searchPriority: number;
+}
+
+/**
+ * GPT向け検索（判断ノートを優先）
+ */
+export const searchForGPTWithInference = async (
+  options: GPTSearchOptions
+): Promise<{
+  results: GPTSearchWithInferenceResult[];
+  totalFound: number;
+  searchContext: string;
+}> => {
+  // 基本検索を実行
+  const baseResult = await searchForGPT(options);
+
+  // 各結果に推論情報を付与
+  const resultsWithInference: GPTSearchWithInferenceResult[] = [];
+
+  for (const result of baseResult.results) {
+    const inference = await getLatestInference(result.id);
+
+    let searchPriority = 50; // デフォルト
+
+    if (inference) {
+      const classification = classify(inference);
+      searchPriority = getSearchPriority(
+        classification.primaryType,
+        classification.reliability
+      );
+    }
+
+    resultsWithInference.push({
+      ...result,
+      noteType: inference?.type,
+      intent: inference?.intent,
+      typeConfidence: inference?.confidence,
+      searchPriority,
+    });
+  }
+
+  // searchPriority でソート（判断ノートが上位に）
+  resultsWithInference.sort((a, b) => {
+    // まず searchPriority、次に relevance
+    if (b.searchPriority !== a.searchPriority) {
+      return b.searchPriority - a.searchPriority;
+    }
+    const order = { high: 3, medium: 2, low: 1 };
+    return order[b.relevance] - order[a.relevance];
+  });
+
+  // 検索コンテキストを更新
+  const decisionCount = resultsWithInference.filter(
+    (r) => r.noteType === "decision"
+  ).length;
+  const learningCount = resultsWithInference.filter(
+    (r) => r.noteType === "learning"
+  ).length;
+
+  const searchContext = `
+検索クエリ「${options.query}」で ${baseResult.totalFound} 件のノートが見つかりました。
+${decisionCount > 0 ? `判断ノート: ${decisionCount}件（優先表示）` : ""}
+${learningCount > 0 ? `学習ノート: ${learningCount}件` : ""}
+${options.category ? `カテゴリ: ${options.category}` : "全カテゴリ"}
+`.trim();
+
+  return {
+    results: resultsWithInference,
+    totalFound: baseResult.totalFound,
+    searchContext,
+  };
+};

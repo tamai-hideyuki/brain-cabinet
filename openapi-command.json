@@ -1,9 +1,9 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Brain Cabinet v3 Command API",
-    "version": "3.0.0",
-    "description": "Brain Cabinet v3 の統合コマンドAPI。\nすべての操作を POST /api/command で受け付け、action ベースでディスパッチする。\n\n## GPT向けガイド\n\n### メモを探したい場合\n1. **gpt.search** - キーワードでメモを検索（最も汎用的、推奨）\n2. **search.byTitle** - タイトル名で検索（日付ログ「2025/12/07」など）\n\n### 日付範囲でメモを検索する場合（重要）\n複数日のメモを検索する場合は、**1日ずつ個別に検索**してください。\n- ❌ 悪い例: 「2025/12/04 OR 2025/12/05 OR 2025/12/06」（レスポンスが大きすぎてエラーになる）\n- ✅ 良い例: search.byTitle で「2025/12/04」→「2025/12/05」→「2025/12/06」と順番に検索\n\n日付範囲が広い場合（1週間以上）は、まず期間の最初と最後の日だけ検索し、必要に応じて追加で検索してください。\n\n### メモの内容を見たい場合\n1. **note.get** - IDでメモの全文を取得\n2. **note.list** - 全メモ一覧を取得\n\n### 思考パターンや傾向を知りたい場合\n1. **insight.lite** - 簡易インサイト\n2. **ptm.today** - 今日の思考モデル\n3. **cluster.map** - 思考クラスタのマップ\n"
+    "title": "Brain Cabinet v4 (Decision-First) Command API",
+    "version": "4.0.0",
+    "description": "Brain Cabinet v4 (Decision-First) の統合コマンドAPI。\nすべての操作を POST /api/command で受け付け、action ベースでディスパッチする。\n\nv4の特徴: ノートは自動的にタイプ（decision/learning/scratch/emotion/log）に分類され、判断ノートが検索で優先表示されます。\n\n## GPT向けガイド\n\n### 判断・意思決定について聞かれた場合（推奨）\n1. **decision.search** - 過去の判断ノートを検索（判断に特化）\n2. **gpt.coachDecision** - 過去の判断を参照してコーチング\n3. **decision.context** - 判断の詳細（関連する学習ノート含む）\n\n### メモを探したい場合\n1. **gpt.search** - キーワードでメモを検索（最も汎用的、推奨）\n2. **search.byTitle** - タイトル名で検索（日付ログ「2025/12/07」など）\n\n### 日付範囲でメモを検索する場合（重要）\n複数日のメモを検索する場合は、**1日ずつ個別に検索**してください。\n- ❌ 悪い例: 「2025/12/04 OR 2025/12/05 OR 2025/12/06」（レスポンスが大きすぎてエラーになる）\n- ✅ 良い例: search.byTitle で「2025/12/04」→「2025/12/05」→「2025/12/06」と順番に検索\n\n日付範囲が広い場合（1週間以上）は、まず期間の最初と最後の日だけ検索し、必要に応じて追加で検索してください。\n\n### メモの内容を見たい場合\n1. **note.get** - IDでメモの全文を取得\n2. **note.list** - 全メモ一覧を取得\n\n### 思考パターンや傾向を知りたい場合\n1. **insight.lite** - 簡易インサイト\n2. **ptm.today** - 今日の思考モデル\n3. **cluster.map** - 思考クラスタのマップ\n"
   },
   "servers": [
     {
@@ -31,9 +31,13 @@
                 "properties": {
                   "action": {
                     "type": "string",
-                    "description": "実行するアクション。以下から選択:\n\n【メモ検索】※ユーザーがメモを探している場合はこれを使う\n- gpt.search: キーワードでメモを検索（推奨）。payload.query に検索語を渡す\n- search.byTitle: タイトルで検索。payload.title に検索したいタイトル（部分一致可）を渡す\n- search.query: 詳細検索。mode で keyword/semantic/hybrid を選択可能\n\n【メモ操作】\n- note.list: メモ一覧を取得。payload.limit（デフォルト50）、payload.sort（updated/created/title、デフォルトupdated）で絞り込み可能\n- note.get: 特定のメモを取得。payload.id にノートIDを渡す\n- note.create: メモを作成。payload.title と payload.content を渡す\n- note.update: メモを更新。payload.id と payload.content を渡す\n- note.delete: メモを削除。payload.id を渡す\n\n【インサイト・分析】\n- insight.lite: 思考パターンの簡易分析（payload不要）\n- insight.coach: コーチング向けインサイト（payload不要）\n- ptm.today: 今日の思考モデル（payload不要）\n- ptm.summary: 思考モデルのサマリー（payload不要）\n- analytics.summary: 統計サマリー（payload不要）\n\n【クラスタ】\n- cluster.list: クラスタ一覧（payload不要）\n- cluster.map: 思考マップ（payload不要）\n- cluster.identity: クラスタの特徴。payload.id にクラスタIDを渡す\n\n【ドリフト（思考の変化）】\n- drift.insight: 思考変化のインサイト（payload不要）\n- drift.summary: 変化のサマリー（payload不要）\n\n【システム】\n- system.health: ヘルスチェック（payload不要）\n- system.rebuildFts: FTS（全文検索）インデックスを再構築（payload不要）\n\n【ワークフロー】\n- workflow.reconstruct: 思考分析システム全体を再構築（payload不要）。Embedding、クラスタ、FTS、Drift、Influence、PTMを一括で再構築する。データ不整合の修復や定期メンテナンスに使用。\n- workflow.status: ワークフロー進捗状況を取得（payload不要）。再構築中の各ステップの進捗状況、経過時間、エラー情報を確認できる。再構築中に他のAPIを呼ぶ前にこのAPIでステータスを確認することを推奨。\n\n【RAG（質問応答）】\n- rag.context: 質問に関連するノートのコンテキストを取得。payload.question に質問を渡す。GPTはこのコンテキストを使ってノートに基づいた回答を生成できる。\n",
+                    "description": "実行するアクション。以下から選択:\n\n【判断・意思決定】※ユーザーが過去の判断や意思決定について聞いている場合はこれを使う\n- decision.search: 過去の判断ノートを検索。payload.query に検索語を渡す。判断ノートのみを対象に検索\n- decision.context: 判断の詳細を取得。payload.noteId に判断ノートIDを渡す。関連する学習ノートや当時の文脈も返す\n- decision.promotionCandidates: 昇格候補のscratchノート一覧。判断や学習に昇格可能なノートを提案\n- gpt.coachDecision: 判断コーチング。payload.query に迷っている内容を渡すと、過去の判断を参照してアドバイス\n\n【メモ検索】※ユーザーがメモを探している場合はこれを使う\n- gpt.search: キーワードでメモを検索（推奨）。payload.query に検索語を渡す\n- search.byTitle: タイトルで検索。payload.title に検索したいタイトル（部分一致可）を渡す\n- search.query: 詳細検索。mode で keyword/semantic/hybrid を選択可能\n\n【メモ操作】\n- note.list: メモ一覧を取得。payload.limit（デフォルト50）、payload.sort（updated/created/title、デフォルトupdated）で絞り込み可能\n- note.get: 特定のメモを取得。payload.id にノートIDを渡す\n- note.create: メモを作成。payload.title と payload.content を渡す\n- note.update: メモを更新。payload.id と payload.content を渡す\n- note.delete: メモを削除。payload.id を渡す\n\n【インサイト・分析】\n- insight.lite: 思考パターンの簡易分析（payload不要）\n- insight.coach: コーチング向けインサイト（payload不要）\n- ptm.today: 今日の思考モデル（payload不要）\n- ptm.summary: 思考モデルのサマリー（payload不要）\n- analytics.summary: 統計サマリー（payload不要）\n\n【クラスタ】\n- cluster.list: クラスタ一覧（payload不要）\n- cluster.map: 思考マップ（payload不要）\n- cluster.identity: クラスタの特徴。payload.id にクラスタIDを渡す\n\n【ドリフト（思考の変化）】\n- drift.insight: 思考変化のインサイト（payload不要）\n- drift.summary: 変化のサマリー（payload不要）\n\n【システム】\n- system.health: ヘルスチェック（payload不要）\n- system.rebuildFts: FTS（全文検索）インデックスを再構築（payload不要）\n\n【ワークフロー】\n- workflow.reconstruct: 思考分析システム全体を再構築（payload不要）。Embedding、クラスタ、FTS、Drift、Influence、PTMを一括で再構築する。データ不整合の修復や定期メンテナンスに使用。\n- workflow.status: ワークフロー進捗状況を取得（payload不要）。再構築中の各ステップの進捗状況、経過時間、エラー情報を確認できる。再構築中に他のAPIを呼ぶ前にこのAPIでステータスを確認することを推奨。\n\n【RAG（質問応答）】\n- rag.context: 質問に関連するノートのコンテキストを取得。payload.question に質問を渡す。GPTはこのコンテキストを使ってノートに基づいた回答を生成できる。\n",
                     "enum": [
+                      "decision.search",
+                      "decision.context",
+                      "decision.promotionCandidates",
                       "gpt.search",
+                      "gpt.coachDecision",
                       "search.byTitle",
                       "search.query",
                       "search.categories",
@@ -154,12 +158,72 @@
                       "question": {
                         "type": "string",
                         "description": "質問文（rag.context用）"
+                      },
+                      "noteId": {
+                        "type": "string",
+                        "description": "ノートID（decision.context用）"
+                      },
+                      "intent": {
+                        "type": "string",
+                        "enum": ["architecture", "design", "implementation", "review", "process", "people", "unknown"],
+                        "description": "意図フィルタ（decision.search用）"
+                      },
+                      "minConfidence": {
+                        "type": "number",
+                        "description": "最小信頼度（0-1、decision.search用、デフォルト0.4）"
                       }
                     }
                   }
                 }
               },
               "examples": {
+                "decisionSearch": {
+                  "summary": "過去の判断を検索（判断ファースト）",
+                  "value": {
+                    "action": "decision.search",
+                    "payload": {
+                      "query": "アーキテクチャ選定"
+                    }
+                  }
+                },
+                "decisionSearchWithIntent": {
+                  "summary": "特定の意図で判断を検索",
+                  "value": {
+                    "action": "decision.search",
+                    "payload": {
+                      "query": "技術選定",
+                      "intent": "architecture",
+                      "minConfidence": 0.5
+                    }
+                  }
+                },
+                "decisionContext": {
+                  "summary": "判断の詳細コンテキストを取得",
+                  "value": {
+                    "action": "decision.context",
+                    "payload": {
+                      "noteId": "abc123"
+                    }
+                  }
+                },
+                "decisionPromotionCandidates": {
+                  "summary": "昇格候補のscratchノート一覧",
+                  "value": {
+                    "action": "decision.promotionCandidates",
+                    "payload": {
+                      "limit": 10
+                    }
+                  }
+                },
+                "gptCoachDecision": {
+                  "summary": "判断コーチング（迷いを相談）",
+                  "value": {
+                    "action": "gpt.coachDecision",
+                    "payload": {
+                      "query": "新しいプロジェクトでTypeScriptとJavaScriptどちらを使うべきか迷っている"
+                    }
+                  }
+                },
                 "gptSearch": {
                   "summary": "メモをキーワード検索（推奨）",
                   "value": {
@@ -310,6 +374,15 @@
                         },
                         {
                           "$ref": "#/components/schemas/RagContextResult"
+                        },
+                        {
+                          "$ref": "#/components/schemas/DecisionSearchResult"
+                        },
+                        {
+                          "$ref": "#/components/schemas/DecisionContextResult"
+                        },
+                        {
+                          "$ref": "#/components/schemas/CoachDecisionResult"
                         },
                         {
                           "type": "object"
@@ -634,6 +707,214 @@
           "instruction": {
             "type": "string",
             "description": "GPTへの指示文"
+          }
+        }
+      },
+      "DecisionSearchResult": {
+        "type": "object",
+        "description": "判断検索結果（decision.search）",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "検索クエリ"
+          },
+          "totalFound": {
+            "type": "integer",
+            "description": "見つかった判断ノート数"
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "noteId": {
+                  "type": "string",
+                  "description": "ノートID"
+                },
+                "title": {
+                  "type": "string",
+                  "description": "タイトル"
+                },
+                "confidence": {
+                  "type": "number",
+                  "description": "判断ノートとしての信頼度（0-1）"
+                },
+                "intent": {
+                  "type": "string",
+                  "enum": ["architecture", "design", "implementation", "review", "process", "people", "unknown"],
+                  "description": "判断の意図カテゴリ"
+                },
+                "reasoning": {
+                  "type": "string",
+                  "description": "分類の根拠"
+                },
+                "excerpt": {
+                  "type": "string",
+                  "description": "内容の抜粋（100文字）"
+                },
+                "score": {
+                  "type": "number",
+                  "description": "検索スコア"
+                }
+              }
+            }
+          }
+        }
+      },
+      "DecisionContextResult": {
+        "type": "object",
+        "description": "判断コンテキスト（decision.context）。判断ノートの詳細と関連する学習ノート・scratchノートを返す",
+        "properties": {
+          "decision": {
+            "type": "object",
+            "properties": {
+              "noteId": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "content": {
+                "type": "string",
+                "description": "判断ノートの全文"
+              },
+              "confidence": {
+                "type": "number"
+              },
+              "intent": {
+                "type": "string"
+              },
+              "reasoning": {
+                "type": "string"
+              }
+            }
+          },
+          "relatedLearnings": {
+            "type": "array",
+            "description": "同じintentを持つ学習ノート",
+            "items": {
+              "type": "object",
+              "properties": {
+                "noteId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "excerpt": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "contextualScratch": {
+            "type": "array",
+            "description": "同じintentを持つscratchノート",
+            "items": {
+              "type": "object",
+              "properties": {
+                "noteId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "excerpt": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "CoachDecisionResult": {
+        "type": "object",
+        "description": "判断コーチング結果（gpt.coachDecision）。過去の判断を参照したアドバイスを返す",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "ユーザーの質問"
+          },
+          "pastDecisions": {
+            "type": "array",
+            "description": "関連する過去の判断",
+            "items": {
+              "type": "object",
+              "properties": {
+                "noteId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "excerpt": {
+                  "type": "string"
+                },
+                "confidence": {
+                  "type": "number"
+                },
+                "intent": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "relatedLearnings": {
+            "type": "array",
+            "description": "関連する学習ノート",
+            "items": {
+              "type": "object",
+              "properties": {
+                "noteId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "excerpt": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "coachingAdvice": {
+            "type": "string",
+            "description": "過去の判断パターンに基づくアドバイス"
+          }
+        }
+      },
+      "PromotionCandidatesResult": {
+        "type": "object",
+        "description": "昇格候補（decision.promotionCandidates）。scratchから判断/学習に昇格可能なノート一覧",
+        "properties": {
+          "candidates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "noteId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "currentType": {
+                  "type": "string",
+                  "enum": ["scratch"]
+                },
+                "confidence": {
+                  "type": "number"
+                },
+                "suggestedType": {
+                  "type": "string",
+                  "enum": ["decision", "learning"]
+                },
+                "reason": {
+                  "type": "string",
+                  "description": "昇格を推奨する理由"
+                }
+              }
+            }
           }
         }
       }

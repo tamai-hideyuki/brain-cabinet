@@ -1,11 +1,16 @@
-# Brain Cabinet v3.3.2
+# Brain Cabinet v4 (Decision-First)
 
 **思考ベースの検索型知識システム — あなたの思考を理解し、成長を見守る外部脳**
 
 > Brain Cabinet は単なるメモ帳ではありません。
 > ノートの**文脈を理解**し、質問に応じて**必要な部分だけを抽出・再構成**する仕組みです。
+>
+> **v4 の革新: Decision-First アーキテクチャ**
+> - ノートは自動的に**タイプ分類**（decision/learning/scratch/emotion/log）
+> - **判断ノートを優先表示** — 過去の意思決定をすぐに参照可能
+> - **メタデータはシステムが推論** — ユーザーの負担ゼロ
+>
 > v3.0 では**PTM（Personal Thinking Model）**、**Drift分析**、**Influence Graph**、**Cluster Dynamics**、**クラスタ人格化エンジン**を搭載。
-> v3.3 では**RAG（質問応答）**と**Workflow（一括再構築）**を追加。
 > **統合Command API**により、GPT Actionsから全機能にアクセス可能。
 
 ---
@@ -14,10 +19,11 @@
 
 従来のメモアプリは「保存」と「検索」だけ。Brain Cabinet は違います：
 
-| 従来のメモアプリ | Brain Cabinet v3 |
+| 従来のメモアプリ | Brain Cabinet v4 |
 |----------------|------------------|
 | キーワード一致で検索 | **意味を理解**して関連ノートを発見 |
-| タグは手動で付ける | **自動でタグ・カテゴリを抽出** |
+| タグは手動で付ける | **自動でタイプ分類**（decision/learning/scratch） |
+| 全ノートが同列 | **判断ノートを優先表示**（Decision-First） |
 | 検索結果は羅列 | **TF-IDF + 構造スコア**で最適順に |
 | 履歴なし | **Semantic Diff**で思考の変化率を追跡 |
 | 単体で完結 | **GPT/Claude と連携**して外部脳化 |
@@ -26,12 +32,62 @@
 | 成長が見えない | **Drift分析**で成長角度・予測を提供 |
 | 知識の関連が不明 | **Influence Graph**で概念の影響関係を追跡 |
 | 質問への回答が困難 | **RAG**でノートを参照して質問に回答 |
+| 過去の判断を忘れる | **判断コーチング**で過去の判断を参照 |
 
 ---
 
 ## 主な特徴
 
-### 1. 統合 Command API（v3 新機能）
+### 1. Decision-First アーキテクチャ（v4 新機能）
+
+**「メタデータは人間が書くものではなく、システムが推論するもの」**
+
+ノートを保存すると、システムが自動的にタイプを分類：
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Note Inference Engine                    │
+├─────────────────────────────────────────────────────────────┤
+│  Input: ノート本文                                            │
+│  ↓                                                           │
+│  Rule-based Classification (パターンマッチング)              │
+│  ↓                                                           │
+│  Output: type, intent, confidence, reasoning                 │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**ノートタイプ（自動分類）:**
+
+| タイプ | 説明 | 検索優先度 |
+|-------|------|----------|
+| `decision` | 意思決定・判断の記録 | **最高**（100） |
+| `learning` | 学習内容・知識の定着 | 高（80） |
+| `scratch` | 一時的なメモ・下書き | 中（50） |
+| `emotion` | 感情・気持ちの記録 | 低（30） |
+| `log` | 日次ログ・記録 | 低（30） |
+
+**意図カテゴリ（intent）:**
+
+| Intent | 説明 |
+|--------|------|
+| `architecture` | 設計・アーキテクチャに関する判断 |
+| `design` | UIや体験設計に関する判断 |
+| `implementation` | 実装方法に関する判断 |
+| `review` | 振り返り・評価 |
+| `process` | プロセス・ワークフローに関する判断 |
+| `people` | 人間関係・チームに関する判断 |
+| `unknown` | 分類不明 |
+
+**Decision-First API:**
+
+| アクション | 説明 |
+|-----------|------|
+| `decision.search` | 過去の判断ノートを検索 |
+| `decision.context` | 判断の詳細（関連learning/scratch含む） |
+| `decision.promotionCandidates` | 昇格候補のscratchノート |
+| `gpt.coachDecision` | 判断コーチング（過去の判断を参照） |
+
+### 2. 統合 Command API
 
 すべての操作を単一エンドポイントで実行：
 
@@ -48,7 +104,7 @@ POST /api/command
 - **50+ アクション**: 無限にコマンドを追加可能（APIパス増加なし）
 - **GPT Actions 最適化**: 30エンドポイント制限を回避
 
-### 2. 三層検索システム
+### 3. 三層検索システム
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -70,7 +126,7 @@ POST /api/command
 - **セマンティック検索**: **ローカル MiniLM** による意味ベースの類似度計算（API不要）
 - **ハイブリッド検索**: キーワード(60%) + 意味(40%) を統合した最適解
 
-### 3. PTM（Personal Thinking Model）Snapshot Engine
+### 4. PTM（Personal Thinking Model）Snapshot Engine
 
 あなたの「思考モデル」を日次でスナップショット化：
 
@@ -89,7 +145,7 @@ POST /api/command
 - **Season**: spring（萌芽期）, summer（成長期）, autumn（収穫期）, winter（休眠期）
 - **State**: normal, overheat（過熱）, stagnation（停滞）
 
-### 4. Drift分析
+### 5. Drift分析
 
 思考の「成長角度」を可視化：
 
@@ -98,7 +154,7 @@ POST /api/command
 - **Forecast**: 3日後・7日後の成長予測
 - **Warning**: 過熱・停滞の自動検出とアドバイス
 
-### 5. Influence Graph
+### 6. Influence Graph
 
 ノート間の「影響関係」を追跡：
 
@@ -106,7 +162,7 @@ POST /api/command
 - **Influenced**: このノートが影響を与えているノート
 - **Stats**: 総エッジ数、平均影響度、トップ影響ノート
 
-### 6. Cluster Dynamics
+### 7. Cluster Dynamics
 
 クラスタの「動態」を分析：
 
@@ -115,7 +171,7 @@ POST /api/command
 - **Interactions**: クラスタ間の関係性マトリクス
 - **Timeline**: クラスタ別の時系列変化
 
-### 7. クラスタ人格化エンジン
+### 8. クラスタ人格化エンジン
 
 各クラスタに「人格」を付与：
 
@@ -123,7 +179,7 @@ POST /api/command
 - **Representatives**: 重心に最も近い代表ノートTop N
 - **GPT向けフォーマット**: システムプロンプト付きで出力
 
-### 8. RAG（質問応答）
+### 9. RAG（質問応答）
 
 ノートを参照して質問に回答：
 
@@ -142,7 +198,7 @@ POST /api/command
 - **コンテキスト構築**: ノートの内容・関連度・カテゴリを返す
 - **limit調整可能**: デフォルト5件、パラメータで変更可能
 
-### 9. Workflow（一括再構築）
+### 10. Workflow（一括再構築）
 
 思考分析システム全体を一括で再構築：
 
@@ -247,6 +303,14 @@ POST /api/command
 | `gpt.context` | コンテキスト | `{noteId}` |
 | `gpt.task` | タスク推奨 | - |
 | `gpt.overview` | 概要 | - |
+| `gpt.coachDecision` | 判断コーチング | `{query}` |
+
+#### Decision ドメイン（v4 新規）
+| アクション | 説明 | payload |
+|-----------|------|---------|
+| `decision.search` | 判断ノートを検索 | `{query, intent?, minConfidence?}` |
+| `decision.context` | 判断の詳細コンテキスト | `{noteId}` |
+| `decision.promotionCandidates` | 昇格候補一覧 | `{limit?}` |
 
 #### RAG ドメイン
 | アクション | 説明 | payload |
@@ -267,6 +331,15 @@ POST /api/command
 | `system.rebuildFts` | FTSインデックス再構築 | - |
 
 ### プロンプト例とAPI対応表
+
+#### 判断・意思決定（v4 推奨）
+
+| やりたいこと | GPTへのプロンプト例 | 呼び出されるaction |
+|------------|-------------------|-------------------|
+| 過去の判断を検索 | 「アーキテクチャに関する過去の判断を探して」 | `decision.search` |
+| 判断の詳細 | 「この判断の詳細と関連する学習を見せて」 | `decision.context` |
+| 判断コーチング | 「TypeScriptとRustどちらを選ぶべきか迷ってる」 | `gpt.coachDecision` |
+| 昇格候補 | 「判断に昇格できそうなメモはある？」 | `decision.promotionCandidates` |
 
 #### 基本操作
 
@@ -305,6 +378,13 @@ POST /api/command
 | クラスタ人格 | 「クラスタ3の人格は？」 | `cluster.identity` |
 
 ### 推奨プロンプトパターン
+
+#### 判断に迷ったとき（v4 推奨）
+```
+新しいプロジェクトでTypeScriptとRust、どちらを選ぶべきか迷ってる。
+過去の判断を参考にアドバイスして。
+```
+→ `gpt.coachDecision`
 
 #### 朝のチェックイン
 ```
@@ -532,6 +612,7 @@ brain-cabinet/
 │   │   ├── clusterDynamicsDispatcher.ts
 │   │   ├── workflowDispatcher.ts
 │   │   ├── ragDispatcher.ts
+│   │   ├── decisionDispatcher.ts  # v4 新規
 │   │   └── systemDispatcher.ts
 │   ├── types/
 │   │   └── command.ts            # Command型定義（v3 新規）
@@ -580,7 +661,16 @@ brain-cabinet/
 - [x] **cluster.list GPT最適化** - centroid除外でGPT解釈改善
 - [x] **cluster-worker修正** - ワークフローステータス更新バグ修正
 
-### Phase 4（予定）
+### Phase 4（v4.0 完了）
+- [x] **Decision-First アーキテクチャ** - 判断ノートを優先表示
+- [x] **自動タイプ分類** - decision/learning/scratch/emotion/log
+- [x] **Note Inference Engine** - ルールベースのノート分類
+- [x] **`note_inferences` テーブル** - 推論結果の永続化
+- [x] **Decision API** - search, context, promotionCandidates
+- [x] **判断コーチング** - `gpt.coachDecision` で過去の判断を参照
+
+### Phase 5（予定）
+- [ ] LLM 推論統合（GPT-4 によるタイプ分類）
 - [ ] 要約生成・保存
 - [ ] Webhook / 自動インポート
 - [ ] Web UI
@@ -644,6 +734,16 @@ brain-cabinet/
 
 ## バージョン履歴
 
+### v4.0.0 (Phase 4 完了)
+- **Decision-First アーキテクチャ**: 判断ノートを検索で優先表示
+- **自動タイプ分類**: ノート保存時に decision/learning/scratch/emotion/log を自動分類
+- **Note Inference Engine**: ルールベースの分類エンジン（confidence 最大 0.6）
+- **`note_inferences` テーブル**: 推論結果の永続化
+- **Decision API**: `decision.search`, `decision.context`, `decision.promotionCandidates`
+- **判断コーチング**: `gpt.coachDecision` で過去の判断を参照してアドバイス
+- **Intent カテゴリ**: architecture, design, implementation, review, process, people, unknown
+- **OpenAPI v4 更新**: Decision API を追加、GPT向けガイド更新
+
 ### v3.3.2
 - **cluster-worker修正**: ワークフローステータス更新バグ修正（getLatestWorkflowStatus使用）
 
@@ -684,4 +784,4 @@ brain-cabinet/
 
 ---
 
-**Brain Cabinet v3.3** — Your External Brain with Personal Thinking Model, RAG & Unified Command API
+**Brain Cabinet v4 (Decision-First)** — Your External Brain that Remembers Your Decisions

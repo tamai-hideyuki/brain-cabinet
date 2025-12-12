@@ -93,4 +93,12 @@ export const gptDispatcher = {
   async overview() {
     return gptService.getNotesOverviewForGPT();
   },
+
+  async coachDecision(payload: unknown) {
+    const p = payload as { query?: string } | undefined;
+    if (!p?.query) {
+      throw new AppError(ErrorCodes.VALIDATION_REQUIRED, "query is required", { field: "query" });
+    }
+    return gptService.coachDecision(p.query);
+  },
 };

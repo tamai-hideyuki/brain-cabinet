@@ -10,6 +10,7 @@ import {
 import { getHistoryById } from "../historyService";
 import { enqueueJob } from "../jobs/job-queue";
 import { invalidateIDFCache } from "../searchService";
+import { inferAndSave } from "../inference";
 import { NotFoundError, AppError, ErrorCodes } from "../../utils/errors";
 import type { Category } from "../../db/schema";
 
@@ -75,6 +76,11 @@ export const createNote = async (title: string, content: string) => {
       noteId: note.id,
       updatedAt: note.updatedAt,
     });
+
+    // 非同期推論（瞬発力を殺さないため fire-and-forget）
+    inferAndSave(note.id, content).catch(() => {
+      // 推論失敗は無視（後から再推論可能）
+    });
   }
 
   return note ? formatNoteForAPI(note) : null;
@@ -127,6 +133,13 @@ export const updateNote = async (id: string, newContent: string, newTitle?: stri
       previousClusterId: old.clusterId ?? null,
       updatedAt: updated.updatedAt,
     });
+
+    // コンテンツ変更時は再推論（fire-and-forget）
+    if (contentChanged) {
+      inferAndSave(updated.id, newContent).catch(() => {
+        // 推論失敗は無視（後から再推論可能）
+      });
+    }
   }
 
   return updated ? formatNoteForAPI(updated) : null;

@@ -216,3 +216,49 @@ export const jobStatuses = sqliteTable("job_statuses", {
   startedAt: integer("started_at"),                        // 実行開始日時
   completedAt: integer("completed_at"),                    // 完了日時
 });
+
+// ============================================================
+// v4 判断ファースト機能
+// ============================================================
+
+// ノートタイプ定義
+export const NOTE_TYPES = [
+  "decision",   // 判断・決定
+  "learning",   // 学習・知識
+  "scratch",    // 未整理メモ
+  "emotion",    // 感情・心理
+  "log",        // 事実記録
+] as const;
+export type NoteType = (typeof NOTE_TYPES)[number];
+
+// 意図・関心領域定義
+export const INTENTS = [
+  "architecture",    // 構造・責務・境界
+  "design",          // 設計判断・UI/UX・仕様
+  "implementation",  // 具体コード・実装
+  "review",          // PR・レビュー・改善
+  "process",         // 進め方・フロー・習慣
+  "people",          // 人・チーム・関係性
+  "unknown",         // 特定できない
+] as const;
+export type Intent = (typeof INTENTS)[number];
+
+// 推論モデル定義
+export const INFERENCE_MODELS = [
+  "rule-v1",         // ルールベース推論
+  "gpt-4.1",         // GPT推論
+  "local-ml",        // ローカルML（将来用）
+] as const;
+export type InferenceModel = (typeof INFERENCE_MODELS)[number];
+
+// ノート推論テーブル（判断ファーストの中核）
+export const noteInferences = sqliteTable("note_inferences", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  noteId: text("note_id").notNull(),                       // 紐づくノートID
+  type: text("type").notNull(),                            // NoteType
+  intent: text("intent").notNull(),                        // Intent
+  confidence: real("confidence").notNull(),                // 確信度 0.0〜1.0
+  model: text("model").notNull(),                          // 推論モデル
+  reasoning: text("reasoning"),                            // 推論理由（短文 or JSON）
+  createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
+});

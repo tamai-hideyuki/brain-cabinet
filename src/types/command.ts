@@ -1,12 +1,15 @@
 /**
- * Brain Cabinet v3 — 統合コマンド型定義
+ * Brain Cabinet v4 (Decision-First) — 統合コマンド型定義
  *
  * 命名規則: {domain}.{operation}
- * - domain: note, cluster, search, drift, ptm, insight, influence, analytics, system
+ * - domain: note, cluster, search, drift, ptm, insight, influence, analytics, system, decision
  * - operation: 動詞形（create, search, rebuild, capture など）
+ *
+ * v4の特徴: ノートは自動的にタイプ（decision/learning/scratch/emotion/log）に分類され、
+ * 判断ノートが検索で優先表示される「Decision-First」アーキテクチャ
  */
 
-import type { Category } from "../db/schema";
+import type { Category, Intent } from "../db/schema";
 
 // ============================================
 // Note ドメイン
@@ -385,6 +388,13 @@ type GptOverviewCommand = {
   payload?: Record<string, never>;
 };
 
+type GptCoachDecisionCommand = {
+  action: "gpt.coachDecision";
+  payload: {
+    query: string;
+  };
+};
+
 // ============================================
 // Embedding ドメイン
 // ============================================
@@ -415,6 +425,33 @@ type RagContextCommand = {
   action: "rag.context";
   payload: {
     question: string;
+    limit?: number;
+  };
+};
+
+// ============================================
+// Decision ドメイン（判断ファースト機能）
+// ============================================
+type DecisionSearchCommand = {
+  action: "decision.search";
+  payload: {
+    query: string;
+    intent?: Intent;
+    minConfidence?: number;
+    limit?: number;
+  };
+};
+
+type DecisionContextCommand = {
+  action: "decision.context";
+  payload: {
+    noteId: string;
+  };
+};
+
+type DecisionPromotionCandidatesCommand = {
+  action: "decision.promotionCandidates";
+  payload?: {
     limit?: number;
   };
 };
@@ -508,6 +545,7 @@ export type BrainCommand =
   | GptContextCommand
   | GptTaskCommand
   | GptOverviewCommand
+  | GptCoachDecisionCommand
   // Embedding
   | EmbeddingRecalcAllCommand
   // Workflow
@@ -515,6 +553,10 @@ export type BrainCommand =
   | WorkflowStatusCommand
   // RAG
   | RagContextCommand
+  // Decision
+  | DecisionSearchCommand
+  | DecisionContextCommand
+  | DecisionPromotionCandidatesCommand
   // System/Debug
   | SystemHealthCommand
   | SystemEmbedCommand
