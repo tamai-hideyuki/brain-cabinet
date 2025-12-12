@@ -21,10 +21,7 @@ import type {
   StabilityMetrics,
   ClusterStability,
 } from "./types";
-
-function round4(n: number): number {
-  return Math.round(n * 10000) / 10000;
-}
+import { round4 } from "../../utils/math";
 
 /**
  * Drift Metrics を取得（既存の driftCore を活用）
@@ -150,10 +147,23 @@ export function detectThinkingMode(
     return "rest";
   }
 
-  // 複数クラスタへの伝播が多い = exploration
+  // 伝播パターンを分析
   const uniqueTargets = new Set(propagation.map((p) => p.targetCluster));
   const uniqueSources = new Set(propagation.map((p) => p.sourceCluster));
 
+  // 発信元が少なく受信先が多い = 特定クラスタが「発信基地」になっている
+  // → consolidation（集約・深化モード）
+  if (uniqueSources.size <= 2 && uniqueTargets.size >= 4) {
+    return "consolidation";
+  }
+
+  // 発信元も受信先も多い = 相互に影響し合っている
+  // → exploration（探索モード）
+  if (uniqueSources.size >= 3 && uniqueTargets.size >= 3 && trend === "rising") {
+    return "exploration";
+  }
+
+  // 複数クラスタへの伝播が多い = exploration
   if (uniqueTargets.size >= 3 && trend === "rising") {
     return "exploration";
   }
@@ -180,6 +190,9 @@ export function detectThinkingMode(
 
 /**
  * Thinking Season を判定
+ *
+ * clusterCount を使って「全体の何割が活性か」で判定
+ * - 絶対数だけでなく相対比率を考慮することで、より正確な判定が可能
  */
 export function detectThinkingSeason(
   contributions: ClusterDriftContribution[],
@@ -202,9 +215,12 @@ export function detectThinkingSeason(
     }
   }
 
-  // 3クラスタ以上に分散 = broad_search
+  // 活性クラスタ（drift比率 > 10%）の数と全体に対する比率で判定
   const activeClusterCount = contributions.filter((c) => c.ratio > 0.1).length;
-  if (activeClusterCount >= 3) {
+  const activeRatio = clusterCount > 0 ? activeClusterCount / clusterCount : 0;
+
+  // 全クラスタの半数以上が活性、または3クラスタ以上が活性 = broad_search
+  if (activeRatio >= 0.5 || activeClusterCount >= 3) {
     return "broad_search";
   }
 

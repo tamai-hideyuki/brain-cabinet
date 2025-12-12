@@ -12,41 +12,7 @@ import type {
   ClusterDriftSummary,
   ClusterInfluenceSummary,
 } from "../ptm/types";
-
-function round4(n: number): number {
-  return Math.round(n * 10000) / 10000;
-}
-
-// ============================================================
-// Buffer → Float32Array 変換
-// ============================================================
-
-function bufferToFloat32Array(buffer: Buffer | ArrayBuffer | Uint8Array): number[] {
-  let uint8: Uint8Array;
-
-  if (buffer instanceof ArrayBuffer) {
-    uint8 = new Uint8Array(buffer);
-  } else if (buffer instanceof Uint8Array) {
-    uint8 = buffer;
-  } else if (Buffer.isBuffer(buffer)) {
-    uint8 = new Uint8Array(buffer);
-  } else {
-    return [];
-  }
-
-  const arrayBuffer = uint8.buffer.slice(uint8.byteOffset, uint8.byteOffset + uint8.byteLength);
-  const float32 = new Float32Array(arrayBuffer);
-  return Array.from(float32);
-}
-
-function cosineSimilarity(a: number[], b: number[]): number {
-  if (a.length !== b.length || a.length === 0) return 0;
-  let dot = 0;
-  for (let i = 0; i < a.length; i++) {
-    dot += a[i] * b[i];
-  }
-  return dot;
-}
+import { round4, bufferToFloat32Array, cosineSimilarity } from "../../utils/math";
 
 // ============================================================
 // 代表ノート取得
