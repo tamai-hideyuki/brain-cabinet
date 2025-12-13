@@ -19,6 +19,7 @@ import {
   checkPromotionTriggers,
   createPromotionNotification,
 } from "../promotion";
+import { handleNoteTypeChange } from "../review";
 
 export { inferNoteType, type InferenceResult } from "./inferNoteType";
 export {
@@ -65,6 +66,17 @@ export async function inferAndSave(
       // 昇格チェックのエラーは推論処理に影響させない
       console.error("Promotion check failed:", err);
     });
+
+  // v4.5: Spaced Review 自動スケジュール（非同期で実行、エラーは無視）
+  handleNoteTypeChange(
+    noteId,
+    result.type,
+    content,
+    previousInference?.type
+  ).catch((err) => {
+    // レビュースケジュールのエラーは推論処理に影響させない
+    console.error("Review scheduling failed:", err);
+  });
 
   return result;
 }

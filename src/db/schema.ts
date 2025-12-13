@@ -361,3 +361,76 @@ export const decisionCounterevidences = sqliteTable("decision_counterevidences",
   severityLabel: text("severity_label").notNull().default("minor"), // CounterevidencelSeverity
   createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
 });
+
+// ============================================================
+// v4.5 Spaced Review + Active Recall
+// ============================================================
+
+// SM-2 品質評価定義 (0-5)
+// 0: 完全忘却, 1: 不正解(思い出した), 2: 不正解(簡単に思い出せた)
+// 3: 正解(困難), 4: 正解(少し躊躇), 5: 完璧
+export const RECALL_QUALITIES = [0, 1, 2, 3, 4, 5] as const;
+export type RecallQuality = (typeof RECALL_QUALITIES)[number];
+
+// スケジュールソース定義
+export const SCHEDULE_SOURCES = ["auto", "manual"] as const;
+export type ScheduleSource = (typeof SCHEDULE_SOURCES)[number];
+
+// レビュースケジュールテーブル（SM-2状態管理）
+export const reviewSchedules = sqliteTable("review_schedules", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  noteId: text("note_id").notNull(),                              // レビュー対象ノートID
+  easinessFactor: real("easiness_factor").notNull().default(2.5), // EF (1.3〜, default 2.5)
+  interval: integer("interval").notNull().default(1),             // 次回までの間隔（日）
+  repetition: integer("repetition").notNull().default(0),         // 復習回数
+  nextReviewAt: integer("next_review_at").notNull(),              // 次回レビュー日時（Unix秒）
+  lastReviewedAt: integer("last_reviewed_at"),                    // 最終レビュー日時
+  scheduledBy: text("scheduled_by").notNull().default("auto"),    // ScheduleSource
+  isActive: integer("is_active").notNull().default(1),            // 1: アクティブ, 0: 停止
+  createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
+  updatedAt: integer("updated_at").notNull().default(sql`(strftime('%s','now'))`),
+});
+
+// 質問タイプ定義
+export const RECALL_QUESTION_TYPES = [
+  "recall",       // 想起: 「このノートの主なポイントは？」
+  "concept",      // 概念理解: 「〜とは何ですか？」
+  "reasoning",    // 推論: 「なぜ〜なのですか？」(decision用)
+  "application",  // 応用: 「〜の場合、どうしますか？」
+  "comparison",   // 比較: 「AとBの違いは？」
+] as const;
+export type RecallQuestionType = (typeof RECALL_QUESTION_TYPES)[number];
+
+// 質問生成ソース定義
+export const QUESTION_SOURCES = ["template", "llm"] as const;
+export type QuestionSource = (typeof QUESTION_SOURCES)[number];
+
+// Active Recall 質問テーブル
+export const recallQuestions = sqliteTable("recall_questions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  noteId: text("note_id").notNull(),                              // 対象ノートID
+  questionType: text("question_type").notNull(),                  // RecallQuestionType
+  question: text("question").notNull(),                           // 質問文
+  expectedKeywords: text("expected_keywords"),                    // 期待されるキーワード（JSON配列）
+  source: text("source").notNull().default("template"),           // QuestionSource
+  isActive: integer("is_active").notNull().default(1),            // 有効/無効
+  contentHash: text("content_hash"),                              // コンテンツハッシュ（更新検出用）
+  createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
+  updatedAt: integer("updated_at").notNull().default(sql`(strftime('%s','now'))`),
+});
+
+// レビューセッションログ
+export const reviewSessions = sqliteTable("review_sessions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  noteId: text("note_id").notNull(),                              // レビュー対象ノートID
+  scheduleId: integer("schedule_id").notNull(),                   // レビュースケジュールID
+  quality: integer("quality").notNull(),                          // RecallQuality (0-5)
+  responseTimeMs: integer("response_time_ms"),                    // 回答時間（ミリ秒）
+  questionsAttempted: integer("questions_attempted"),             // 試行した質問数
+  questionsCorrect: integer("questions_correct"),                 // 正解数
+  easinessFactorBefore: real("easiness_factor_before"),           // レビュー前のEF
+  easinessFactorAfter: real("easiness_factor_after"),             // レビュー後のEF
+  intervalBefore: integer("interval_before"),                     // レビュー前の間隔
+  intervalAfter: integer("interval_after"),                       // レビュー後の間隔
+  createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
+});

@@ -24,6 +24,7 @@ import { workflowDispatcher } from "./workflowDispatcher";
 import { ragDispatcher } from "./ragDispatcher";
 import { decisionDispatcher } from "./decisionDispatcher";
 import { promotionDispatcher } from "./promotionDispatcher";
+import { reviewDispatcher } from "./reviewDispatcher";
 
 // ============================================
 // ディスパッチャーレジストリ
@@ -62,6 +63,7 @@ register("workflow", workflowDispatcher);
 register("rag", ragDispatcher);
 register("decision", decisionDispatcher);
 register("promotion", promotionDispatcher);
+register("review", reviewDispatcher);
 
 // ============================================
 // メインディスパッチャー

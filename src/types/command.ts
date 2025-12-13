@@ -457,6 +457,82 @@ type DecisionPromotionCandidatesCommand = {
 };
 
 // ============================================
+// Review ドメイン（Spaced Review + Active Recall）
+// ============================================
+type ReviewQueueCommand = {
+  action: "review.queue";
+  payload?: {
+    limit?: number;
+  };
+};
+
+type ReviewStartCommand = {
+  action: "review.start";
+  payload: {
+    noteId: string;
+  };
+};
+
+type ReviewSubmitCommand = {
+  action: "review.submit";
+  payload: {
+    scheduleId: number;
+    quality: 0 | 1 | 2 | 3 | 4 | 5;
+    responseTimeMs?: number;
+    questionsAttempted?: number;
+    questionsCorrect?: number;
+  };
+};
+
+type ReviewScheduleCommand = {
+  action: "review.schedule";
+  payload: {
+    noteId: string;
+  };
+};
+
+type ReviewCancelCommand = {
+  action: "review.cancel";
+  payload: {
+    noteId: string;
+  };
+};
+
+type ReviewRescheduleCommand = {
+  action: "review.reschedule";
+  payload: {
+    noteId: string;
+    daysFromNow: number;
+  };
+};
+
+type ReviewQuestionsCommand = {
+  action: "review.questions";
+  payload: {
+    noteId: string;
+  };
+};
+
+type ReviewRegenerateQuestionsCommand = {
+  action: "review.regenerateQuestions";
+  payload: {
+    noteId: string;
+  };
+};
+
+type ReviewStatsCommand = {
+  action: "review.stats";
+  payload: {
+    noteId: string;
+  };
+};
+
+type ReviewOverviewCommand = {
+  action: "review.overview";
+  payload?: Record<string, never>;
+};
+
+// ============================================
 // System/Debug ドメイン
 // ============================================
 type SystemHealthCommand = {
@@ -557,6 +633,17 @@ export type BrainCommand =
   | DecisionSearchCommand
   | DecisionContextCommand
   | DecisionPromotionCandidatesCommand
+  // Review
+  | ReviewQueueCommand
+  | ReviewStartCommand
+  | ReviewSubmitCommand
+  | ReviewScheduleCommand
+  | ReviewCancelCommand
+  | ReviewRescheduleCommand
+  | ReviewQuestionsCommand
+  | ReviewRegenerateQuestionsCommand
+  | ReviewStatsCommand
+  | ReviewOverviewCommand
   // System/Debug
   | SystemHealthCommand
   | SystemEmbedCommand
