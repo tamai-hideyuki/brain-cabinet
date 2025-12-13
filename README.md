@@ -734,6 +734,14 @@ brain-cabinet/
 
 ## バージョン履歴
 
+### v4.1.0
+- **Confidence Detail（信頼度分解）**: 単一の `confidence` を3要素に分解
+  - `structural`: 構文パターン（言い切り・比較・断定）
+  - `experiential`: 経験ベース（過去の判断との類似度）※将来拡張
+  - `temporal`: 時間ベース（直近・繰り返し）※将来拡張
+- **`note_inferences` テーブル拡張**: `confidence_detail` カラム追加（JSON）
+- **後方互換性維持**: 総合 `confidence` は引き続き提供
+
 ### v4.0.0 (Phase 4 完了)
 - **Decision-First アーキテクチャ**: 判断ノートを検索で優先表示
 - **自動タイプ分類**: ノート保存時に decision/learning/scratch/emotion/log を自動分類

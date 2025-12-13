@@ -726,6 +726,11 @@ export interface CoachDecisionResponse {
     noteId: string;
     title: string;
     confidence: number;
+    confidenceDetail?: {
+      structural: number;
+      experiential: number;
+      temporal: number;
+    };
     reasoning: string;
     excerpt: string;
   }>;
@@ -807,6 +812,11 @@ export interface GPTSearchWithInferenceResult extends GPTSearchResult {
   noteType?: string;
   intent?: string;
   typeConfidence?: number;
+  confidenceDetail?: {
+    structural: number;
+    experiential: number;
+    temporal: number;
+  };
   searchPriority: number;
 }
 
@@ -844,6 +854,7 @@ export const searchForGPTWithInference = async (
       noteType: inference?.type,
       intent: inference?.intent,
       typeConfidence: inference?.confidence,
+      confidenceDetail: inference?.confidenceDetail,
       searchPriority,
     });
   }

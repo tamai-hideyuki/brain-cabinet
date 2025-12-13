@@ -4,14 +4,20 @@
  * ノートの内容から type / intent / confidence を推論する
  * Phase 1: ルールベース（confidence 最大 0.6）
  * Phase 2: LLM再推論で confidence を 0.7+ に引き上げ（将来）
+ *
+ * v4.1: confidenceDetail による信頼度分解
+ *   - structural: 構文パターン（言い切り・比較・断定）
+ *   - experiential: 過去判断との類似度（将来のセマンティック検索で向上）
+ *   - temporal: 時間的要素（直近・繰り返し）
  */
 
-import type { NoteType, Intent } from "../../db/schema";
+import type { NoteType, Intent, ConfidenceDetail } from "../../db/schema";
 
 export type InferenceResult = {
   type: NoteType;
   intent: Intent;
   confidence: number;
+  confidenceDetail: ConfidenceDetail;
   reasoning: string;
 };
 
@@ -181,6 +187,77 @@ function detectIntent(content: string): Intent {
   return detected;
 }
 
+// ===================================================
+// v4.1 構造的信頼度（structural）計算用パターン
+// ===================================================
+
+// 断定・言い切りパターン（高い structural スコア）
+const ASSERTION_PATTERNS = [
+  /にした$/m,
+  /にする$/m,
+  /を選んだ/,
+  /を選ぶ/,
+  /を採用/,
+  /に決め/,
+  /と判断/,
+  /ことにした/,
+  /方針.*は/,
+  /結論.*は/,
+];
+
+// 比較パターン（AよりB）
+const COMPARISON_PATTERNS = [
+  /より.*が良/,
+  /より.*を選/,
+  /ではなく/,
+  /の方が/,
+  /と比べ/,
+  /を比較/,
+];
+
+// 理由パターン（なぜなら〜）
+const REASONING_PATTERNS = [
+  /なぜなら/,
+  /理由.*は/,
+  /だから$/m,
+  /ため$/m,
+  /から$/m,
+];
+
+function calculateStructural(content: string): number {
+  const assertionCount = countMatches(content, ASSERTION_PATTERNS);
+  const comparisonCount = countMatches(content, COMPARISON_PATTERNS);
+  const reasoningCount = countMatches(content, REASONING_PATTERNS);
+
+  // 各要素を重み付けして合計（最大1.0）
+  const rawScore =
+    assertionCount * 0.15 +
+    comparisonCount * 0.2 +
+    reasoningCount * 0.1;
+
+  return Math.min(1.0, Math.round(rawScore * 100) / 100);
+}
+
+// ===================================================
+// v4.1 経験的信頼度（experiential）
+// ===================================================
+// 現在のルールベースでは常に0（将来のセマンティック検索で向上）
+function calculateExperiential(): number {
+  // Phase 2: 過去の decision ノートとのコサイン類似度を計算
+  // 現在はプレースホルダー（0.0）
+  return 0.0;
+}
+
+// ===================================================
+// v4.1 時間的信頼度（temporal）
+// ===================================================
+// 現在のルールベースでは常に0（将来の頻度分析で向上）
+function calculateTemporal(): number {
+  // Phase 2: 同じ intent の判断が直近に繰り返されているかを分析
+  // 現在はプレースホルダー（0.0）
+  return 0.0;
+}
+
 export function inferNoteType(content: string): InferenceResult {
   const decisionScore = countMatches(content, DECISION_PATTERNS);
   const learningScore = countMatches(content, LEARNING_PATTERNS);
@@ -201,24 +278,42 @@ export function inferNoteType(content: string): InferenceResult {
   entries.sort((a, b) => b[1] - a[1]);
 
   const [topType, topScore] = entries[0];
-  const [secondType, secondScore] = entries[1];
-
-  // confidence 計算（ルールベースは最大 0.6）
-  // スコア差が大きいほど confidence が高い
-  const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
-  let confidence: number;
-
-  if (totalScore === 0) {
-    // パターンにマッチしない場合は scratch
-    confidence = 0.3;
-  } else {
-    const dominance = topScore / totalScore;
-    const gap = (topScore - secondScore) / totalScore;
-    confidence = Math.min(0.6, 0.3 + dominance * 0.2 + gap * 0.1);
-  }
+  const [, secondScore] = entries[1];
 
   // スコアが0の場合は scratch にフォールバック
   const type: NoteType = topScore === 0 ? "scratch" : topType;
+
+  // ===================================================
+  // v4.1 confidenceDetail 計算
+  // ===================================================
+  const structural = calculateStructural(content);
+  const experiential = calculateExperiential();
+  const temporal = calculateTemporal();
+
+  const confidenceDetail: ConfidenceDetail = {
+    structural,
+    experiential,
+    temporal,
+  };
+
+  // 総合 confidence 計算
+  // structural が主要（現フェーズ）、将来は experiential/temporal も貢献
+  const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
+  let baseConfidence: number;
+
+  if (totalScore === 0) {
+    baseConfidence = 0.3;
+  } else {
+    const dominance = topScore / totalScore;
+    const gap = (topScore - secondScore) / totalScore;
+    baseConfidence = 0.3 + dominance * 0.15 + gap * 0.1;
+  }
+
+  // confidenceDetail による補正（structural の影響を加える）
+  const confidence = Math.min(
+    0.6, // ルールベース最大
+    baseConfidence + structural * 0.1
+  );
 
   // reasoning 生成
   const matchedPatterns: string[] = [];
@@ -237,6 +332,7 @@ export function inferNoteType(content: string): InferenceResult {
     type,
     intent: detectIntent(content),
     confidence: Math.round(confidence * 100) / 100,
+    confidenceDetail,
     reasoning,
   };
 }

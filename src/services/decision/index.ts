@@ -26,6 +26,11 @@ export type DecisionSearchResult = {
   noteId: string;
   title: string;
   confidence: number;
+  confidenceDetail?: {
+    structural: number;
+    experiential: number;
+    temporal: number;
+  };
   intent: Intent;
   reasoning: string;
   excerpt: string;
@@ -38,6 +43,11 @@ export type DecisionContext = {
     title: string;
     content: string;
     confidence: number;
+    confidenceDetail?: {
+      structural: number;
+      experiential: number;
+      temporal: number;
+    };
     intent: Intent;
     reasoning: string;
   };
@@ -126,6 +136,7 @@ export async function searchDecisions(
       noteId,
       title: noteData.title,
       confidence: inference.confidence,
+      confidenceDetail: inference.confidenceDetail,
       intent: inference.intent,
       reasoning: inference.reasoning,
       excerpt: makeExcerpt(noteData.content),
@@ -232,6 +243,7 @@ export async function getDecisionContext(
       title: note.title,
       content: note.content,
       confidence: inference.confidence,
+      confidenceDetail: inference.confidenceDetail,
       intent: inference.intent,
       reasoning: inference.reasoning,
     },

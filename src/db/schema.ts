@@ -251,13 +251,21 @@ export const INFERENCE_MODELS = [
 ] as const;
 export type InferenceModel = (typeof INFERENCE_MODELS)[number];
 
+// v4.1 信頼度分解（Confidence Detail）
+export type ConfidenceDetail = {
+  structural: number;    // 構文ベース: 言い切り・比較・断定パターン (0.0〜1.0)
+  experiential: number;  // 経験ベース: 過去の判断との類似度 (0.0〜1.0)
+  temporal: number;      // 時間ベース: 直近か・繰り返し出ているか (0.0〜1.0)
+};
+
 // ノート推論テーブル（判断ファーストの中核）
 export const noteInferences = sqliteTable("note_inferences", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   noteId: text("note_id").notNull(),                       // 紐づくノートID
   type: text("type").notNull(),                            // NoteType
   intent: text("intent").notNull(),                        // Intent
-  confidence: real("confidence").notNull(),                // 確信度 0.0〜1.0
+  confidence: real("confidence").notNull(),                // 確信度 0.0〜1.0（総合値・後方互換）
+  confidenceDetail: text("confidence_detail"),             // v4.1: ConfidenceDetail（JSON）
   model: text("model").notNull(),                          // 推論モデル
   reasoning: text("reasoning"),                            // 推論理由（短文 or JSON）
   createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),

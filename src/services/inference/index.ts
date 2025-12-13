@@ -40,6 +40,7 @@ export async function inferAndSave(
     type: result.type,
     intent: result.intent,
     confidence: result.confidence,
+    confidenceDetail: JSON.stringify(result.confidenceDetail), // v4.1
     model: "rule-v1",
     reasoning: result.reasoning,
   });
@@ -63,10 +64,27 @@ export async function getLatestInference(
   if (rows.length === 0) return null;
 
   const row = rows[0];
+
+  // v4.1: confidenceDetail をパース（後方互換: 無い場合はデフォルト値）
+  const defaultConfidenceDetail = {
+    structural: 0,
+    experiential: 0,
+    temporal: 0,
+  };
+  let confidenceDetail = defaultConfidenceDetail;
+  if (row.confidenceDetail) {
+    try {
+      confidenceDetail = JSON.parse(row.confidenceDetail);
+    } catch {
+      // パース失敗時はデフォルト値
+    }
+  }
+
   return {
     type: row.type as InferenceResult["type"],
     intent: row.intent as InferenceResult["intent"],
     confidence: row.confidence,
+    confidenceDetail,
     reasoning: row.reasoning ?? "",
   };
 }
@@ -126,6 +144,7 @@ export async function getNoteIdsNeedingReinference(): Promise<string[]> {
       type: data.type as InferenceResult["type"],
       intent: "unknown",
       confidence: data.confidence,
+      confidenceDetail: { structural: 0, experiential: 0, temporal: 0 },
       reasoning: "",
     };
     const classification = classify(inference);
