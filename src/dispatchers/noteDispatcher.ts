@@ -101,9 +101,30 @@ export const noteDispatcher = {
   },
 
   async history(payload: unknown) {
-    const p = payload as { id?: string } | undefined;
+    const p = payload as {
+      id?: string;
+      limit?: number;
+      offset?: number;
+      includeContent?: boolean;
+      historyId?: string;
+    } | undefined;
+
+    // 特定履歴指定がある場合は1件のみ取得
+    if (p?.historyId) {
+      const historyId = validateId(p.historyId, "historyId");
+      return historyService.getSingleHistory(historyId);
+    }
+
     const id = validateId(p?.id);
-    return historyService.getNoteHistory(id);
+    const limit = p?.limit ?? 20;
+    const offset = p?.offset ?? 0;
+    const includeContent = p?.includeContent ?? false;
+
+    return historyService.getNoteHistoryPaginated(id, {
+      limit,
+      offset,
+      includeContent,
+    });
   },
 
   async revert(payload: unknown) {

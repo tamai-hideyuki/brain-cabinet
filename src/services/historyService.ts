@@ -1,4 +1,9 @@
-import { insertHistory, findHistoryByNoteId, findHistoryById } from "../repositories/historyRepo";
+import {
+  insertHistory,
+  findHistoryByNoteId,
+  findHistoryById,
+  countHistoryByNoteId,
+} from "../repositories/historyRepo";
 import { findNoteById } from "../repositories/notesRepo";
 import { computeHtmlDiff } from "../utils/diff";
 import { randomUUID } from "crypto";
@@ -21,6 +26,88 @@ export const saveNoteHistory = async ({ noteId, content, diff }: SaveHistoryInpu
 
 export const getNoteHistory = async (noteId: string) => {
   return await findHistoryByNoteId(noteId);
+};
+
+/**
+ * ページネーション＆軽量モード対応の履歴取得
+ */
+export interface GetHistoryOptions {
+  limit?: number;
+  offset?: number;
+  includeContent?: boolean;
+}
+
+export interface HistoryListItem {
+  id: string;
+  createdAt: number;
+  diffSummary: string | null;
+  contentLength: number;  // コンテンツの文字数（差分比較用）
+}
+
+export interface HistoryListItemWithContent extends HistoryListItem {
+  content: string;
+}
+
+export const getNoteHistoryPaginated = async (
+  noteId: string,
+  options?: GetHistoryOptions
+): Promise<{
+  total: number;
+  limit: number;
+  offset: number;
+  histories: HistoryListItem[] | HistoryListItemWithContent[];
+}> => {
+  const limit = options?.limit ?? 20;
+  const offset = options?.offset ?? 0;
+  const includeContent = options?.includeContent ?? false;
+
+  const total = await countHistoryByNoteId(noteId);
+  const histories = await findHistoryByNoteId(noteId, { limit, offset });
+
+  if (includeContent) {
+    return {
+      total,
+      limit,
+      offset,
+      histories: histories.map((h) => ({
+        id: h.id,
+        createdAt: h.createdAt,
+        diffSummary: h.diff,
+        content: h.content,
+        contentLength: h.content.length,
+      })),
+    };
+  }
+
+  // 軽量モード: contentを除外
+  return {
+    total,
+    limit,
+    offset,
+    histories: histories.map((h) => ({
+      id: h.id,
+      createdAt: h.createdAt,
+      diffSummary: h.diff,
+      contentLength: h.content.length,
+    })),
+  };
+};
+
+/**
+ * 特定の履歴を1件取得
+ */
+export const getSingleHistory = async (historyId: string) => {
+  const history = await findHistoryById(historyId);
+  if (!history) {
+    throw new Error("History not found");
+  }
+  return {
+    id: history.id,
+    noteId: history.noteId,
+    content: history.content,
+    diffSummary: history.diff,
+    createdAt: history.createdAt,
+  };
 };
 
 export const getHistoryHtmlDiff = async (historyId: string) => {
