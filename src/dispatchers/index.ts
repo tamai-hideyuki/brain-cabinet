@@ -23,6 +23,7 @@ import { jobDispatcher } from "./jobDispatcher";
 import { workflowDispatcher } from "./workflowDispatcher";
 import { ragDispatcher } from "./ragDispatcher";
 import { decisionDispatcher } from "./decisionDispatcher";
+import { promotionDispatcher } from "./promotionDispatcher";
 
 // ============================================
 // ディスパッチャーレジストリ
@@ -60,6 +61,7 @@ register("embedding", systemDispatcher); // embedding も system に含める
 register("workflow", workflowDispatcher);
 register("rag", ragDispatcher);
 register("decision", decisionDispatcher);
+register("promotion", promotionDispatcher);
 
 // ============================================
 // メインディスパッチャー

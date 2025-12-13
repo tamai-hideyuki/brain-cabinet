@@ -286,3 +286,45 @@ export const noteInferences = sqliteTable("note_inferences", {
   reasoning: text("reasoning"),                            // 推論理由（短文 or JSON）
   createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
 });
+
+// ============================================================
+// v4.3 昇格通知機能（Promotion Notifications）
+// ============================================================
+
+// トリガータイプ定義
+export const PROMOTION_TRIGGER_TYPES = [
+  "confidence_rise",   // confidence が閾値に近づいた
+  "frequency",         // 同じノートが複数回更新された
+  "pattern_match",     // 特定パターンにマッチ（将来用）
+] as const;
+export type PromotionTriggerType = (typeof PROMOTION_TRIGGER_TYPES)[number];
+
+// 通知ステータス定義
+export const PROMOTION_STATUSES = [
+  "pending",    // 未対応
+  "dismissed",  // 却下（今回は昇格しない）
+  "promoted",   // 昇格実行済み
+] as const;
+export type PromotionStatus = (typeof PROMOTION_STATUSES)[number];
+
+// 通知ソース定義
+export const PROMOTION_SOURCES = [
+  "realtime",  // ノート保存時に検出
+  "batch",     // 日次バッチで検出
+] as const;
+export type PromotionSource = (typeof PROMOTION_SOURCES)[number];
+
+// 昇格通知テーブル
+export const promotionNotifications = sqliteTable("promotion_notifications", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  noteId: text("note_id").notNull(),                       // 対象ノートID
+  triggerType: text("trigger_type").notNull(),             // PromotionTriggerType
+  source: text("source").notNull(),                        // PromotionSource
+  suggestedType: text("suggested_type").notNull(),         // 推奨タイプ: "decision" | "learning"
+  reason: text("reason").notNull(),                        // 昇格を推奨する理由（人間向け）
+  confidence: real("confidence").notNull(),                // 検出時の confidence
+  reasonDetail: text("reason_detail"),                     // 詳細情報（JSON）: frequencyCount, confidenceDelta, matchedPatterns
+  status: text("status").notNull().default("pending"),     // PromotionStatus
+  createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
+  resolvedAt: integer("resolved_at"),                      // ユーザーが対応した日時
+});

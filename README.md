@@ -734,6 +734,15 @@ brain-cabinet/
 
 ## バージョン履歴
 
+### v4.3.0
+- **Promotion Notifications（昇格通知）**: scratch ノートの昇格候補を自動検出・提案
+  - `promotion_notifications` テーブル: 通知の永続化
+  - `checkPromotionTriggers`: ノート保存時に昇格候補を検出（confidence ≥ 0.55）
+  - `promotion.pending` API: 未対応の昇格通知一覧を取得
+  - `promotion.dismiss/accept` API: 却下/昇格実行
+  - スパム防止: 同一ノート・トリガーで pending 通知がある場合は重複作成しない
+  - **設計原則**: 自動昇格しない。検出して提案するだけ。決めるのは人間。
+
 ### v4.2.0
 - **Time Decay（時間減衰）**: 判断の鮮度を自動計算、検索スコアに反映
   - `DecayProfile`: stable（半減期693日）/ exploratory（69日）/ situational（14日）

@@ -15,6 +15,10 @@ import {
   needsReinference,
   type FinalClassification,
 } from "./ruleEngine";
+import {
+  checkPromotionTriggers,
+  createPromotionNotification,
+} from "../promotion";
 
 export { inferNoteType, type InferenceResult } from "./inferNoteType";
 export {
@@ -28,11 +32,15 @@ export {
 
 /**
  * ノートを推論し、結果を DB に保存する
+ * v4.3: 昇格候補の検出も行う
  */
 export async function inferAndSave(
   noteId: string,
   content: string
 ): Promise<InferenceResult> {
+  // 前回の推論結果を取得（昇格チェック用）
+  const previousInference = await getLatestInference(noteId);
+
   const result = inferNoteType(content);
 
   await db.insert(noteInferences).values({
@@ -45,6 +53,18 @@ export async function inferAndSave(
     model: "rule-v1",
     reasoning: result.reasoning,
   });
+
+  // v4.3: 昇格候補の検出（非同期で実行、エラーは無視）
+  checkPromotionTriggers(noteId, result, previousInference)
+    .then((triggerResult) => {
+      if (triggerResult.shouldNotify) {
+        return createPromotionNotification(noteId, triggerResult, "realtime");
+      }
+    })
+    .catch((err) => {
+      // 昇格チェックのエラーは推論処理に影響させない
+      console.error("Promotion check failed:", err);
+    });
 
   return result;
 }
