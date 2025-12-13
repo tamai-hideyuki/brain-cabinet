@@ -1,4 +1,4 @@
-# Brain Cabinet v4.6.0 (Decision-First + Spaced Review)
+# Brain Cabinet v4.7.0 (Decision-First + Spaced Review)
 
 **思考ベースの検索型知識システム — あなたの思考を理解し、成長を見守る外部脳**
 
@@ -832,6 +832,15 @@ brain-cabinet/
 
 ## バージョン履歴
 
+### v4.7.0
+- **note.history 改善**: ページネーション＆軽量モード対応
+  - `limit`, `offset`, `includeContent` パラメータ追加
+  - `contentLength` フィールド追加（差分サイズ比較用）
+  - `historyId` 指定で特定履歴を1件取得可能
+- **note.revert**: 過去のバージョンにメモを復元
+- **GPT Actions 保護強化**: `note.update`, `note.delete` にユーザー明示的指示が必要な旨を明記
+- **タイムスタンプ解釈ガイド追加**: UNIX timestamp を JST として正しく解釈するよう明記
+
 ### v4.6.0
 - **workflow.reconstruct に推論ステップ追加**: 全ノートの type/intent 推論を実行
   - `inferences` ステップを追加（Step 1 として実行）
@@ -947,4 +956,4 @@ brain-cabinet/
 
 ---
 
-**Brain Cabinet v4.5 (Decision-First + Spaced Review)** — Your External Brain that Remembers Your Decisions and Helps You Learn
+**Brain Cabinet v4.7 (Decision-First + Spaced Review)** — Your External Brain that Remembers Your Decisions and Helps You Learn
