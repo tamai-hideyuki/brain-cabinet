@@ -1,4 +1,4 @@
-# Brain Cabinet v4.5 (Decision-First + Spaced Review)
+# Brain Cabinet v4.6.0 (Decision-First + Spaced Review)
 
 **思考ベースの検索型知識システム — あなたの思考を理解し、成長を見守る外部脳**
 
