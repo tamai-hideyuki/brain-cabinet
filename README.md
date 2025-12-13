@@ -735,6 +735,17 @@ brain-cabinet/
 
 ## バージョン履歴
 
+### v4.4.0
+- **Counterevidence Log（反証ログ）**: 判断の失敗を資産化する機能
+  - `decision_counterevidences` テーブル: 反証の永続化
+  - 反証タイプ: `regret`（後悔）/ `missed_alternative`（見落とし）/ `unexpected_outcome`（予想外）/ `contradiction`（矛盾）
+  - 深刻度: `minor` / `major` / `critical`（数値 + ラベルの両方を保持）
+  - `decision.addCounterevidence` API: 反証を追加
+  - `decision.getCounterevidences` API: 反証一覧を取得
+  - `decision.deleteCounterevidence` API: 反証を削除
+  - `decision.context` 拡張: `counterevidence` + `counterevidenceSummary` を追加
+  - **コンセプト**: 「失敗も資産化」「思考の免疫システム」
+
 ### v4.3.1
 - **decision.compare**: 複数の判断を比較用に並べて取得
   - 同じトピックについて過去に下した判断を時系列で並べ、思考の変遷を振り返る

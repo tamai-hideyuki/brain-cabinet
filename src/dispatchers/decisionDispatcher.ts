@@ -10,7 +10,19 @@ import {
   getPromotionCandidates,
   compareDecisions,
 } from "../services/decision";
-import { INTENTS, type Intent } from "../db/schema";
+import {
+  addCounterevidence,
+  getCounterevidences,
+  deleteCounterevidence,
+} from "../services/counterevidence";
+import {
+  INTENTS,
+  COUNTEREVIDENCE_TYPES,
+  COUNTEREVIDENCE_SEVERITIES,
+  type Intent,
+  type CounterevidencelType,
+  type CounterevidencelSeverity,
+} from "../db/schema";
 import {
   validateQuery,
   validateLimitAllowAll,
@@ -39,6 +51,22 @@ type DecisionComparePayload = {
   intent?: Intent;
   minConfidence?: number;
   limit?: number;
+};
+
+type AddCounterevidencelPayload = {
+  decisionNoteId?: string;
+  type?: CounterevidencelType;
+  content?: string;
+  sourceNoteId?: string;
+  severity?: CounterevidencelSeverity;
+};
+
+type GetCounterevidencelPayload = {
+  decisionNoteId?: string;
+};
+
+type DeleteCounterevidencelPayload = {
+  id?: number;
 };
 
 export const decisionDispatcher = {
@@ -106,5 +134,54 @@ export const decisionDispatcher = {
       minConfidence,
       limit: limit === 0 ? 5 : limit,
     });
+  },
+
+  /**
+   * decision.addCounterevidence - 反証を追加
+   */
+  async addCounterevidence(payload: unknown) {
+    const p = payload as AddCounterevidencelPayload | undefined;
+    const decisionNoteId = requireString(p?.decisionNoteId, "decisionNoteId");
+    const type = validateOptionalEnum(p?.type, "type", COUNTEREVIDENCE_TYPES);
+    if (!type) {
+      throw new Error("type is required");
+    }
+    const content = requireString(p?.content, "content");
+    const severity = validateOptionalEnum(
+      p?.severity,
+      "severity",
+      COUNTEREVIDENCE_SEVERITIES
+    );
+
+    return addCounterevidence({
+      decisionNoteId,
+      type,
+      content,
+      sourceNoteId: p?.sourceNoteId,
+      severity: severity ?? undefined,
+    });
+  },
+
+  /**
+   * decision.getCounterevidences - 反証一覧を取得
+   */
+  async getCounterevidences(payload: unknown) {
+    const p = payload as GetCounterevidencelPayload | undefined;
+    const decisionNoteId = requireString(p?.decisionNoteId, "decisionNoteId");
+
+    return getCounterevidences(decisionNoteId);
+  },
+
+  /**
+   * decision.deleteCounterevidence - 反証を削除
+   */
+  async deleteCounterevidence(payload: unknown) {
+    const p = payload as DeleteCounterevidencelPayload | undefined;
+    if (typeof p?.id !== "number") {
+      throw new Error("id is required");
+    }
+
+    await deleteCounterevidence(p.id);
+    return { success: true, message: "Counterevidence deleted" };
   },
 };

@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Brain Cabinet v4 (Decision-First) Command API",
-    "version": "4.3.1",
+    "version": "4.4.0",
     "description": "Brain Cabinet v4 (Decision-First) の統合コマンドAPI。\nすべての操作を POST /api/command で受け付け、action ベースでディスパッチする。\n\nv4の特徴: ノートは自動的にタイプ（decision/learning/scratch/emotion/log）に分類され、判断ノートが検索で優先表示されます。\n\n## GPT向けガイド\n\n### 判断・意思決定について聞かれた場合（推奨）\n1. **decision.search** - 過去の判断ノートを検索（判断に特化）\n2. **gpt.coachDecision** - 過去の判断を参照してコーチング\n3. **decision.context** - 判断の詳細（関連する学習ノート含む）\n\n### メモを探したい場合\n1. **gpt.search** - キーワードでメモを検索（最も汎用的、推奨）\n2. **search.byTitle** - タイトル名で検索（日付ログ「2025/12/07」など）\n\n### 日付範囲でメモを検索する場合（重要）\n複数日のメモを検索する場合は、**1日ずつ個別に検索**してください。\n- ❌ 悪い例: 「2025/12/04 OR 2025/12/05 OR 2025/12/06」（レスポンスが大きすぎてエラーになる）\n- ✅ 良い例: search.byTitle で「2025/12/04」→「2025/12/05」→「2025/12/06」と順番に検索\n\n日付範囲が広い場合（1週間以上）は、まず期間の最初と最後の日だけ検索し、必要に応じて追加で検索してください。\n\n### メモの内容を見たい場合\n1. **note.get** - IDでメモの全文を取得\n2. **note.list** - 全メモ一覧を取得\n\n### 思考パターンや傾向を知りたい場合\n1. **insight.lite** - 簡易インサイト\n2. **ptm.today** - 今日の思考モデル\n3. **cluster.map** - 思考クラスタのマップ\n"
   },
   "servers": [

@@ -328,3 +328,36 @@ export const promotionNotifications = sqliteTable("promotion_notifications", {
   createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
   resolvedAt: integer("resolved_at"),                      // ユーザーが対応した日時
 });
+
+// ============================================================
+// v4.4 反証ログ機能（Counterevidence Log）
+// ============================================================
+
+// 反証タイプ定義
+export const COUNTEREVIDENCE_TYPES = [
+  "regret",              // 後悔・やり直したい点
+  "missed_alternative",  // 見落とした選択肢
+  "unexpected_outcome",  // 予想外の結果
+  "contradiction",       // 矛盾する判断を後でした
+] as const;
+export type CounterevidencelType = (typeof COUNTEREVIDENCE_TYPES)[number];
+
+// 深刻度定義
+export const COUNTEREVIDENCE_SEVERITIES = [
+  "minor",    // 軽微：影響は限定的
+  "major",    // 重大：判断の見直しが必要
+  "critical", // 致命的：根本的な方針変更が必要
+] as const;
+export type CounterevidencelSeverity = (typeof COUNTEREVIDENCE_SEVERITIES)[number];
+
+// 反証ログテーブル
+export const decisionCounterevidences = sqliteTable("decision_counterevidences", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  decisionNoteId: text("decision_note_id").notNull(),      // 元の判断ノートID
+  type: text("type").notNull(),                            // CounterevidencelType
+  content: text("content").notNull(),                      // 反証内容
+  sourceNoteId: text("source_note_id"),                    // 反証の元になったノートID（あれば）
+  severityScore: real("severity_score").notNull().default(0.5),  // 0.0-1.0（計算用）
+  severityLabel: text("severity_label").notNull().default("minor"), // CounterevidencelSeverity
+  createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
+});

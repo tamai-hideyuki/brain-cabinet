@@ -18,6 +18,12 @@ import {
   classify,
   getSearchPriority,
 } from "../inference";
+import {
+  getCounterevidences,
+  getCounterevidencelSummary,
+  type CounterevidencelItem,
+  type CounterevidencelSummary,
+} from "../counterevidence";
 
 // -------------------------------------
 // 型定義
@@ -66,6 +72,9 @@ export type DecisionContext = {
     title: string;
     excerpt: string;
   }>;
+  // v4.4: 反証ログ
+  counterevidence: CounterevidencelItem[];
+  counterevidenceSummary: CounterevidencelSummary;
 };
 
 export type PromotionCandidate = {
@@ -306,6 +315,10 @@ export async function getDecisionContext(
     }
   }
 
+  // 5. v4.4: 反証ログを取得
+  const counterevidence = await getCounterevidences(noteId);
+  const counterevidenceSummary = await getCounterevidencelSummary(noteId);
+
   return {
     decision: {
       noteId: note.id,
@@ -319,6 +332,8 @@ export async function getDecisionContext(
     },
     relatedLearnings,
     contextualScratch,
+    counterevidence,
+    counterevidenceSummary,
   };
 }
 
