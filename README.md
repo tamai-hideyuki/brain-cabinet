@@ -1,9 +1,14 @@
-# Brain Cabinet v4 (Decision-First)
+# Brain Cabinet v4.5 (Decision-First + Spaced Review)
 
 **思考ベースの検索型知識システム — あなたの思考を理解し、成長を見守る外部脳**
 
 > Brain Cabinet は単なるメモ帳ではありません。
 > ノートの**文脈を理解**し、質問に応じて**必要な部分だけを抽出・再構成**する仕組みです。
+>
+> **v4.5 の新機能: Spaced Review + Active Recall**
+> - **SM-2アルゴリズム**による間隔反復で最適なタイミングでレビュー
+> - **Active Recall**でノートから自動生成された質問に答えて定着強化
+> - learning/decision ノートを自動でレビュースケジュールに追加
 >
 > **v4 の革新: Decision-First アーキテクチャ**
 > - ノートは自動的に**タイプ分類**（decision/learning/scratch/emotion/log）
@@ -33,6 +38,7 @@
 | 知識の関連が不明 | **Influence Graph**で概念の影響関係を追跡 |
 | 質問への回答が困難 | **RAG**でノートを参照して質問に回答 |
 | 過去の判断を忘れる | **判断コーチング**で過去の判断を参照 |
+| 学んでも忘れる | **Spaced Review + Active Recall**で定着強化 |
 
 ---
 
@@ -208,6 +214,50 @@ POST /api/command
 - **バックグラウンド実行**: 非同期ジョブで大量データも処理可能
 - **データ不整合の修復**: 定期メンテナンスやトラブルシューティングに有用
 
+### 11. Spaced Review + Active Recall（v4.5 新機能）
+
+学習の定着を加速するための間隔反復と能動的想起を統合：
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Spaced Review Engine                      │
+├─────────────────────────────────────────────────────────────┤
+│  SM-2 Algorithm    │ 最適タイミングでレビューをスケジュール    │
+│  Active Recall     │ ノートから質問を自動生成                 │
+│  Auto-Schedule     │ learning/decision ノートを自動追加       │
+│  Progress Track    │ EF・間隔・連続正解を記録                 │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**SM-2 品質評価（0-5）:**
+
+| 値 | 意味 | 次回への影響 |
+|----|------|-------------|
+| 0-2 | 不正解 | リセット（1日後） |
+| 3 | 正解（困難） | 間隔維持〜微増 |
+| 4 | 正解（少し躊躇） | 間隔拡大 |
+| 5 | 完璧 | 間隔大幅拡大 |
+
+**質問タイプ:**
+
+| タイプ | 用途 |
+|--------|------|
+| `recall` | 「このノートの主なポイントを3つ挙げてください」 |
+| `concept` | 「{topic}とは何ですか？」 |
+| `reasoning` | 「この判断の根拠は何ですか？」（decision用） |
+| `application` | 「この知識をどのような場面で活用できますか？」 |
+
+**Spaced Review API:**
+
+| アクション | 説明 |
+|-----------|------|
+| `review.queue` | レビュー待ちキューを取得 |
+| `review.start` | レビューセッションを開始 |
+| `review.submit` | レビュー結果を送信（SM-2で次回計算） |
+| `review.schedule` | 手動でレビューをスケジュール |
+| `review.stats` | ノート別のレビュー統計 |
+| `review.overview` | 全体のレビュー統計 |
+
 ---
 
 ## GPTでの使い方
@@ -312,6 +362,20 @@ POST /api/command
 | `decision.search` | 判断ノートを検索 | `{query, intent?, minConfidence?}` |
 | `decision.context` | 判断の詳細コンテキスト | `{noteId}` |
 | `decision.promotionCandidates` | 昇格候補一覧 | `{limit?}` |
+
+#### Review ドメイン（v4.5 新規）
+| アクション | 説明 | payload |
+|-----------|------|---------|
+| `review.queue` | レビュー待ちキュー取得 | `{limit?}` |
+| `review.start` | レビューセッション開始 | `{noteId}` |
+| `review.submit` | レビュー結果送信 | `{scheduleId, quality, responseTimeMs?, questionsAttempted?, questionsCorrect?}` |
+| `review.schedule` | 手動でスケジュール | `{noteId}` |
+| `review.cancel` | レビューキャンセル | `{noteId}` |
+| `review.reschedule` | 再スケジュール | `{noteId, daysFromNow}` |
+| `review.questions` | 質問一覧取得 | `{noteId}` |
+| `review.regenerateQuestions` | 質問再生成 | `{noteId}` |
+| `review.stats` | ノート別統計 | `{noteId}` |
+| `review.overview` | 全体統計 | - |
 
 #### RAG ドメイン
 | アクション | 説明 | payload |
@@ -422,6 +486,25 @@ TypeScriptの型ガードについて、私のノートを参照して教えて�
 思考分析システム全体を再構築して。進捗も教えて。
 ```
 → `workflow.reconstruct` → `workflow.status`
+
+#### 学習レビュー（v4.5 新規）
+
+| やりたいこと | GPTへのプロンプト例 | 呼び出されるaction |
+|------------|-------------------|-------------------|
+| レビュー待ち確認 | 「今日のレビュー待ちを見せて」 | `review.queue` |
+| レビュー開始 | 「このノートをレビューしたい」 | `review.start` |
+| レビュー統計 | 「レビューの全体統計を教えて」 | `review.overview` |
+| ノート別統計 | 「このノートのレビュー履歴を見せて」 | `review.stats` |
+
+```
+今日復習すべきノートはある？レビュー待ちを確認して。
+```
+→ `review.queue`
+
+```
+TypeScriptの型システムについてのノートをレビューしたい。質問を出して。
+```
+→ `review.start`
 
 ---
 
@@ -614,6 +697,7 @@ brain-cabinet/
 │   │   ├── workflowDispatcher.ts
 │   │   ├── ragDispatcher.ts
 │   │   ├── decisionDispatcher.ts  # v4 新規
+│   │   ├── reviewDispatcher.ts    # v4.5 新規
 │   │   └── systemDispatcher.ts
 │   ├── types/
 │   │   └── command.ts            # Command型定義（v3 新規）
@@ -669,6 +753,13 @@ brain-cabinet/
 - [x] **`note_inferences` テーブル** - 推論結果の永続化
 - [x] **Decision API** - search, context, promotionCandidates
 - [x] **判断コーチング** - `gpt.coachDecision` で過去の判断を参照
+
+### Phase 4.5（v4.5 完了）
+- [x] **Spaced Review + Active Recall** - 間隔反復と能動的想起の統合
+- [x] **SM-2 アルゴリズム** - 最適タイミングでレビューをスケジュール
+- [x] **Active Recall 質問生成** - テンプレートベースの質問自動生成
+- [x] **Auto-Schedule** - learning/decision ノートを自動でスケジュール
+- [x] **Review API** - queue, start, submit, schedule, cancel, reschedule, questions, regenerateQuestions, stats, overview
 
 ### Phase 5（予定）
 - [ ] LLM 推論統合（GPT-4 によるタイプ分類）
@@ -734,6 +825,16 @@ brain-cabinet/
 ---
 
 ## バージョン履歴
+
+### v4.5.0
+- **Spaced Review + Active Recall**: 間隔反復と能動的想起を統合した学習定着機能
+  - **SM-2 アルゴリズム**: 品質評価（0-5）に基づき最適なタイミングでレビューをスケジュール
+  - **Active Recall 質問生成**: テンプレートベースでノートから質問を自動生成
+  - **Auto-Schedule**: learning/decision タイプのノートを自動でレビュー対象に追加
+  - **Review API**: queue, start, submit, schedule, cancel, reschedule, questions, regenerateQuestions, stats, overview
+  - **質問タイプ**: recall, concept, reasoning, application, comparison
+  - **テーブル追加**: `review_schedules`, `recall_questions`, `review_sessions`
+  - **設計原則**: 自動スケジュールするが、レビュー実施は人間が決める
 
 ### v4.4.0
 - **Counterevidence Log（反証ログ）**: 判断の失敗を資産化する機能
@@ -832,4 +933,4 @@ brain-cabinet/
 
 ---
 
-**Brain Cabinet v4 (Decision-First)** — Your External Brain that Remembers Your Decisions
+**Brain Cabinet v4.5 (Decision-First + Spaced Review)** — Your External Brain that Remembers Your Decisions and Helps You Learn
