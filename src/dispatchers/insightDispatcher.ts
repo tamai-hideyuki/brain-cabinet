@@ -6,6 +6,7 @@ import * as ptmEngine from "../services/ptm/engine";
 import { generateAllEmbeddings } from "../services/embeddingService";
 import { rebuildFTS } from "../repositories/ftsRepo";
 import { findAllNotes } from "../repositories/notesRepo";
+import { inferAndSave } from "../services/inference";
 import { rebuildDriftEvents } from "../services/drift/rebuildDriftEvents";
 import { rebuildInfluenceGraph } from "../services/influence/influenceService";
 import { captureClusterDynamics } from "../services/cluster/clusterDynamicsService";
@@ -26,6 +27,7 @@ export type WorkflowReconstructResult = {
   startedAt: string;
   completedAt: string;
   steps: {
+    inferences: { status: string; success?: number; failed?: number };
     embeddings: { status: string; success?: number; failed?: number };
     clusters: { status: string; message?: string };
     fts: { status: string; indexedCount?: number };
@@ -77,6 +79,7 @@ export const insightDispatcher = {
     const workflowId = await startWorkflow("reconstruct");
 
     const steps: WorkflowReconstructResult["steps"] = {
+      inferences: { status: "pending" },
       embeddings: { status: "pending" },
       clusters: { status: "pending" },
       fts: { status: "pending" },
@@ -86,8 +89,50 @@ export const insightDispatcher = {
       ptmSnapshot: { status: "pending" },
     };
 
-    // Step 1: Embedding 再生成
-    logger.info("[workflow.reconstruct] Step 1: Regenerating embeddings...");
+    // Step 1: 全ノート推論（Inference）
+    logger.info("[workflow.reconstruct] Step 1: Running inferences for all notes...");
+    await updateWorkflowProgress(workflowId, "inferences", { status: "in_progress" });
+    try {
+      const allNotes = await findAllNotes();
+      let success = 0;
+      let failed = 0;
+      for (const note of allNotes) {
+        try {
+          await inferAndSave(note.id, note.content);
+          success++;
+          if (success % 50 === 0) {
+            logger.info(`[workflow.reconstruct] Inferences: ${success}/${allNotes.length}`);
+          }
+        } catch {
+          failed++;
+        }
+      }
+      steps.inferences = {
+        status: "completed",
+        success,
+        failed,
+      };
+      await updateWorkflowProgress(workflowId, "inferences", {
+        status: "completed",
+        details: { success, failed },
+      });
+      if (failed > 0) {
+        errors.push(`Inference failed for ${failed} notes`);
+      }
+      logger.info(`[workflow.reconstruct] Inferences completed: ${success} success, ${failed} failed`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      steps.inferences = { status: "failed" };
+      await updateWorkflowProgress(workflowId, "inferences", {
+        status: "failed",
+        message,
+      });
+      errors.push(`Inference generation failed: ${message}`);
+      logger.error(`[workflow.reconstruct] Inferences failed: ${message}`);
+    }
+
+    // Step 2: Embedding 再生成
+    logger.info("[workflow.reconstruct] Step 2: Regenerating embeddings...");
     await updateWorkflowProgress(workflowId, "embeddings", { status: "in_progress" });
     try {
       const embeddingResult = await generateAllEmbeddings((current, total) => {

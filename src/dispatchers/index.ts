@@ -100,8 +100,11 @@ export async function dispatch(cmd: BrainCommand): Promise<CommandResponse> {
     };
   } catch (error) {
     const duration = Date.now() - startTime;
+    const errorInfo = error instanceof Error
+      ? { message: error.message, stack: error.stack, cause: error.cause }
+      : error;
     logger.error(
-      { action: cmd.action, error, duration },
+      { action: cmd.action, error: errorInfo, duration },
       "Command execution failed"
     );
 

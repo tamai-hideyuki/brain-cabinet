@@ -826,6 +826,14 @@ brain-cabinet/
 
 ## バージョン履歴
 
+### v4.6.0
+- **workflow.reconstruct に推論ステップ追加**: 全ノートの type/intent 推論を実行
+  - `inferences` ステップを追加（Step 1 として実行）
+  - `note_inferences` テーブルに全ノートの推論結果を登録
+  - Spaced Review の `review.schedule` が正常に動作するための前提条件を自動整備
+- **エラーログ改善**: コマンド実行エラー時に `message`, `stack`, `cause` を出力
+- **WorkflowProgress 型拡張**: `inferences` ステップを追加
+
 ### v4.5.0
 - **Spaced Review + Active Recall**: 間隔反復と能動的想起を統合した学習定着機能
   - **SM-2 アルゴリズム**: 品質評価（0-5）に基づき最適なタイミングでレビューをスケジュール

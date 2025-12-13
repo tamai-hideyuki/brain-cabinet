@@ -26,6 +26,7 @@ export type StepProgress = {
 };
 
 export type WorkflowProgress = {
+  inferences: StepProgress;
   embeddings: StepProgress;
   clusters: StepProgress;
   fts: StepProgress;
@@ -62,6 +63,7 @@ export type WorkflowStatusResult = {
 // ============================================
 
 const createInitialProgress = (): WorkflowProgress => ({
+  inferences: { status: "pending" },
   embeddings: { status: "pending" },
   clusters: { status: "pending" },
   fts: { status: "pending" },
