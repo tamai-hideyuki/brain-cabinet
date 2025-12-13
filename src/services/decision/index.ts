@@ -5,6 +5,7 @@
  * - decision.search: 判断ノートを優先した検索
  * - decision.context: 判断の詳細コンテキスト取得
  * - decision.promotionCandidates: 昇格候補の scratch 一覧
+ * - decision.compare: 複数の判断を比較用に並べて取得
  */
 
 import { db } from "../../db/client";
@@ -74,6 +75,30 @@ export type PromotionCandidate = {
   confidence: number;
   suggestedType: NoteType;
   reason: string;
+};
+
+// v4.3.1: 判断比較用の型
+export type DecisionCompareItem = {
+  noteId: string;
+  title: string;
+  excerpt: string;
+  confidence: number;
+  confidenceDetail?: {
+    structural: number;
+    experiential: number;
+    temporal: number;
+  };
+  decayProfile: DecayProfile;
+  effectiveScore: number;
+  intent: Intent;
+  reasoning: string;
+  createdAt: number;
+};
+
+export type DecisionCompareResult = {
+  query: string;
+  decisions: DecisionCompareItem[];
+  count: number;
 };
 
 // -------------------------------------
@@ -369,4 +394,62 @@ export async function getPromotionCandidates(
   }
 
   return candidates;
+}
+
+// -------------------------------------
+// decision.compare
+// -------------------------------------
+
+export type DecisionCompareOptions = {
+  intent?: Intent;
+  minConfidence?: number;
+  limit?: number;
+};
+
+/**
+ * v4.3.1: 複数の判断を比較用に並べて取得
+ *
+ * 同じトピックについて過去に下した判断を時系列で並べ、
+ * 思考の変遷を振り返るための機能。
+ *
+ * P1 実装: searchDecisions を流用し、createdAt 順にソート
+ */
+export async function compareDecisions(
+  query: string,
+  options?: DecisionCompareOptions
+): Promise<DecisionCompareResult> {
+  const minConfidence = options?.minConfidence ?? 0.3; // 比較用は低めの閾値
+  const limit = options?.limit ?? 5;
+
+  // searchDecisions を流用して判断を取得
+  const searchResults = await searchDecisions(query, {
+    intent: options?.intent,
+    minConfidence,
+    limit: limit * 2, // 時系列ソート後に絞り込むため多めに取得
+  });
+
+  // 時系列順（古い順）にソートして比較しやすくする
+  const sortedByTime = searchResults
+    .sort((a, b) => a.createdAt - b.createdAt)
+    .slice(0, limit);
+
+  // DecisionCompareItem に変換
+  const decisions: DecisionCompareItem[] = sortedByTime.map((result) => ({
+    noteId: result.noteId,
+    title: result.title,
+    excerpt: result.excerpt,
+    confidence: result.confidence,
+    confidenceDetail: result.confidenceDetail,
+    decayProfile: result.decayProfile,
+    effectiveScore: result.effectiveScore,
+    intent: result.intent,
+    reasoning: result.reasoning,
+    createdAt: result.createdAt,
+  }));
+
+  return {
+    query,
+    decisions,
+    count: decisions.length,
+  };
 }

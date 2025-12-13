@@ -8,6 +8,7 @@ import {
   searchDecisions,
   getDecisionContext,
   getPromotionCandidates,
+  compareDecisions,
 } from "../services/decision";
 import { INTENTS, type Intent } from "../db/schema";
 import {
@@ -30,6 +31,13 @@ type DecisionContextPayload = {
 };
 
 type PromotionCandidatesPayload = {
+  limit?: number;
+};
+
+type DecisionComparePayload = {
+  query?: string;
+  intent?: Intent;
+  minConfidence?: number;
   limit?: number;
 };
 
@@ -78,5 +86,25 @@ export const decisionDispatcher = {
     const limit = validateLimitAllowAll(p?.limit, 10);
 
     return getPromotionCandidates(limit === 0 ? 10 : limit);
+  },
+
+  /**
+   * decision.compare - 複数の判断を比較用に並べて取得
+   */
+  async compare(payload: unknown) {
+    const p = payload as DecisionComparePayload | undefined;
+    const query = validateQuery(p?.query);
+    const intent = validateOptionalEnum(p?.intent, "intent", INTENTS);
+    const minConfidence =
+      typeof p?.minConfidence === "number"
+        ? Math.max(0, Math.min(1, p.minConfidence))
+        : 0.3; // 比較用は低めの閾値
+    const limit = validateLimitAllowAll(p?.limit, 5);
+
+    return compareDecisions(query, {
+      intent: intent ?? undefined,
+      minConfidence,
+      limit: limit === 0 ? 5 : limit,
+    });
   },
 };

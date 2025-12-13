@@ -84,6 +84,7 @@
 |-----------|------|
 | `decision.search` | 過去の判断ノートを検索 |
 | `decision.context` | 判断の詳細（関連learning/scratch含む） |
+| `decision.compare` | 複数の判断を時系列で比較 |
 | `decision.promotionCandidates` | 昇格候補のscratchノート |
 | `gpt.coachDecision` | 判断コーチング（過去の判断を参照） |
 
@@ -733,6 +734,13 @@ brain-cabinet/
 ---
 
 ## バージョン履歴
+
+### v4.3.1
+- **decision.compare**: 複数の判断を比較用に並べて取得
+  - 同じトピックについて過去に下した判断を時系列で並べ、思考の変遷を振り返る
+  - `compareDecisions(query, options)`: searchDecisions を流用し、createdAt 順にソート
+  - 比較用は低めの閾値（minConfidence: 0.3）をデフォルトに
+  - **コンセプト**: 「昔の自分同士をディベートさせる」
 
 ### v4.3.0
 - **Promotion Notifications（昇格通知）**: scratch ノートの昇格候補を自動検出・提案
