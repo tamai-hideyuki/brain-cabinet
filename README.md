@@ -252,9 +252,11 @@ POST /api/command
 | アクション | 説明 |
 |-----------|------|
 | `review.queue` | レビュー待ちキューを取得 |
+| `review.list` | 期間別にグルーピングしたリストを取得 |
 | `review.start` | レビューセッションを開始 |
 | `review.submit` | レビュー結果を送信（SM-2で次回計算） |
-| `review.schedule` | 手動でレビューをスケジュール |
+| `review.schedule` | 手動でレビューをスケジュール（force: trueで任意のノートを追加可能） |
+| `review.cancel` | レビューをキャンセル（リストから外す） |
 | `review.stats` | ノート別のレビュー統計 |
 | `review.overview` | 全体のレビュー統計 |
 
@@ -367,9 +369,10 @@ POST /api/command
 | アクション | 説明 | payload |
 |-----------|------|---------|
 | `review.queue` | レビュー待ちキュー取得 | `{limit?}` |
+| `review.list` | 期間別にグルーピングしたリスト取得 | - |
 | `review.start` | レビューセッション開始 | `{noteId}` |
 | `review.submit` | レビュー結果送信 | `{scheduleId, quality, responseTimeMs?, questionsAttempted?, questionsCorrect?}` |
-| `review.schedule` | 手動でスケジュール | `{noteId}` |
+| `review.schedule` | 手動でスケジュール | `{noteId, force?}` |
 | `review.cancel` | レビューキャンセル | `{noteId}` |
 | `review.reschedule` | 再スケジュール | `{noteId, daysFromNow}` |
 | `review.questions` | 質問一覧取得 | `{noteId}` |
@@ -492,6 +495,9 @@ TypeScriptの型ガードについて、私のノートを参照して教えて�
 | やりたいこと | GPTへのプロンプト例 | 呼び出されるaction |
 |------------|-------------------|-------------------|
 | レビュー待ち確認 | 「今日のレビュー待ちを見せて」 | `review.queue` |
+| リキャップリスト | 「リキャップリストを見せて」 | `review.list` |
+| リストに追加 | 「このノートをリキャップリストに入れて」 | `review.schedule` (force: true) |
+| リストから外す | 「このノートをリキャップリストから外して」 | `review.cancel` |
 | レビュー開始 | 「このノートをレビューしたい」 | `review.start` |
 | レビュー統計 | 「レビューの全体統計を教えて」 | `review.overview` |
 | ノート別統計 | 「このノートのレビュー履歴を見せて」 | `review.stats` |
@@ -759,7 +765,7 @@ brain-cabinet/
 - [x] **SM-2 アルゴリズム** - 最適タイミングでレビューをスケジュール
 - [x] **Active Recall 質問生成** - テンプレートベースの質問自動生成
 - [x] **Auto-Schedule** - learning/decision ノートを自動でスケジュール
-- [x] **Review API** - queue, start, submit, schedule, cancel, reschedule, questions, regenerateQuestions, stats, overview
+- [x] **Review API** - queue, list, start, submit, schedule (force対応), cancel, reschedule, questions, regenerateQuestions, stats, overview
 
 ### Phase 5（予定）
 - [ ] LLM 推論統合（GPT-4 によるタイプ分類）
@@ -839,7 +845,7 @@ brain-cabinet/
   - **SM-2 アルゴリズム**: 品質評価（0-5）に基づき最適なタイミングでレビューをスケジュール
   - **Active Recall 質問生成**: テンプレートベースでノートから質問を自動生成
   - **Auto-Schedule**: learning/decision タイプのノートを自動でレビュー対象に追加
-  - **Review API**: queue, start, submit, schedule, cancel, reschedule, questions, regenerateQuestions, stats, overview
+  - **Review API**: queue, list, start, submit, schedule (force対応), cancel, reschedule, questions, regenerateQuestions, stats, overview
   - **質問タイプ**: recall, concept, reasoning, application, comparison
   - **テーブル追加**: `review_schedules`, `recall_questions`, `review_sessions`
   - **設計原則**: 自動スケジュールするが、レビュー実施は人間が決める

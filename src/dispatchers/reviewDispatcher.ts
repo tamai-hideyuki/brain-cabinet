@@ -7,6 +7,7 @@
 import {
   getDueReviewItems,
   getReviewQueueSummary,
+  getReviewListGrouped,
   startReview,
   submitReviewResult,
   scheduleReviewForNote,
@@ -49,6 +50,7 @@ type ReviewSubmitPayload = {
 
 type ReviewSchedulePayload = {
   noteId?: string;
+  force?: boolean;
 };
 
 type ReviewCancelPayload = {
@@ -163,10 +165,12 @@ export const reviewDispatcher = {
 
   /**
    * review.schedule - 手動でレビューをスケジュール
+   * force: true でタイプチェックをスキップして強制登録
    */
   async schedule(payload: unknown) {
     const p = payload as ReviewSchedulePayload | undefined;
     const noteId = requireString(p?.noteId, "noteId");
+    const force = p?.force === true;
 
     const note = await findNoteById(noteId);
     if (!note) {
@@ -176,16 +180,22 @@ export const reviewDispatcher = {
     const inference = await getLatestInference(noteId);
     const noteType = inference?.type ?? "scratch";
 
-    if (noteType !== "learning" && noteType !== "decision") {
+    // force: true でない場合はタイプチェック
+    if (!force && noteType !== "learning" && noteType !== "decision") {
       throw new Error(
-        "Only learning and decision notes can be scheduled for review"
+        "Only learning and decision notes can be scheduled for review. Use force: true to override."
       );
     }
+
+    // force の場合は learning として扱う（質問生成のため）
+    const effectiveType = (noteType === "learning" || noteType === "decision")
+      ? noteType
+      : "learning";
 
     const result = await scheduleReviewForNote(
       noteId,
       note.content,
-      noteType,
+      effectiveType,
       { manual: true }
     );
 
@@ -197,7 +207,9 @@ export const reviewDispatcher = {
       success: true,
       scheduleId: result.scheduleId,
       nextReviewAt: result.nextReviewAt,
-      message: "Review scheduled successfully",
+      message: force
+        ? `Review scheduled (forced, treated as ${effectiveType})`
+        : "Review scheduled successfully",
     };
   },
 
@@ -316,5 +328,12 @@ export const reviewDispatcher = {
    */
   async overview(_payload: unknown) {
     return getOverallReviewStats();
+  },
+
+  /**
+   * review.list - 期間別にグルーピングしたレビューリストを取得
+   */
+  async list(_payload: unknown) {
+    return getReviewListGrouped();
   },
 };

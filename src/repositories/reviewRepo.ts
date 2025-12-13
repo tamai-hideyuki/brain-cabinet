@@ -14,7 +14,7 @@ import {
   type RecallQuestionType,
   type QuestionSource,
 } from "../db/schema";
-import { eq, desc, and, lte, sql } from "drizzle-orm";
+import { eq, desc, asc, and, lte, sql } from "drizzle-orm";
 
 // ============================================================
 // Types
@@ -281,6 +281,19 @@ export const getOverdueCount = async (): Promise<number> => {
     );
 
   return result[0]?.count ?? 0;
+};
+
+/**
+ * 全アクティブなレビュースケジュールを取得
+ */
+export const getAllActiveSchedules = async (): Promise<ReviewSchedule[]> => {
+  const result = await db
+    .select()
+    .from(reviewSchedules)
+    .where(eq(reviewSchedules.isActive, 1))
+    .orderBy(asc(reviewSchedules.nextReviewAt));
+
+  return result.map(parseScheduleRow);
 };
 
 /**

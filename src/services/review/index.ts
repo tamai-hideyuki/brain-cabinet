@@ -20,6 +20,7 @@ import {
   getDueReviews as getDueReviewsRepo,
   getUpcomingReviews,
   getOverdueCount,
+  getAllActiveSchedules,
   rescheduleReview as rescheduleReviewRepo,
   createQuestions,
   getQuestionsByNoteId,
@@ -258,6 +259,95 @@ export async function getReviewQueueSummary(): Promise<ReviewQueueSummary> {
     upcomingCount: upcomingReviews.length,
     todayCount,
   };
+}
+
+// ============================================================
+// Review List (Grouped by Period)
+// ============================================================
+
+export interface ReviewListItem {
+  noteId: string;
+  noteTitle: string;
+  nextReviewAt: number;
+  interval: number;
+  repetition: number;
+  easinessFactor: number;
+  isOverdue: boolean;
+  daysUntilDue: number;
+}
+
+export interface ReviewListGrouped {
+  overdue: ReviewListItem[];
+  today: ReviewListItem[];
+  tomorrow: ReviewListItem[];
+  thisWeek: ReviewListItem[];
+  later: ReviewListItem[];
+  total: number;
+}
+
+/**
+ * 全レビューリストを期間別にグルーピングして取得
+ */
+export async function getReviewListGrouped(): Promise<ReviewListGrouped> {
+  const schedules = await getAllActiveSchedules();
+  const now = Math.floor(Date.now() / 1000);
+
+  // 今日の終了（ローカルタイム）
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
+  const todayEndTs = Math.floor(todayEnd.getTime() / 1000);
+
+  // 明日
+  const tomorrowEnd = new Date(todayEnd);
+  tomorrowEnd.setDate(tomorrowEnd.getDate() + 1);
+  const tomorrowEndTs = Math.floor(tomorrowEnd.getTime() / 1000);
+
+  // 今週末（7日後）
+  const weekEnd = new Date(todayEnd);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+  const weekEndTs = Math.floor(weekEnd.getTime() / 1000);
+
+  const result: ReviewListGrouped = {
+    overdue: [],
+    today: [],
+    tomorrow: [],
+    thisWeek: [],
+    later: [],
+    total: schedules.length,
+  };
+
+  // ノート情報を取得するために findNoteById をインポート済みと仮定
+  const { findNoteById } = await import("../../repositories/notesRepo");
+
+  for (const schedule of schedules) {
+    const note = await findNoteById(schedule.noteId);
+    const daysUntilDue = Math.ceil((schedule.nextReviewAt - now) / (24 * 60 * 60));
+
+    const item: ReviewListItem = {
+      noteId: schedule.noteId,
+      noteTitle: note?.title ?? "Unknown",
+      nextReviewAt: schedule.nextReviewAt,
+      interval: schedule.interval,
+      repetition: schedule.repetition,
+      easinessFactor: schedule.easinessFactor,
+      isOverdue: schedule.nextReviewAt < now,
+      daysUntilDue,
+    };
+
+    if (schedule.nextReviewAt < now) {
+      result.overdue.push(item);
+    } else if (schedule.nextReviewAt <= todayEndTs) {
+      result.today.push(item);
+    } else if (schedule.nextReviewAt <= tomorrowEndTs) {
+      result.tomorrow.push(item);
+    } else if (schedule.nextReviewAt <= weekEndTs) {
+      result.thisWeek.push(item);
+    } else {
+      result.later.push(item);
+    }
+  }
+
+  return result;
 }
 
 // ============================================================
