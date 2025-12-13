@@ -31,11 +31,15 @@
                 "properties": {
                   "action": {
                     "type": "string",
-                    "description": "実行するアクション。以下から選択:\n\n【判断・意思決定】※ユーザーが過去の判断や意思決定について聞いている場合はこれを使う\n- decision.search: 過去の判断ノートを検索。payload.query に検索語を渡す。判断ノートのみを対象に検索\n- decision.context: 判断の詳細を取得。payload.noteId に判断ノートIDを渡す。関連する学習ノートや当時の文脈も返す\n- decision.promotionCandidates: 昇格候補のscratchノート一覧。判断や学習に昇格可能なノートを提案\n- gpt.coachDecision: 判断コーチング。payload.query に迷っている内容を渡すと、過去の判断を参照してアドバイス\n\n【メモ検索】※ユーザーがメモを探している場合はこれを使う\n- gpt.search: キーワードでメモを検索（推奨）。payload.query に検索語を渡す\n- search.byTitle: タイトルで検索。payload.title に検索したいタイトル（部分一致可）を渡す\n- search.query: 詳細検索。mode で keyword/semantic/hybrid を選択可能\n\n【メモ操作】\n- note.list: メモ一覧を取得。payload.limit（デフォルト50）、payload.sort（updated/created/title、デフォルトupdated）で絞り込み可能\n- note.get: 特定のメモを取得。payload.id にノートIDを渡す\n- note.create: メモを作成。payload.title と payload.content を渡す\n- note.update: メモを更新。payload.id と payload.content を渡す\n- note.delete: メモを削除。payload.id を渡す\n\n【インサイト・分析】\n- insight.lite: 思考パターンの簡易分析（payload不要）\n- insight.coach: コーチング向けインサイト（payload不要）\n- ptm.today: 今日の思考モデル（payload不要）\n- ptm.summary: 思考モデルのサマリー（payload不要）\n- analytics.summary: 統計サマリー（payload不要）\n\n【クラスタ】\n- cluster.list: クラスタ一覧（payload不要）\n- cluster.map: 思考マップ（payload不要）\n- cluster.identity: クラスタの特徴。payload.id にクラスタIDを渡す\n\n【ドリフト（思考の変化）】\n- drift.insight: 思考変化のインサイト（payload不要）\n- drift.summary: 変化のサマリー（payload不要）\n\n【システム】\n- system.health: ヘルスチェック（payload不要）\n- system.rebuildFts: FTS（全文検索）インデックスを再構築（payload不要）\n\n【ワークフロー】\n- workflow.reconstruct: 思考分析システム全体を再構築（payload不要）。Embedding、クラスタ、FTS、Drift、Influence、PTMを一括で再構築する。データ不整合の修復や定期メンテナンスに使用。\n- workflow.status: ワークフロー進捗状況を取得（payload不要）。再構築中の各ステップの進捗状況、経過時間、エラー情報を確認できる。再構築中に他のAPIを呼ぶ前にこのAPIでステータスを確認することを推奨。\n\n【RAG（質問応答）】\n- rag.context: 質問に関連するノートのコンテキストを取得。payload.question に質問を渡す。GPTはこのコンテキストを使ってノートに基づいた回答を生成できる。\n",
+                    "description": "実行するアクション。以下から選択:\n\n【判断・意思決定】※ユーザーが過去の判断や意思決定について聞いている場合はこれを使う\n- decision.search: 過去の判断ノートを検索。payload.query に検索語を渡す。判断ノートのみを対象に検索\n- decision.context: 判断の詳細を取得。payload.noteId に判断ノートIDを渡す。関連する学習ノートや当時の文脈、反証ログも返す\n- decision.compare: 複数の判断を時系列で比較。payload.query で検索し、古い順に並べて思考の変遷を振り返る\n- decision.promotionCandidates: 昇格候補のscratchノート一覧。判断や学習に昇格可能なノートを提案\n- decision.addCounterevidence: 判断に反証を追加。payload.decisionNoteId, type, content を渡す\n- decision.getCounterevidences: 判断の反証一覧を取得。payload.decisionNoteId を渡す\n- decision.deleteCounterevidence: 反証を削除。payload.id を渡す\n- gpt.coachDecision: 判断コーチング。payload.query に迷っている内容を渡すと、過去の判断を参照してアドバイス\n\n【メモ検索】※ユーザーがメモを探している場合はこれを使う\n- gpt.search: キーワードでメモを検索（推奨）。payload.query に検索語を渡す\n- search.byTitle: タイトルで検索。payload.title に検索したいタイトル（部分一致可）を渡す\n- search.query: 詳細検索。mode で keyword/semantic/hybrid を選択可能\n\n【メモ操作】\n- note.list: メモ一覧を取得。payload.limit（デフォルト50）、payload.sort（updated/created/title、デフォルトupdated）で絞り込み可能\n- note.get: 特定のメモを取得。payload.id にノートIDを渡す\n- note.create: メモを作成。payload.title と payload.content を渡す\n- note.update: メモを更新。payload.id と payload.content を渡す\n- note.delete: メモを削除。payload.id を渡す\n\n【インサイト・分析】\n- insight.lite: 思考パターンの簡易分析（payload不要）\n- insight.coach: コーチング向けインサイト（payload不要）\n- ptm.today: 今日の思考モデル（payload不要）\n- ptm.summary: 思考モデルのサマリー（payload不要）\n- analytics.summary: 統計サマリー（payload不要）\n\n【クラスタ】\n- cluster.list: クラスタ一覧（payload不要）\n- cluster.map: 思考マップ（payload不要）\n- cluster.identity: クラスタの特徴。payload.id にクラスタIDを渡す\n\n【ドリフト（思考の変化）】\n- drift.insight: 思考変化のインサイト（payload不要）\n- drift.summary: 変化のサマリー（payload不要）\n\n【システム】\n- system.health: ヘルスチェック（payload不要）\n- system.rebuildFts: FTS（全文検索）インデックスを再構築（payload不要）\n\n【ワークフロー】\n- workflow.reconstruct: 思考分析システム全体を再構築（payload不要）。Embedding、クラスタ、FTS、Drift、Influence、PTMを一括で再構築する。データ不整合の修復や定期メンテナンスに使用。\n- workflow.status: ワークフロー進捗状況を取得（payload不要）。再構築中の各ステップの進捗状況、経過時間、エラー情報を確認できる。再構築中に他のAPIを呼ぶ前にこのAPIでステータスを確認することを推奨。\n\n【RAG（質問応答）】\n- rag.context: 質問に関連するノートのコンテキストを取得。payload.question に質問を渡す。GPTはこのコンテキストを使ってノートに基づいた回答を生成できる。\n",
                     "enum": [
                       "decision.search",
                       "decision.context",
+                      "decision.compare",
                       "decision.promotionCandidates",
+                      "decision.addCounterevidence",
+                      "decision.getCounterevidences",
+                      "decision.deleteCounterevidence",
                       "gpt.search",
                       "gpt.coachDecision",
                       "search.byTitle",
@@ -171,6 +175,24 @@
                       "minConfidence": {
                         "type": "number",
                         "description": "最小信頼度（0-1、decision.search用、デフォルト0.4）"
+                      },
+                      "decisionNoteId": {
+                        "type": "string",
+                        "description": "判断ノートID（decision.addCounterevidence, decision.getCounterevidences用）"
+                      },
+                      "type": {
+                        "type": "string",
+                        "enum": ["regret", "missed_alternative", "unexpected_outcome", "contradiction"],
+                        "description": "反証タイプ（decision.addCounterevidence用）: regret=後悔, missed_alternative=見落とした選択肢, unexpected_outcome=予想外の結果, contradiction=矛盾する判断"
+                      },
+                      "severity": {
+                        "type": "string",
+                        "enum": ["minor", "major", "critical"],
+                        "description": "深刻度（decision.addCounterevidence用、デフォルトminor）"
+                      },
+                      "sourceNoteId": {
+                        "type": "string",
+                        "description": "反証の元になったノートID（decision.addCounterevidence用、オプション）"
                       }
                     }
                   }
@@ -212,6 +234,37 @@
                     "action": "decision.promotionCandidates",
                     "payload": {
                       "limit": 10
+                    }
+                  }
+                },
+                "decisionCompare": {
+                  "summary": "複数の判断を時系列で比較",
+                  "value": {
+                    "action": "decision.compare",
+                    "payload": {
+                      "query": "技術選定",
+                      "limit": 5
+                    }
+                  }
+                },
+                "decisionAddCounterevidence": {
+                  "summary": "判断に反証を追加",
+                  "value": {
+                    "action": "decision.addCounterevidence",
+                    "payload": {
+                      "decisionNoteId": "abc123",
+                      "type": "regret",
+                      "content": "もっと早くテストを書くべきだった",
+                      "severity": "major"
+                    }
+                  }
+                },
+                "decisionGetCounterevidences": {
+                  "summary": "判断の反証一覧を取得",
+                  "value": {
+                    "action": "decision.getCounterevidences",
+                    "payload": {
+                      "decisionNoteId": "abc123"
                     }
                   }
                 },
@@ -822,6 +875,61 @@
                 "excerpt": {
                   "type": "string"
                 }
+              }
+            }
+          },
+          "counterevidence": {
+            "type": "array",
+            "description": "反証ログ（v4.4）",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": ["regret", "missed_alternative", "unexpected_outcome", "contradiction"]
+                },
+                "content": {
+                  "type": "string"
+                },
+                "severityLabel": {
+                  "type": "string",
+                  "enum": ["minor", "major", "critical"]
+                },
+                "severityScore": {
+                  "type": "number"
+                },
+                "createdAt": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "counterevidenceSummary": {
+            "type": "object",
+            "description": "反証サマリー",
+            "properties": {
+              "total": {
+                "type": "integer"
+              },
+              "critical": {
+                "type": "integer"
+              },
+              "major": {
+                "type": "integer"
+              },
+              "minor": {
+                "type": "integer"
+              },
+              "lastUpdatedAt": {
+                "type": "integer",
+                "nullable": true
+              },
+              "dominantType": {
+                "type": "string",
+                "nullable": true
               }
             }
           }
