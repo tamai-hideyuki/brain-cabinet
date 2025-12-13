@@ -8,8 +8,8 @@
  */
 
 import { db } from "../../db/client";
-import { notes, noteInferences } from "../../db/schema";
-import type { Intent, NoteType } from "../../db/schema";
+import { notes, noteInferences, DECAY_RATES } from "../../db/schema";
+import type { Intent, NoteType, DecayProfile } from "../../db/schema";
 import { eq, desc, and, gte } from "drizzle-orm";
 import { searchNotesHybrid } from "../searchService";
 import {
@@ -31,10 +31,13 @@ export type DecisionSearchResult = {
     experiential: number;
     temporal: number;
   };
+  decayProfile: DecayProfile;
+  effectiveScore: number;  // v4.2: 時間減衰適用後のスコア
   intent: Intent;
   reasoning: string;
   excerpt: string;
   score: number;
+  createdAt: number;
 };
 
 export type DecisionContext = {
@@ -48,6 +51,7 @@ export type DecisionContext = {
       experiential: number;
       temporal: number;
     };
+    decayProfile: DecayProfile;
     intent: Intent;
     reasoning: string;
   };
@@ -81,6 +85,34 @@ const makeExcerpt = (content: string, maxLength = 100): string => {
   return content.slice(0, maxLength) + "...";
 };
 
+/**
+ * v4.2 時間減衰を適用した effectiveScore を計算
+ *
+ * effectiveScore = similarity * confidence * timeDecayFactor
+ * timeDecayFactor = e^(-λt) where t is days since creation
+ *
+ * stable な判断は最低 0.5 を保証（設計原則が完全に消えるのを防ぐ）
+ */
+function calculateEffectiveScore(
+  similarity: number,
+  confidence: number,
+  createdAt: number,
+  decayProfile: DecayProfile
+): number {
+  const now = Math.floor(Date.now() / 1000);
+  const ageInDays = (now - createdAt) / (60 * 60 * 24);
+
+  const decayRate = DECAY_RATES[decayProfile];
+  let timeDecayFactor = Math.exp(-decayRate * ageInDays);
+
+  // stable な判断は最低スコアを保証
+  if (decayProfile === "stable") {
+    timeDecayFactor = Math.max(timeDecayFactor, 0.5);
+  }
+
+  return Math.round(similarity * confidence * timeDecayFactor * 100) / 100;
+}
+
 // -------------------------------------
 // decision.search
 // -------------------------------------
@@ -112,6 +144,7 @@ export async function searchDecisions(
       id: string;
       title: string;
       content: string;
+      createdAt: number;
       hybridScore?: number;
     };
     const noteId = noteData.id;
@@ -132,21 +165,32 @@ export async function searchDecisions(
     const hybridScore = noteData.hybridScore ?? 0;
     const finalScore = hybridScore * 0.7 + searchPriority * 0.3;
 
+    // v4.2: 時間減衰を適用した effectiveScore
+    const effectiveScore = calculateEffectiveScore(
+      hybridScore,
+      inference.confidence,
+      noteData.createdAt,
+      inference.decayProfile
+    );
+
     decisionResults.push({
       noteId,
       title: noteData.title,
       confidence: inference.confidence,
       confidenceDetail: inference.confidenceDetail,
+      decayProfile: inference.decayProfile,
+      effectiveScore,
       intent: inference.intent,
       reasoning: inference.reasoning,
       excerpt: makeExcerpt(noteData.content),
       score: Math.round(finalScore * 100) / 100,
+      createdAt: noteData.createdAt,
     });
   }
 
-  // 3. スコア順にソートして返す
+  // 3. effectiveScore 順にソートして返す（時間減衰適用後）
   return decisionResults
-    .sort((a, b) => b.score - a.score)
+    .sort((a, b) => b.effectiveScore - a.effectiveScore)
     .slice(0, limit);
 }
 
@@ -244,6 +288,7 @@ export async function getDecisionContext(
       content: note.content,
       confidence: inference.confidence,
       confidenceDetail: inference.confidenceDetail,
+      decayProfile: inference.decayProfile,
       intent: inference.intent,
       reasoning: inference.reasoning,
     },

@@ -41,6 +41,7 @@ export async function inferAndSave(
     intent: result.intent,
     confidence: result.confidence,
     confidenceDetail: JSON.stringify(result.confidenceDetail), // v4.1
+    decayProfile: result.decayProfile, // v4.2
     model: "rule-v1",
     reasoning: result.reasoning,
   });
@@ -80,11 +81,15 @@ export async function getLatestInference(
     }
   }
 
+  // v4.2: decayProfile（後方互換: 無い場合は exploratory）
+  const decayProfile = (row.decayProfile as InferenceResult["decayProfile"]) ?? "exploratory";
+
   return {
     type: row.type as InferenceResult["type"],
     intent: row.intent as InferenceResult["intent"],
     confidence: row.confidence,
     confidenceDetail,
+    decayProfile,
     reasoning: row.reasoning ?? "",
   };
 }
@@ -145,6 +150,7 @@ export async function getNoteIdsNeedingReinference(): Promise<string[]> {
       intent: "unknown",
       confidence: data.confidence,
       confidenceDetail: { structural: 0, experiential: 0, temporal: 0 },
+      decayProfile: "exploratory",
       reasoning: "",
     };
     const classification = classify(inference);

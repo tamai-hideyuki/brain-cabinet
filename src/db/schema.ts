@@ -258,6 +258,21 @@ export type ConfidenceDetail = {
   temporal: number;      // 時間ベース: 直近か・繰り返し出ているか (0.0〜1.0)
 };
 
+// v4.2 時間減衰プロファイル（Decay Profile）
+export const DECAY_PROFILES = [
+  "stable",       // 安定判断: 半減期 ≈ 693日（アーキテクチャ原則など）
+  "exploratory",  // 探索的判断: 半減期 ≈ 69日（技術選定の試行など）
+  "situational",  // 状況的判断: 半減期 ≈ 14日（その場の判断）
+] as const;
+export type DecayProfile = (typeof DECAY_PROFILES)[number];
+
+// 減衰率（λ）: score * e^(-λt) の λ
+export const DECAY_RATES: Record<DecayProfile, number> = {
+  stable: 0.001,      // 半減期 ≈ 693日
+  exploratory: 0.01,  // 半減期 ≈ 69日
+  situational: 0.05,  // 半減期 ≈ 14日
+};
+
 // ノート推論テーブル（判断ファーストの中核）
 export const noteInferences = sqliteTable("note_inferences", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -266,6 +281,7 @@ export const noteInferences = sqliteTable("note_inferences", {
   intent: text("intent").notNull(),                        // Intent
   confidence: real("confidence").notNull(),                // 確信度 0.0〜1.0（総合値・後方互換）
   confidenceDetail: text("confidence_detail"),             // v4.1: ConfidenceDetail（JSON）
+  decayProfile: text("decay_profile"),                     // v4.2: DecayProfile
   model: text("model").notNull(),                          // 推論モデル
   reasoning: text("reasoning"),                            // 推論理由（短文 or JSON）
   createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),

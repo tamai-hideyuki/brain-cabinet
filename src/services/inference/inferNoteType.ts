@@ -9,15 +9,21 @@
  *   - structural: 構文パターン（言い切り・比較・断定）
  *   - experiential: 過去判断との類似度（将来のセマンティック検索で向上）
  *   - temporal: 時間的要素（直近・繰り返し）
+ *
+ * v4.2: decayProfile による時間減衰
+ *   - stable: 原則・アーキテクチャ判断（長寿命）
+ *   - exploratory: 技術選定・試行（中寿命）
+ *   - situational: その場の判断（短寿命）
  */
 
-import type { NoteType, Intent, ConfidenceDetail } from "../../db/schema";
+import type { NoteType, Intent, ConfidenceDetail, DecayProfile } from "../../db/schema";
 
 export type InferenceResult = {
   type: NoteType;
   intent: Intent;
   confidence: number;
   confidenceDetail: ConfidenceDetail;
+  decayProfile: DecayProfile;
   reasoning: string;
 };
 
@@ -258,6 +264,64 @@ function calculateTemporal(): number {
   return 0.0;
 }
 
+// ===================================================
+// v4.2 時間減衰プロファイル（Decay Profile）推論
+// ===================================================
+
+// 状況的判断パターン（短寿命: 半減期 ≈ 14日）
+const SITUATIONAL_PATTERNS = [
+  /当面は/,
+  /今回は/,
+  /一旦/,
+  /暫定/,
+  /とりあえず/,
+  /今のところ/,
+  /しばらく/,
+  /試しに/,
+];
+
+// 安定判断パターン（長寿命: 半減期 ≈ 693日）
+const STABLE_PATTERNS = [
+  /原則/,
+  /基本方針/,
+  /常に/,
+  /必ず/,
+  /絶対に/,
+  /ルールとして/,
+  /標準として/,
+  /デフォルトで/,
+];
+
+// 安定寄りの intent
+const STABLE_INTENTS: Intent[] = ["architecture", "process"];
+// 探索寄りの intent
+const EXPLORATORY_INTENTS: Intent[] = ["implementation", "design"];
+
+function inferDecayProfile(
+  content: string,
+  intent: Intent,
+  confidenceDetail: ConfidenceDetail
+): DecayProfile {
+  // 1. 構文パターンで明示的に判定
+  const hasSituational = SITUATIONAL_PATTERNS.some((p) => p.test(content));
+  const hasStable = STABLE_PATTERNS.some((p) => p.test(content));
+
+  if (hasSituational && !hasStable) return "situational";
+  if (hasStable && !hasSituational) return "stable";
+
+  // 2. Intent ベースの判定
+  if (STABLE_INTENTS.includes(intent)) return "stable";
+  if (EXPLORATORY_INTENTS.includes(intent)) return "exploratory";
+
+  // 3. structural スコアで最終調整
+  // 高い structural → より確信的 → stable 寄り
+  if (confidenceDetail.structural >= 0.5) return "stable";
+  if (confidenceDetail.structural >= 0.2) return "exploratory";
+
+  // デフォルトは exploratory
+  return "exploratory";
+}
+
 export function inferNoteType(content: string): InferenceResult {
   const decisionScore = countMatches(content, DECISION_PATTERNS);
   const learningScore = countMatches(content, LEARNING_PATTERNS);
@@ -315,6 +379,14 @@ export function inferNoteType(content: string): InferenceResult {
     baseConfidence + structural * 0.1
   );
 
+  // intent 推論
+  const intent = detectIntent(content);
+
+  // ===================================================
+  // v4.2 decayProfile 計算
+  // ===================================================
+  const decayProfile = inferDecayProfile(content, intent, confidenceDetail);
+
   // reasoning 生成
   const matchedPatterns: string[] = [];
   if (decisionScore > 0) matchedPatterns.push(`判断表現(${decisionScore})`);
@@ -330,9 +402,10 @@ export function inferNoteType(content: string): InferenceResult {
 
   return {
     type,
-    intent: detectIntent(content),
+    intent,
     confidence: Math.round(confidence * 100) / 100,
     confidenceDetail,
+    decayProfile,
     reasoning,
   };
 }

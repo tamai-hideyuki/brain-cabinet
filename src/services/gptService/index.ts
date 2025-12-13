@@ -731,6 +731,8 @@ export interface CoachDecisionResponse {
       experiential: number;
       temporal: number;
     };
+    decayProfile: string;
+    effectiveScore: number;
     reasoning: string;
     excerpt: string;
   }>;
@@ -796,6 +798,9 @@ ${learningNotes.length > 0 ? `\n関連する学習ノートが${learningNotes.le
       noteId: d.noteId,
       title: d.title,
       confidence: d.confidence,
+      confidenceDetail: d.confidenceDetail,
+      decayProfile: d.decayProfile,
+      effectiveScore: d.effectiveScore,
       reasoning: d.reasoning,
       excerpt: d.excerpt,
     })),
@@ -817,6 +822,7 @@ export interface GPTSearchWithInferenceResult extends GPTSearchResult {
     experiential: number;
     temporal: number;
   };
+  decayProfile?: string;
   searchPriority: number;
 }
 
@@ -855,6 +861,7 @@ export const searchForGPTWithInference = async (
       intent: inference?.intent,
       typeConfidence: inference?.confidence,
       confidenceDetail: inference?.confidenceDetail,
+      decayProfile: inference?.decayProfile,
       searchPriority,
     });
   }

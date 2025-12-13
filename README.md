@@ -734,6 +734,18 @@ brain-cabinet/
 
 ## バージョン履歴
 
+### v4.2.0
+- **Time Decay（時間減衰）**: 判断の鮮度を自動計算、検索スコアに反映
+  - `DecayProfile`: stable（半減期693日）/ exploratory（69日）/ situational（14日）
+  - `effectiveScore = similarity * confidence * timeDecayFactor`
+  - stable な判断は最低 0.5 を保証（設計原則が完全に消えるのを防ぐ）
+- **`note_inferences` テーブル拡張**: `decay_profile` カラム追加
+- **inferDecayProfile**: パターンマッチングでプロファイルを自動推論
+  - 「当面は」「一旦」「試しに」→ situational
+  - 「原則」「基本方針」「常に」→ stable
+  - Intent と confidence による fallback ルール
+- **API拡張**: `decision.search` レスポンスに `decayProfile`, `effectiveScore`, `createdAt` 追加
+
 ### v4.1.0
 - **Confidence Detail（信頼度分解）**: 単一の `confidence` を3要素に分解
   - `structural`: 構文パターン（言い切り・比較・断定）
