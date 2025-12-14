@@ -1,0 +1,1 @@
+ALTER TABLE `review_schedules` ADD `fixed_revision_id` text;

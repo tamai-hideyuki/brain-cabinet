@@ -387,6 +387,7 @@ export const reviewSchedules = sqliteTable("review_schedules", {
   lastReviewedAt: integer("last_reviewed_at"),                    // 最終レビュー日時
   scheduledBy: text("scheduled_by").notNull().default("auto"),    // ScheduleSource
   isActive: integer("is_active").notNull().default(1),            // 1: アクティブ, 0: 停止
+  fixedRevisionId: text("fixed_revision_id"),                     // v4.6: 固定版ID（note_history.id）- NULLなら常に最新版でレビュー
   createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
   updatedAt: integer("updated_at").notNull().default(sql`(strftime('%s','now'))`),
 });

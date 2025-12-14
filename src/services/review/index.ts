@@ -22,6 +22,8 @@ import {
   getOverdueCount,
   getAllActiveSchedules,
   rescheduleReview as rescheduleReviewRepo,
+  setFixedRevision as setFixedRevisionRepo,
+  clearFixedRevision as clearFixedRevisionRepo,
   createQuestions,
   getQuestionsByNoteId,
   deactivateQuestionsByNoteId,
@@ -109,6 +111,8 @@ export interface StartReviewResult {
     nextInterval: number;
     nextEF: number;
   }[];
+  fixedRevisionId: string | null;  // v4.6: 固定版ID
+  contentSource: "latest" | "fixed";  // v4.6: コンテンツ取得元
 }
 
 export interface SubmitReviewInput {
@@ -208,6 +212,43 @@ export async function rescheduleReview(
   logger.info({ noteId, daysFromNow, nextReviewAt }, "Review rescheduled");
 
   return { nextReviewAt };
+}
+
+/**
+ * レビュー対象のバージョンを固定（v4.6）
+ */
+export async function setFixedRevision(
+  noteId: string,
+  historyId: string
+): Promise<{ fixedRevisionId: string }> {
+  const schedule = await getScheduleByNoteId(noteId);
+  if (!schedule) {
+    throw new Error(`No active schedule found for note: ${noteId}`);
+  }
+
+  await setFixedRevisionRepo(noteId, historyId);
+
+  logger.info({ noteId, historyId }, "Fixed revision set for review");
+
+  return { fixedRevisionId: historyId };
+}
+
+/**
+ * レビュー対象のバージョン固定を解除（v4.6）
+ */
+export async function clearFixedRevision(
+  noteId: string
+): Promise<{ cleared: boolean }> {
+  const schedule = await getScheduleByNoteId(noteId);
+  if (!schedule) {
+    throw new Error(`No active schedule found for note: ${noteId}`);
+  }
+
+  await clearFixedRevisionRepo(noteId);
+
+  logger.info({ noteId }, "Fixed revision cleared for review");
+
+  return { cleared: true };
 }
 
 // ============================================================
@@ -379,6 +420,8 @@ export async function startReview(noteId: string): Promise<StartReviewResult> {
     currentState,
     questions,
     previews,
+    fixedRevisionId: schedule.fixedRevisionId,
+    contentSource: schedule.fixedRevisionId ? "fixed" : "latest",
   };
 }
 

@@ -234,6 +234,7 @@ erDiagram
         INTEGER lastReviewedAt
         TEXT scheduledBy "auto/manual"
         INTEGER isActive "1=active"
+        TEXT fixedRevisionId FK "→ noteHistory.id (v4.6)"
         INTEGER createdAt
         INTEGER updatedAt
     }
@@ -306,6 +307,7 @@ erDiagram
     notes ||--o{ recallQuestions : "has questions"
     notes ||--o{ reviewSessions : "review history"
     reviewSchedules ||--o{ reviewSessions : "sessions"
+    noteHistory ||--o{ reviewSchedules : "fixed revision (v4.6)"
 ```
 
 ---
@@ -386,7 +388,8 @@ clusters (ハブ)
 └── driftEvents (optional)
 
 reviewSchedules
-└── reviewSessions (1:N)
+├── reviewSessions (1:N)
+└── noteHistory (N:1, fixedRevisionId - v4.6)
 
 jobStatuses
 └── workflowStatus (optional)

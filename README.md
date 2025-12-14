@@ -1,4 +1,4 @@
-# Brain Cabinet v4.7.0 (Decision-First + Spaced Review)
+# Brain Cabinet v4.8.0 (Decision-First + Spaced Review)
 
 **思考ベースの検索型知識システム — あなたの思考を理解し、成長を見守る外部脳**
 
@@ -379,6 +379,8 @@ POST /api/command
 | `review.regenerateQuestions` | 質問再生成 | `{noteId}` |
 | `review.stats` | ノート別統計 | `{noteId}` |
 | `review.overview` | 全体統計 | - |
+| `review.fixRevision` | レビュー対象バージョンを固定 | `{noteId, historyId}` |
+| `review.unfixRevision` | バージョン固定を解除 | `{noteId}` |
 
 #### RAG ドメイン
 | アクション | 説明 | payload |
@@ -832,6 +834,16 @@ brain-cabinet/
 
 ## バージョン履歴
 
+### v4.8.0
+- **Fixed Revision for Review（レビューバージョン固定）**: レビュー対象のノートバージョンを固定する機能
+  - `fixedRevisionId` カラムを `review_schedules` テーブルに追加
+  - `review.fixRevision` API: 指定した履歴（`note_history.id`）でレビューコンテンツを固定
+  - `review.unfixRevision` API: 固定を解除して常に最新版でレビュー
+  - `review.start` 拡張: `fixedRevisionId` と `contentSource` ("latest" | "fixed") をレスポンスに追加
+  - **ユースケース**: ノートが更新されても、特定バージョンの内容でレビューを継続したい場合
+  - **設計思想**: 「参照すべき更新番号をメモっておいて、リキャップ対象をそれに固定」をDBレベルで実現
+- **ER図更新**: `docs/er-diagram.md` に `fixedRevisionId` と `noteHistory` への関係を追加
+
 ### v4.7.0
 - **note.history 改善**: ページネーション＆軽量モード対応
   - `limit`, `offset`, `includeContent` パラメータ追加
@@ -956,4 +968,4 @@ brain-cabinet/
 
 ---
 
-**Brain Cabinet v4.7 (Decision-First + Spaced Review)** — Your External Brain that Remembers Your Decisions and Helps You Learn
+**Brain Cabinet v4.8 (Decision-First + Spaced Review)** — Your External Brain that Remembers Your Decisions and Helps You Learn

@@ -30,6 +30,7 @@ export type ReviewSchedule = {
   lastReviewedAt: number | null;
   scheduledBy: ScheduleSource;
   isActive: boolean;
+  fixedRevisionId: string | null;  // v4.6: 固定版ID（note_history.id）
   createdAt: number;
   updatedAt: number;
 };
@@ -310,6 +311,43 @@ export const rescheduleReview = async (
     .update(reviewSchedules)
     .set({
       nextReviewAt,
+      updatedAt: now,
+    })
+    .where(
+      and(eq(reviewSchedules.noteId, noteId), eq(reviewSchedules.isActive, 1))
+    );
+};
+
+/**
+ * レビュー対象のバージョンを固定（v4.6）
+ */
+export const setFixedRevision = async (
+  noteId: string,
+  historyId: string
+): Promise<void> => {
+  const now = Math.floor(Date.now() / 1000);
+
+  await db
+    .update(reviewSchedules)
+    .set({
+      fixedRevisionId: historyId,
+      updatedAt: now,
+    })
+    .where(
+      and(eq(reviewSchedules.noteId, noteId), eq(reviewSchedules.isActive, 1))
+    );
+};
+
+/**
+ * レビュー対象のバージョン固定を解除（v4.6）
+ */
+export const clearFixedRevision = async (noteId: string): Promise<void> => {
+  const now = Math.floor(Date.now() / 1000);
+
+  await db
+    .update(reviewSchedules)
+    .set({
+      fixedRevisionId: null,
       updatedAt: now,
     })
     .where(
@@ -620,6 +658,7 @@ const parseScheduleRow = (
   lastReviewedAt: row.lastReviewedAt,
   scheduledBy: row.scheduledBy as ScheduleSource,
   isActive: row.isActive === 1,
+  fixedRevisionId: row.fixedRevisionId ?? null,
   createdAt: row.createdAt,
   updatedAt: row.updatedAt,
 });

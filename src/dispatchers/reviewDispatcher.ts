@@ -13,6 +13,8 @@ import {
   scheduleReviewForNote,
   cancelReview,
   rescheduleReview,
+  setFixedRevision,
+  clearFixedRevision,
   getQuestionsForReview,
   regenerateQuestionsForNote,
   getReviewStatsByNote,
@@ -20,6 +22,7 @@ import {
   formatInterval,
 } from "../services/review";
 import { findNoteById } from "../repositories/notesRepo";
+import { findHistoryById } from "../repositories/historyRepo";
 import { getLatestInference } from "../services/inference";
 import { RECALL_QUALITIES, type RecallQuality } from "../db/schema";
 import {
@@ -74,6 +77,15 @@ type ReviewStatsPayload = {
   noteId?: string;
 };
 
+type ReviewFixRevisionPayload = {
+  noteId?: string;
+  historyId?: string;
+};
+
+type ReviewUnfixRevisionPayload = {
+  noteId?: string;
+};
+
 // ============================================================
 // Dispatcher
 // ============================================================
@@ -121,6 +133,7 @@ export const reviewDispatcher = {
 
   /**
    * review.start - レビューセッションを開始
+   * fixedRevisionId がある場合は note_history からコンテンツを取得
    */
   async start(payload: unknown) {
     const p = payload as ReviewStartPayload | undefined;
@@ -129,10 +142,19 @@ export const reviewDispatcher = {
     const session = await startReview(noteId);
     const note = await findNoteById(noteId);
 
+    // fixedRevisionId がある場合は履歴からコンテンツを取得
+    let noteContent = note?.content ?? "";
+    if (session.fixedRevisionId) {
+      const history = await findHistoryById(session.fixedRevisionId);
+      if (history) {
+        noteContent = history.content;
+      }
+    }
+
     return {
       ...session,
       noteTitle: note?.title ?? "Unknown",
-      noteContent: note?.content ?? "",
+      noteContent,
     };
   },
 
@@ -335,5 +357,51 @@ export const reviewDispatcher = {
    */
   async list(_payload: unknown) {
     return getReviewListGrouped();
+  },
+
+  /**
+   * review.fixRevision - レビュー対象のバージョンを固定（v4.6）
+   */
+  async fixRevision(payload: unknown) {
+    const p = payload as ReviewFixRevisionPayload | undefined;
+    const noteId = requireString(p?.noteId, "noteId");
+    const historyId = requireString(p?.historyId, "historyId");
+
+    // 履歴が存在するか確認
+    const history = await findHistoryById(historyId);
+    if (!history) {
+      throw new Error(`History not found: ${historyId}`);
+    }
+
+    // 履歴がこのノートのものか確認
+    if (history.noteId !== noteId) {
+      throw new Error(`History ${historyId} does not belong to note ${noteId}`);
+    }
+
+    const result = await setFixedRevision(noteId, historyId);
+
+    return {
+      success: true,
+      noteId,
+      ...result,
+      message: "Review content fixed to specified revision",
+    };
+  },
+
+  /**
+   * review.unfixRevision - レビュー対象のバージョン固定を解除（v4.6）
+   */
+  async unfixRevision(payload: unknown) {
+    const p = payload as ReviewUnfixRevisionPayload | undefined;
+    const noteId = requireString(p?.noteId, "noteId");
+
+    const result = await clearFixedRevision(noteId);
+
+    return {
+      success: true,
+      noteId,
+      ...result,
+      message: "Review content will now use latest version",
+    };
   },
 };
