@@ -1,17 +1,85 @@
-import { useNavigate } from 'react-router-dom'
+import { useState, useCallback } from 'react'
 import { MainLayout } from '../../templates/MainLayout'
 import { ReviewList } from '../../organisms/ReviewList'
+import { ReviewSession } from '../../organisms/ReviewSession'
 import { useReviews } from '../../../hooks/useReviews'
+import { useReviewSession } from '../../../hooks/useReviewSession'
 import { Text } from '../../atoms/Text'
 import { Button } from '../../atoms/Button'
+import { Spinner } from '../../atoms/Spinner'
+import type { ReviewItem } from '../../../types/review'
 import './ReviewsPage.css'
 
 export const ReviewsPage = () => {
   const { data, loading, error, reload } = useReviews()
-  const navigate = useNavigate()
+  const reviewSession = useReviewSession()
+  const [activeNoteId, setActiveNoteId] = useState<string | null>(null)
 
-  const handleItemClick = (noteId: string) => {
-    navigate(`/ui/notes/${noteId}`)
+  // Get due items (overdue + today)
+  const dueItems: ReviewItem[] = data ? [...data.overdue, ...data.today] : []
+
+  const handleStartReview = useCallback(async (noteId: string) => {
+    setActiveNoteId(noteId)
+    await reviewSession.start(noteId)
+  }, [reviewSession])
+
+  const handleCloseSession = useCallback(() => {
+    setActiveNoteId(null)
+    reviewSession.reset()
+    reload()
+  }, [reviewSession, reload])
+
+  const handleNextReview = useCallback(async () => {
+    // Find next due item
+    const currentIndex = dueItems.findIndex((item) => item.noteId === activeNoteId)
+    const nextItem = dueItems[currentIndex + 1]
+
+    if (nextItem) {
+      reviewSession.reset()
+      setActiveNoteId(nextItem.noteId)
+      await reviewSession.start(nextItem.noteId)
+    } else {
+      handleCloseSession()
+    }
+  }, [dueItems, activeNoteId, reviewSession, handleCloseSession])
+
+  const handleSubmit = useCallback(
+    (quality: number, questionsAttempted?: number, questionsCorrect?: number) => {
+      reviewSession.submit(quality, questionsAttempted, questionsCorrect)
+    },
+    [reviewSession]
+  )
+
+  // Show review session modal
+  if (activeNoteId && (reviewSession.session || reviewSession.loading)) {
+    return (
+      <MainLayout>
+        <div className="reviews-page">
+          {reviewSession.loading ? (
+            <div className="reviews-page__loading">
+              <Spinner size="lg" />
+              <Text variant="body">レビューを準備中...</Text>
+            </div>
+          ) : reviewSession.session ? (
+            <ReviewSession
+              session={reviewSession.session}
+              submitting={reviewSession.submitting}
+              result={reviewSession.result}
+              onSubmit={handleSubmit}
+              onClose={handleCloseSession}
+              onNext={dueItems.length > 1 ? handleNextReview : undefined}
+            />
+          ) : reviewSession.error ? (
+            <div className="reviews-page__error">
+              <Text variant="body">{reviewSession.error}</Text>
+              <Button variant="secondary" onClick={handleCloseSession}>
+                戻る
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      </MainLayout>
+    )
   }
 
   return (
@@ -22,15 +90,36 @@ export const ReviewsPage = () => {
             <Text variant="title">レビュー予定</Text>
             {data && <Text variant="caption">{data.total} 件</Text>}
           </div>
-          <Button variant="secondary" size="sm" onClick={reload} disabled={loading}>
-            更新
-          </Button>
+          <div className="reviews-page__actions">
+            {dueItems.length > 0 && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => handleStartReview(dueItems[0].noteId)}
+              >
+                レビュー開始
+              </Button>
+            )}
+            <Button variant="secondary" size="sm" onClick={reload} disabled={loading}>
+              更新
+            </Button>
+          </div>
         </div>
+
+        {dueItems.length > 0 && (
+          <div className="reviews-page__due-summary">
+            <Text variant="body">
+              今日レビューすべきノート: <strong>{dueItems.length}</strong> 件
+              {data?.overdue.length ? ` (うち期限切れ: ${data.overdue.length} 件)` : ''}
+            </Text>
+          </div>
+        )}
+
         <ReviewList
           data={data}
           loading={loading}
           error={error}
-          onItemClick={handleItemClick}
+          onItemClick={handleStartReview}
         />
       </div>
     </MainLayout>

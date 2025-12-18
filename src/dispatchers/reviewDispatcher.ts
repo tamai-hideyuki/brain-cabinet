@@ -20,6 +20,7 @@ import {
   getReviewStatsByNote,
   getOverallReviewStats,
   formatInterval,
+  getQualityLabel,
 } from "../services/review";
 import { findNoteById } from "../repositories/notesRepo";
 import { findHistoryById } from "../repositories/historyRepo";
@@ -141,6 +142,7 @@ export const reviewDispatcher = {
 
     const session = await startReview(noteId);
     const note = await findNoteById(noteId);
+    const inference = await getLatestInference(noteId);
 
     // fixedRevisionId がある場合は履歴からコンテンツを取得
     let noteContent = note?.content ?? "";
@@ -151,10 +153,26 @@ export const reviewDispatcher = {
       }
     }
 
+    // Transform previews to frontend expected format
+    const previewIntervals = session.previews.map((preview) => ({
+      quality: preview.quality,
+      qualityLabel: getQualityLabel(preview.quality),
+      nextInterval: preview.nextInterval,
+      nextIntervalLabel: formatInterval(preview.nextInterval),
+      newEF: preview.nextEF,
+    }));
+
     return {
-      ...session,
+      scheduleId: session.scheduleId,
+      noteId: session.noteId,
       noteTitle: note?.title ?? "Unknown",
+      noteType: inference?.type ?? "unknown",
       noteContent,
+      currentState: session.currentState,
+      questions: session.questions,
+      previewIntervals,
+      fixedRevisionId: session.fixedRevisionId,
+      contentSource: session.contentSource === "fixed" ? "fixedRevision" : "latest",
     };
   },
 
@@ -177,12 +195,17 @@ export const reviewDispatcher = {
       throw new Error("quality must be between 0 and 5");
     }
 
-    return submitReviewResult(p.scheduleId, {
+    const result = await submitReviewResult(p.scheduleId, {
       quality: p.quality as RecallQuality,
       responseTimeMs: p.responseTimeMs,
       questionsAttempted: p.questionsAttempted,
       questionsCorrect: p.questionsCorrect,
     });
+
+    return {
+      ...result,
+      message: `評価「${result.qualityLabel}」で記録しました`,
+    };
   },
 
   /**
