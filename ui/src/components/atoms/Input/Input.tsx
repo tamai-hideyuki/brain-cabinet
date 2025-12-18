@@ -1,3 +1,4 @@
+import type { KeyboardEvent } from 'react'
 import './Input.css'
 
 type InputProps = {
@@ -5,7 +6,7 @@ type InputProps = {
   placeholder?: string
   value: string
   onChange: (value: string) => void
-  onKeyDown?: (e: KeyboardEvent) => void
+  onKeyDown?: (e: KeyboardEvent<HTMLInputElement>) => void
 }
 
 export const Input = ({
@@ -16,11 +17,11 @@ export const Input = ({
   onKeyDown,
 }: InputProps) => (
   <input
-    class="input"
+    className="input"
     type={type}
     placeholder={placeholder}
     value={value}
-    onInput={(e) => onChange((e.target as HTMLInputElement).value)}
+    onChange={(e) => onChange(e.target.value)}
     onKeyDown={onKeyDown}
   />
 )

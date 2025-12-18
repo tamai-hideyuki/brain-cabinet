@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'preact/hooks'
+import { useState, useEffect } from 'react'
 import type { ReviewListResponse } from '../types/review'
 import { fetchReviewList } from '../api/reviewApi'
 

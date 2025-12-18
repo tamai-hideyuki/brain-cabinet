@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'preact/hooks'
+import { useState, useEffect } from 'react'
 import type { Note, NoteHistory } from '../types/note'
 import { fetchNote, fetchNoteHistory } from '../api/notesApi'
 

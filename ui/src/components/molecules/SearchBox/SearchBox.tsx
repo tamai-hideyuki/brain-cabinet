@@ -1,3 +1,4 @@
+import type { KeyboardEvent } from 'react'
 import { Input } from '../../atoms/Input'
 import { Button } from '../../atoms/Button'
 import './SearchBox.css'
@@ -15,14 +16,14 @@ export const SearchBox = ({
   onSearch,
   placeholder = '検索...',
 }: SearchBoxProps) => {
-  const handleKeyDown = (e: KeyboardEvent) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       onSearch()
     }
   }
 
   return (
-    <div class="search-box">
+    <div className="search-box">
       <Input
         type="search"
         value={value}

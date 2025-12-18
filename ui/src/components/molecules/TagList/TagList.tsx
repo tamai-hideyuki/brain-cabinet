@@ -11,7 +11,7 @@ export const TagList = ({ tags, max }: TagListProps) => {
   const remaining = max && tags.length > max ? tags.length - max : 0
 
   return (
-    <div class="tag-list">
+    <div className="tag-list">
       {displayTags.map((tag) => (
         <Badge key={tag}>{tag}</Badge>
       ))}

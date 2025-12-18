@@ -1,11 +1,11 @@
-import type { ComponentChildren } from 'preact'
+import type { ReactNode } from 'react'
 import './Badge.css'
 
 type BadgeProps = {
   variant?: 'default' | 'primary' | 'success' | 'warning'
-  children: ComponentChildren
+  children: ReactNode
 }
 
 export const Badge = ({ variant = 'default', children }: BadgeProps) => (
-  <span class={`badge badge--${variant}`}>{children}</span>
+  <span className={`badge badge--${variant}`}>{children}</span>
 )

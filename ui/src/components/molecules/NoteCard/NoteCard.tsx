@@ -25,22 +25,22 @@ export const NoteCard = ({ note, onClick }: NoteCardProps) => {
   }
 
   return (
-    <article class="note-card" onClick={onClick}>
-      <div class="note-card__header">
+    <article className="note-card" onClick={onClick}>
+      <div className="note-card__header">
         <Text variant="title" truncate>
           {note.title}
         </Text>
       </div>
-      <div class="note-card__id">
+      <div className="note-card__id">
         <Text variant="caption">{note.id}</Text>
       </div>
-      <div class="note-card__body">
+      <div className="note-card__body">
         <Text variant="body" lines={2}>
           {getPreview(note.content)}
         </Text>
       </div>
-      <div class="note-card__footer">
-        <div class="note-card__meta">
+      <div className="note-card__footer">
+        <div className="note-card__meta">
           {note.category && <Badge variant="primary">{note.category}</Badge>}
           <Text variant="caption">{formatDate(note.updatedAt)}</Text>
         </div>

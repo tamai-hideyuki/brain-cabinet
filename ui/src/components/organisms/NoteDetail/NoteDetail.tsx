@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks'
+import { useState } from 'react'
 import { Text } from '../../atoms/Text'
 import { Badge } from '../../atoms/Badge'
 import { Button } from '../../atoms/Button'
@@ -29,7 +29,7 @@ export const NoteDetail = ({
 
   if (loading) {
     return (
-      <div class="note-detail__loading">
+      <div className="note-detail__loading">
         <Spinner size="lg" />
       </div>
     )
@@ -37,7 +37,7 @@ export const NoteDetail = ({
 
   if (error) {
     return (
-      <div class="note-detail__error">
+      <div className="note-detail__error">
         <Text variant="body">{error}</Text>
       </div>
     )
@@ -45,7 +45,7 @@ export const NoteDetail = ({
 
   if (!note) {
     return (
-      <div class="note-detail__empty">
+      <div className="note-detail__empty">
         <Text variant="body">ノートが見つかりませんでした</Text>
       </div>
     )
@@ -74,25 +74,25 @@ export const NoteDetail = ({
   }
 
   return (
-    <article class="note-detail">
-      <header class="note-detail__header">
+    <article className="note-detail">
+      <header className="note-detail__header">
         <Text variant="title">{note.title}</Text>
-        <div class="note-detail__id">
+        <div className="note-detail__id">
           <Text variant="caption">{note.id}</Text>
         </div>
-        <div class="note-detail__meta">
+        <div className="note-detail__meta">
           {note.category && <Badge variant="primary">{note.category}</Badge>}
           <Text variant="caption">更新: {formatDate(note.updatedAt)}</Text>
           <Text variant="caption">作成: {formatDate(note.createdAt)}</Text>
         </div>
         {note.tags.length > 0 && <TagList tags={note.tags} />}
       </header>
-      <div class="note-detail__content">
+      <div className="note-detail__content">
         <pre>{note.content}</pre>
       </div>
 
-      <section class="note-detail__history">
-        <div class="note-detail__history-header">
+      <section className="note-detail__history">
+        <div className="note-detail__history-header">
           <Text variant="subtitle">更新履歴</Text>
           {!historyLoaded && (
             <Button variant="secondary" size="sm" onClick={handleLoadHistory} disabled={historyLoading}>
@@ -104,22 +104,22 @@ export const NoteDetail = ({
           <Text variant="caption">履歴はありません</Text>
         )}
         {history.length > 0 && (
-          <div class="note-detail__history-list">
+          <div className="note-detail__history-list">
             {history.map((h, index) => (
-              <div key={h.id} class="note-detail__history-item">
+              <div key={h.id} className="note-detail__history-item">
                 <div
-                  class="note-detail__history-item-header"
+                  className="note-detail__history-item-header"
                   onClick={() => toggleHistoryExpand(h.id)}
                 >
-                  <div class="note-detail__history-item-info">
+                  <div className="note-detail__history-item-info">
                     <Text variant="caption">#{history.length - index}</Text>
                     <Text variant="caption">{formatDate(h.createdAt)}</Text>
-                    <span class="note-detail__history-id">{h.id}</span>
+                    <span className="note-detail__history-id">{h.id}</span>
                   </div>
                   <Text variant="caption">{expandedHistoryId === h.id ? '▼' : '▶'}</Text>
                 </div>
                 {expandedHistoryId === h.id && (
-                  <div class="note-detail__history-item-content">
+                  <div className="note-detail__history-item-content">
                     <pre>{h.content}</pre>
                   </div>
                 )}

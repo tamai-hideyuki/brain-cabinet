@@ -1,26 +1,23 @@
-import { route } from 'preact-router'
-import type { RoutableProps } from 'preact-router'
+import { useNavigate, useParams } from 'react-router-dom'
 import { MainLayout } from '../../templates/MainLayout'
 import { NoteDetail } from '../../organisms/NoteDetail'
 import { Button } from '../../atoms/Button'
 import { useNote } from '../../../hooks/useNote'
 import './NoteDetailPage.css'
 
-type NoteDetailPageProps = RoutableProps & {
-  id?: string
-}
-
-export const NoteDetailPage = ({ id }: NoteDetailPageProps) => {
+export const NoteDetailPage = () => {
+  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const { note, history, loading, historyLoading, error, loadHistory } = useNote(id)
 
   const handleBack = () => {
-    route('/ui/')
+    navigate('/ui/')
   }
 
   return (
     <MainLayout>
-      <div class="note-detail-page">
-        <div class="note-detail-page__nav">
+      <div className="note-detail-page">
+        <div className="note-detail-page__nav">
           <Button variant="ghost" onClick={handleBack}>
             ← 一覧に戻る
           </Button>

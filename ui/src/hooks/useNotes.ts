@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'preact/hooks'
+import { useState, useEffect } from 'react'
 import type { Note, SearchMode } from '../types/note'
 import { fetchNotes, searchNotes } from '../api/notesApi'
 

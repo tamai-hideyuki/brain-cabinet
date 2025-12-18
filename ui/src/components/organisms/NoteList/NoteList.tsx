@@ -14,7 +14,7 @@ type NoteListProps = {
 export const NoteList = ({ notes, loading, error, onNoteClick }: NoteListProps) => {
   if (loading) {
     return (
-      <div class="note-list__loading">
+      <div className="note-list__loading">
         <Spinner size="lg" />
       </div>
     )
@@ -22,7 +22,7 @@ export const NoteList = ({ notes, loading, error, onNoteClick }: NoteListProps) 
 
   if (error) {
     return (
-      <div class="note-list__error">
+      <div className="note-list__error">
         <Text variant="body">{error}</Text>
       </div>
     )
@@ -30,14 +30,14 @@ export const NoteList = ({ notes, loading, error, onNoteClick }: NoteListProps) 
 
   if (notes.length === 0) {
     return (
-      <div class="note-list__empty">
+      <div className="note-list__empty">
         <Text variant="body">ノートが見つかりませんでした</Text>
       </div>
     )
   }
 
   return (
-    <div class="note-list">
+    <div className="note-list">
       {notes.map((note) => (
         <NoteCard
           key={note.id}

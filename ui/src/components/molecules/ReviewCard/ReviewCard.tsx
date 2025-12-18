@@ -21,15 +21,15 @@ const typeVariant = (type: string): 'primary' | 'success' | 'warning' | 'default
 
 export const ReviewCard = ({ item, onClick }: ReviewCardProps) => {
   return (
-    <article class="review-card" onClick={onClick}>
-      <div class="review-card__content">
+    <article className="review-card" onClick={onClick}>
+      <div className="review-card__content">
         <Text variant="subtitle" truncate>
           {item.noteTitle}
         </Text>
-        <div class="review-card__id">
+        <div className="review-card__id">
           <Text variant="caption">{item.noteId}</Text>
         </div>
-        <div class="review-card__meta">
+        <div className="review-card__meta">
           <Badge variant={typeVariant(item.noteType)}>{item.noteType}</Badge>
           <Text variant="caption">{item.nextReviewIn}</Text>
         </div>

@@ -1,5 +1,4 @@
-import { route } from 'preact-router'
-import type { RoutableProps } from 'preact-router'
+import { useNavigate } from 'react-router-dom'
 import { MainLayout } from '../../templates/MainLayout'
 import { ReviewList } from '../../organisms/ReviewList'
 import { useReviews } from '../../../hooks/useReviews'
@@ -7,20 +6,19 @@ import { Text } from '../../atoms/Text'
 import { Button } from '../../atoms/Button'
 import './ReviewsPage.css'
 
-type ReviewsPageProps = RoutableProps
-
-export const ReviewsPage = (_props: ReviewsPageProps) => {
+export const ReviewsPage = () => {
   const { data, loading, error, reload } = useReviews()
+  const navigate = useNavigate()
 
   const handleItemClick = (noteId: string) => {
-    route(`/ui/notes/${noteId}`)
+    navigate(`/ui/notes/${noteId}`)
   }
 
   return (
     <MainLayout>
-      <div class="reviews-page">
-        <div class="reviews-page__header">
-          <div class="reviews-page__title">
+      <div className="reviews-page">
+        <div className="reviews-page__header">
+          <div className="reviews-page__title">
             <Text variant="title">レビュー予定</Text>
             {data && <Text variant="caption">{data.total} 件</Text>}
           </div>

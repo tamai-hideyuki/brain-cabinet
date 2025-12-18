@@ -1,11 +1,11 @@
-import type { ComponentChildren } from 'preact'
+import type { ReactNode } from 'react'
 import './Text.css'
 
 type TextProps = {
   variant?: 'title' | 'subtitle' | 'body' | 'caption'
   truncate?: boolean
   lines?: number
-  children: ComponentChildren
+  children: ReactNode
 }
 
 export const Text = ({
@@ -19,7 +19,7 @@ export const Text = ({
 
   return (
     <Tag
-      class={`text text--${variant} ${truncate ? 'text--truncate' : ''} ${lines ? 'text--clamp' : ''}`}
+      className={`text text--${variant} ${truncate ? 'text--truncate' : ''} ${lines ? 'text--clamp' : ''}`}
       style={style}
     >
       {children}

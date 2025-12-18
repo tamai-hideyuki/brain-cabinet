@@ -22,12 +22,12 @@ const ReviewGroup = ({ label, items, variant = 'default', onItemClick }: ReviewG
   if (items.length === 0) return null
 
   return (
-    <section class={`review-group review-group--${variant}`}>
-      <div class="review-group__header">
+    <section className={`review-group review-group--${variant}`}>
+      <div className="review-group__header">
         <Text variant="subtitle">{label}</Text>
         <Text variant="caption">{items.length}件</Text>
       </div>
-      <div class="review-group__items">
+      <div className="review-group__items">
         {items.map((item) => (
           <ReviewCard
             key={item.noteId}
@@ -43,7 +43,7 @@ const ReviewGroup = ({ label, items, variant = 'default', onItemClick }: ReviewG
 export const ReviewList = ({ data, loading, error, onItemClick }: ReviewListProps) => {
   if (loading) {
     return (
-      <div class="review-list__loading">
+      <div className="review-list__loading">
         <Spinner size="lg" />
       </div>
     )
@@ -51,7 +51,7 @@ export const ReviewList = ({ data, loading, error, onItemClick }: ReviewListProp
 
   if (error) {
     return (
-      <div class="review-list__error">
+      <div className="review-list__error">
         <Text variant="body">{error}</Text>
       </div>
     )
@@ -59,14 +59,14 @@ export const ReviewList = ({ data, loading, error, onItemClick }: ReviewListProp
 
   if (!data || data.total === 0) {
     return (
-      <div class="review-list__empty">
+      <div className="review-list__empty">
         <Text variant="body">レビュー予定はありません</Text>
       </div>
     )
   }
 
   return (
-    <div class="review-list">
+    <div className="review-list">
       <ReviewGroup
         label="期限切れ"
         items={data.overdue}

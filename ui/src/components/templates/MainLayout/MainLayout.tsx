@@ -1,14 +1,14 @@
-import type { ComponentChildren } from 'preact'
+import type { ReactNode } from 'react'
 import { Header } from '../../organisms/Header'
 import './MainLayout.css'
 
 type MainLayoutProps = {
-  children: ComponentChildren
+  children: ReactNode
 }
 
 export const MainLayout = ({ children }: MainLayoutProps) => (
-  <div class="main-layout">
+  <div className="main-layout">
     <Header />
-    <main class="main-layout__content">{children}</main>
+    <main className="main-layout__content">{children}</main>
   </div>
 )

@@ -5,5 +5,5 @@ type SpinnerProps = {
 }
 
 export const Spinner = ({ size = 'md' }: SpinnerProps) => (
-  <div class={`spinner spinner--${size}`} />
+  <div className={`spinner spinner--${size}`} />
 )

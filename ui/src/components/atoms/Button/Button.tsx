@@ -1,10 +1,10 @@
-import type { ComponentChildren } from 'preact'
+import type { ReactNode } from 'react'
 import './Button.css'
 
 type ButtonProps = {
   variant?: 'primary' | 'secondary' | 'ghost'
   size?: 'sm' | 'md' | 'lg'
-  children: ComponentChildren
+  children: ReactNode
   onClick?: () => void
   disabled?: boolean
   type?: 'button' | 'submit'
@@ -19,7 +19,7 @@ export const Button = ({
   type = 'button',
 }: ButtonProps) => (
   <button
-    class={`btn btn--${variant} btn--${size}`}
+    className={`btn btn--${variant} btn--${size}`}
     onClick={onClick}
     disabled={disabled}
     type={type}
