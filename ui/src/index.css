@@ -124,10 +124,3 @@ a:hover {
   color: var(--color-text-subtle);
   margin: 0;
 }
-
-.user-button-container {
-  position: fixed;
-  top: 1rem;
-  right: 1rem;
-  z-index: 1000;
-}
