@@ -6,23 +6,23 @@
 .text--title {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--color-text);
 }
 
 .text--subtitle {
   font-size: 1rem;
   font-weight: 500;
-  color: #374151;
+  color: var(--color-text-secondary);
 }
 
 .text--body {
   font-size: 0.9375rem;
-  color: #4b5563;
+  color: var(--color-text-muted);
 }
 
 .text--caption {
   font-size: 0.8125rem;
-  color: #6b7280;
+  color: var(--color-text-subtle);
 }
 
 .text--truncate {

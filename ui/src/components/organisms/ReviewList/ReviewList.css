@@ -11,11 +11,11 @@
   justify-content: center;
   align-items: center;
   min-height: 200px;
-  color: #6b7280;
+  color: var(--color-text-subtle);
 }
 
 .review-list__error {
-  color: #dc2626;
+  color: var(--color-error);
 }
 
 .review-group {
@@ -29,23 +29,23 @@
   align-items: baseline;
   gap: 0.5rem;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .review-group--danger .review-group__header {
-  border-bottom-color: #fecaca;
+  border-bottom-color: var(--color-error-light);
 }
 
 .review-group--danger .review-group__header .text--subtitle {
-  color: #dc2626;
+  color: var(--color-error);
 }
 
 .review-group--warning .review-group__header {
-  border-bottom-color: #fde68a;
+  border-bottom-color: var(--color-warning-border);
 }
 
 .review-group--warning .review-group__header .text--subtitle {
-  color: #d97706;
+  color: var(--color-warning-text);
 }
 
 .review-group__items {

@@ -8,21 +8,21 @@
 }
 
 .badge--default {
-  background: #f3f4f6;
-  color: #4b5563;
+  background: var(--color-bg-muted);
+  color: var(--color-text-muted);
 }
 
 .badge--primary {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: var(--color-primary-light);
+  color: var(--color-primary-text);
 }
 
 .badge--success {
-  background: #dcfce7;
-  color: #15803d;
+  background: var(--color-success-light);
+  color: var(--color-success-text);
 }
 
 .badge--warning {
-  background: #fef3c7;
-  color: #b45309;
+  background: var(--color-warning-light);
+  color: var(--color-warning-text);
 }

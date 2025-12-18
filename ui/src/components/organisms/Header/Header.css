@@ -3,8 +3,9 @@
   align-items: center;
   height: 56px;
   padding: 0 1.5rem;
-  background: white;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--color-bg-surface);
+  border-bottom: 1px solid var(--color-border);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .header__logo {
@@ -24,12 +25,34 @@
 
 .header__nav-link {
   text-decoration: none;
-  color: #6b7280;
+  color: var(--color-text-subtle);
   font-size: 0.875rem;
   font-weight: 500;
   transition: color 0.15s;
 }
 
 .header__nav-link:hover {
-  color: #111827;
+  color: var(--color-text);
+}
+
+.header__theme-toggle {
+  margin-left: auto;
+  margin-right: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-subtle);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.header__theme-toggle:hover {
+  background: var(--color-bg-muted);
+  color: var(--color-text);
 }

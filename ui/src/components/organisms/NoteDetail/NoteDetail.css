@@ -9,13 +9,13 @@
   flex-direction: column;
   gap: 0.75rem;
   padding-bottom: 1rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .note-detail__id {
   font-family: monospace;
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: var(--color-text-disabled);
 }
 
 .note-detail__meta {
@@ -35,7 +35,7 @@
   word-wrap: break-word;
   font-family: inherit;
   font-size: 0.9375rem;
-  color: #374151;
+  color: var(--color-text-secondary);
 }
 
 .note-detail__loading,
@@ -48,14 +48,14 @@
 }
 
 .note-detail__error {
-  color: #dc2626;
+  color: var(--color-error);
 }
 
 /* History section */
 .note-detail__history {
   margin-top: 1.5rem;
   padding-top: 1.5rem;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--color-border);
 }
 
 .note-detail__history-header {
@@ -72,7 +72,7 @@
 }
 
 .note-detail__history-item {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   overflow: hidden;
 }
@@ -82,13 +82,13 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.75rem 1rem;
-  background: #f9fafb;
+  background: var(--color-bg);
   cursor: pointer;
   transition: background 0.15s;
 }
 
 .note-detail__history-item-header:hover {
-  background: #f3f4f6;
+  background: var(--color-bg-muted);
 }
 
 .note-detail__history-item-info {
@@ -100,13 +100,13 @@
 .note-detail__history-id {
   font-family: monospace;
   font-size: 0.7rem;
-  color: #9ca3af;
+  color: var(--color-text-disabled);
 }
 
 .note-detail__history-item-content {
   padding: 1rem;
-  background: white;
-  border-top: 1px solid #e5e7eb;
+  background: var(--color-bg-surface);
+  border-top: 1px solid var(--color-border);
   max-height: 400px;
   overflow-y: auto;
 }
@@ -117,5 +117,5 @@
   word-wrap: break-word;
   font-family: inherit;
   font-size: 0.875rem;
-  color: #374151;
+  color: var(--color-text-secondary);
 }

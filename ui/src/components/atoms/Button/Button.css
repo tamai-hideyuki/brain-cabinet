@@ -17,30 +17,30 @@
 
 /* Variants */
 .btn--primary {
-  background: #3b82f6;
+  background: var(--color-primary);
   color: white;
 }
 
 .btn--primary:hover:not(:disabled) {
-  background: #2563eb;
+  background: var(--color-primary-hover);
 }
 
 .btn--secondary {
-  background: #e5e7eb;
-  color: #374151;
+  background: var(--color-bg-accent);
+  color: var(--color-text-secondary);
 }
 
 .btn--secondary:hover:not(:disabled) {
-  background: #d1d5db;
+  background: var(--color-border-hover);
 }
 
 .btn--ghost {
   background: transparent;
-  color: #6b7280;
+  color: var(--color-text-subtle);
 }
 
 .btn--ghost:hover:not(:disabled) {
-  background: #f3f4f6;
+  background: var(--color-bg-muted);
 }
 
 /* Sizes */
