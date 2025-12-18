@@ -1,0 +1,131 @@
+.influence-section {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.influence-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.influence-section__summary {
+  display: flex;
+  gap: 1rem;
+}
+
+.influence-section__stat {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.influence-section__stat-icon {
+  font-family: monospace;
+  color: var(--color-text-subtle);
+}
+
+.influence-section__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 2rem;
+  color: var(--color-text-subtle);
+}
+
+.influence-section__empty {
+  padding: 1.5rem;
+  text-align: center;
+  background: var(--color-bg-muted);
+  border-radius: 8px;
+  color: var(--color-text-subtle);
+}
+
+.influence-section__columns {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .influence-section__columns {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.influence-section__column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.influence-section__column-header {
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-subtle);
+}
+
+.influence-section__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Influence Item */
+.influence-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding: 0.75rem;
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+  width: 100%;
+}
+
+.influence-item:hover {
+  border-color: var(--color-primary);
+  background: var(--color-bg-surface-hover);
+}
+
+.influence-item__content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.influence-item__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.influence-item__weight {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-primary-text);
+}
+
+.influence-item__bar {
+  height: 3px;
+  background: var(--color-bg-muted);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.influence-item__bar-fill {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}

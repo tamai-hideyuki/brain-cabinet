@@ -65,12 +65,33 @@ app.route("/api/command", commandRoute);
 
 // UI静的ファイル配信
 app.use("/ui/assets/*", serveStatic({ root: "./ui/dist", rewriteRequestPath: (p) => p.replace(/^\/ui/, "") }));
+// UI public静的ファイル（favicon, apple-touch-icon, manifestなど）
+app.use("/ui/*.png", serveStatic({ root: "./ui/dist", rewriteRequestPath: (p) => p.replace(/^\/ui/, "") }));
+app.use("/ui/*.ico", serveStatic({ root: "./ui/dist", rewriteRequestPath: (p) => p.replace(/^\/ui/, "") }));
+app.use("/ui/*.json", serveStatic({ root: "./ui/dist", rewriteRequestPath: (p) => p.replace(/^\/ui/, "") }));
 app.get("/ui", (c) => c.redirect("/ui/"));
 // SPA fallback: /ui/* へのリクエストはすべてindex.htmlを返す
 app.get("/ui/*", async (c) => {
   const indexPath = path.join(__dirname, "../ui/dist/index.html");
   const html = fs.readFileSync(indexPath, "utf8");
   return c.html(html);
+});
+
+// iOS Safari用: ルートレベルでのアイコン配信
+app.get("/apple-touch-icon.png", async (c) => {
+  const iconPath = path.join(__dirname, "../ui/dist/apple-touch-icon.png");
+  const icon = fs.readFileSync(iconPath);
+  return c.body(icon, 200, { "Content-Type": "image/png" });
+});
+app.get("/apple-touch-icon-precomposed.png", async (c) => {
+  const iconPath = path.join(__dirname, "../ui/dist/apple-touch-icon.png");
+  const icon = fs.readFileSync(iconPath);
+  return c.body(icon, 200, { "Content-Type": "image/png" });
+});
+app.get("/favicon.ico", async (c) => {
+  const iconPath = path.join(__dirname, "../ui/dist/brain-cabinet.png");
+  const icon = fs.readFileSync(iconPath);
+  return c.body(icon, 200, { "Content-Type": "image/png" });
 });
 
 app.get("/", (c) => c.text("brain-cabinet API running"));

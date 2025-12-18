@@ -4,7 +4,9 @@ import { Badge } from '../../atoms/Badge'
 import { Button } from '../../atoms/Button'
 import { TagList } from '../../molecules/TagList'
 import { Spinner } from '../../atoms/Spinner'
+import { InfluenceSection } from '../../molecules/InfluenceSection'
 import type { Note, NoteHistory } from '../../../types/note'
+import type { NoteInfluence } from '../../../types/influence'
 import './NoteDetail.css'
 
 const getCategoryBadgeVariant = (category: string | null): 'decision' | 'learning' | 'default' => {
@@ -20,6 +22,9 @@ type NoteDetailProps = {
   historyLoading: boolean
   error: string | null
   onLoadHistory: () => void
+  influence: NoteInfluence | null
+  influenceLoading: boolean
+  onInfluenceNoteClick: (noteId: string) => void
 }
 
 export const NoteDetail = ({
@@ -29,6 +34,9 @@ export const NoteDetail = ({
   historyLoading,
   error,
   onLoadHistory,
+  influence,
+  influenceLoading,
+  onInfluenceNoteClick,
 }: NoteDetailProps) => {
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null)
   const [historyLoaded, setHistoryLoaded] = useState(false)
@@ -136,6 +144,12 @@ export const NoteDetail = ({
           </div>
         )}
       </section>
+
+      <InfluenceSection
+        influence={influence}
+        loading={influenceLoading}
+        onNoteClick={onInfluenceNoteClick}
+      />
     </article>
   )
 }
