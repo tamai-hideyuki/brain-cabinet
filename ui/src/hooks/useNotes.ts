@@ -2,6 +2,18 @@ import { useState, useEffect } from 'react'
 import type { Note, SearchMode } from '../types/note'
 import { fetchNotes, searchNotes } from '../api/notesApi'
 
+// ノートを更新日時優先、作成日時が新しい順にソート
+const sortNotes = (notes: Note[]): Note[] => {
+  return [...notes].sort((a, b) => {
+    // 更新日時で比較（新しい順）
+    if (b.updatedAt !== a.updatedAt) {
+      return b.updatedAt - a.updatedAt
+    }
+    // 更新日時が同じ場合は作成日時で比較（新しい順）
+    return b.createdAt - a.createdAt
+  })
+}
+
 export const useNotes = () => {
   const [notes, setNotes] = useState<Note[]>([])
   const [loading, setLoading] = useState(true)
@@ -14,7 +26,7 @@ export const useNotes = () => {
     setError(null)
     try {
       const data = await fetchNotes()
-      setNotes(data)
+      setNotes(sortNotes(data))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error')
     } finally {
@@ -31,7 +43,7 @@ export const useNotes = () => {
     setError(null)
     try {
       const data = await searchNotes(search, searchMode)
-      setNotes(data)
+      setNotes(sortNotes(data))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error')
     } finally {

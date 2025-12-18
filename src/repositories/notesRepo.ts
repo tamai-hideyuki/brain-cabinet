@@ -1,6 +1,6 @@
 import { db } from "../db/client";
 import { notes, noteInfluenceEdges, type Category } from "../db/schema";
-import { eq, or, sql, inArray } from "drizzle-orm";
+import { eq, or, sql, inArray, desc } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { extractMetadata } from "../utils/metadata";
 import { insertFTSRaw, updateFTSRaw, deleteFTSRaw } from "./ftsRepo";
@@ -10,7 +10,10 @@ import { deleteClusterHistoryByNoteIdRaw } from "./clusterRepo";
 import { deleteEmbeddingRaw } from "./embeddingRepo";
 
 export const findAllNotes = async () => {
-  return await db.select().from(notes);
+  return await db
+    .select()
+    .from(notes)
+    .orderBy(desc(notes.updatedAt), desc(notes.createdAt));
 };
 
 export const findNoteById = async (id: string) => {
