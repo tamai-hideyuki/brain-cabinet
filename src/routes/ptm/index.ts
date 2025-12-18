@@ -9,6 +9,7 @@ import {
 import { computeCoreMetrics } from "../../services/ptm/core";
 import { computeInfluenceMetrics } from "../../services/ptm/influence";
 import { computeDynamicsMetrics, computeStabilityMetrics } from "../../services/ptm/dynamics";
+import { generateMetaStateLite } from "../../services/ptm/engine";
 
 export const ptmRoute = new Hono();
 
@@ -123,22 +124,11 @@ ptmRoute.get("/stability", async (c) => {
 
 /**
  * GET /api/ptm/summary
- * 超軽量サマリー（GPT用最小API）
+ * UI/GPT用サマリー（Coach advice付き）
  */
 ptmRoute.get("/summary", async (c) => {
   const today = new Date().toISOString().split("T")[0];
-  const [core, dynamics] = await Promise.all([
-    computeCoreMetrics(),
-    computeDynamicsMetrics(7),
-  ]);
+  const metaState = await generateMetaStateLite(today);
 
-  return c.json({
-    date: today,
-    totalNotes: core.totalNotes,
-    clusterCount: core.clusterCount,
-    dominantCluster: core.dominantCluster,
-    mode: dynamics.mode,
-    season: dynamics.season,
-    topDriftCluster: dynamics.topDriftCluster,
-  });
+  return c.json(metaState);
 });

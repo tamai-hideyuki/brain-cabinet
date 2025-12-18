@@ -1,6 +1,8 @@
 import { UserButton } from '@clerk/clerk-react'
 import { Text } from '../../atoms/Text'
+import { PTMIndicator } from '../../molecules/PTMIndicator'
 import { useTheme } from '../../../hooks/useTheme'
+import { usePTM } from '../../../hooks/usePTM'
 import './Header.css'
 
 type HeaderProps = {
@@ -9,6 +11,7 @@ type HeaderProps = {
 
 export const Header = ({ title = 'Brain Cabinet' }: HeaderProps) => {
   const { theme, toggleTheme } = useTheme()
+  const { ptm, loading: ptmLoading } = usePTM()
 
   return (
     <header className="header">
@@ -20,6 +23,7 @@ export const Header = ({ title = 'Brain Cabinet' }: HeaderProps) => {
         <a href="/ui/reviews" className="header__nav-link">レビュー</a>
       </nav>
       <div className="header__actions">
+        <PTMIndicator ptm={ptm} loading={ptmLoading} />
         <button
           className="header__theme-toggle"
           onClick={toggleTheme}

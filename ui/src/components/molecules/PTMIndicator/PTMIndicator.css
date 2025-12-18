@@ -1,0 +1,126 @@
+.ptm-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ptm-indicator:hover {
+  background: var(--color-bg-surface-hover);
+  border-color: var(--color-border-hover);
+}
+
+.ptm-indicator--loading {
+  cursor: default;
+}
+
+.ptm-indicator__skeleton {
+  width: 120px;
+  height: 16px;
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-muted) 25%,
+    var(--color-bg-accent) 50%,
+    var(--color-bg-muted) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.ptm-indicator__item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.ptm-indicator__label {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .ptm-indicator__label {
+    display: inline;
+  }
+}
+
+/* Mode colors */
+.ptm-indicator__mode {
+  color: var(--color-primary-text);
+}
+
+.ptm-indicator__mode--exploration {
+  color: #2563eb;
+}
+
+.ptm-indicator__mode--consolidation {
+  color: #7c3aed;
+}
+
+.ptm-indicator__mode--refactoring {
+  color: #ea580c;
+}
+
+.ptm-indicator__mode--rest {
+  color: var(--color-text-muted);
+}
+
+/* Season colors */
+.ptm-indicator__season {
+  color: var(--color-text-subtle);
+}
+
+.ptm-indicator__season--deep_focus {
+  color: #0891b2;
+}
+
+.ptm-indicator__season--broad_search {
+  color: #059669;
+}
+
+.ptm-indicator__season--structuring {
+  color: #ca8a04;
+}
+
+.ptm-indicator__season--balanced {
+  color: var(--color-text-muted);
+}
+
+/* State colors */
+.ptm-indicator__state--stable {
+  color: var(--color-success-text);
+}
+
+.ptm-indicator__state--overheat {
+  color: #dc2626;
+}
+
+.ptm-indicator__state--stagnation {
+  color: var(--color-warning-text);
+}
+
+/* Separator */
+.ptm-indicator__item + .ptm-indicator__item::before {
+  content: '';
+  display: block;
+  width: 1px;
+  height: 12px;
+  background: var(--color-border);
+  margin-right: 0.5rem;
+}
