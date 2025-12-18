@@ -2,11 +2,13 @@ import { useState, useCallback } from 'react'
 import { MainLayout } from '../../templates/MainLayout'
 import { ReviewList } from '../../organisms/ReviewList'
 import { ReviewSession } from '../../organisms/ReviewSession'
+import { AddToReviewModal } from '../../organisms/AddToReviewModal'
 import { useReviews } from '../../../hooks/useReviews'
 import { useReviewSession } from '../../../hooks/useReviewSession'
 import { Text } from '../../atoms/Text'
 import { Button } from '../../atoms/Button'
 import { Spinner } from '../../atoms/Spinner'
+import { cancelReview } from '../../../api/reviewApi'
 import type { ReviewItem } from '../../../types/review'
 import './ReviewsPage.css'
 
@@ -14,6 +16,8 @@ export const ReviewsPage = () => {
   const { data, loading, error, reload } = useReviews()
   const reviewSession = useReviewSession()
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null)
+  const [removingId, setRemovingId] = useState<string | null>(null)
+  const [showAddModal, setShowAddModal] = useState(false)
 
   // Get due items (overdue + today)
   const dueItems: ReviewItem[] = data ? [...data.overdue, ...data.today] : []
@@ -49,6 +53,23 @@ export const ReviewsPage = () => {
     },
     [reviewSession]
   )
+
+  const handleRemove = useCallback(async (noteId: string) => {
+    setRemovingId(noteId)
+    try {
+      await cancelReview(noteId)
+      reload()
+    } catch (e) {
+      console.error('Failed to remove from review list:', e)
+    } finally {
+      setRemovingId(null)
+    }
+  }, [reload])
+
+  const handleAddSuccess = useCallback(() => {
+    setShowAddModal(false)
+    reload()
+  }, [reload])
 
   // Show review session modal
   if (activeNoteId && (reviewSession.session || reviewSession.loading)) {
@@ -100,6 +121,9 @@ export const ReviewsPage = () => {
                 レビュー開始
               </Button>
             )}
+            <Button variant="secondary" size="sm" onClick={() => setShowAddModal(true)}>
+              追加
+            </Button>
             <Button variant="secondary" size="sm" onClick={reload} disabled={loading}>
               更新
             </Button>
@@ -120,7 +144,16 @@ export const ReviewsPage = () => {
           loading={loading}
           error={error}
           onItemClick={handleStartReview}
+          onRemove={handleRemove}
+          removingId={removingId}
         />
+
+        {showAddModal && (
+          <AddToReviewModal
+            onClose={() => setShowAddModal(false)}
+            onSuccess={handleAddSuccess}
+          />
+        )}
       </div>
     </MainLayout>
   )

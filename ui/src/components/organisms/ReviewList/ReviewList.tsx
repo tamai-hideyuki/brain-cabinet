@@ -9,6 +9,8 @@ type ReviewListProps = {
   loading: boolean
   error: string | null
   onItemClick: (noteId: string) => void
+  onRemove?: (noteId: string) => void
+  removingId?: string | null
 }
 
 type ReviewGroupProps = {
@@ -16,9 +18,11 @@ type ReviewGroupProps = {
   items: ReviewItem[]
   variant?: 'danger' | 'warning' | 'default'
   onItemClick: (noteId: string) => void
+  onRemove?: (noteId: string) => void
+  removingId?: string | null
 }
 
-const ReviewGroup = ({ label, items, variant = 'default', onItemClick }: ReviewGroupProps) => {
+const ReviewGroup = ({ label, items, variant = 'default', onItemClick, onRemove, removingId }: ReviewGroupProps) => {
   if (items.length === 0) return null
 
   return (
@@ -33,6 +37,8 @@ const ReviewGroup = ({ label, items, variant = 'default', onItemClick }: ReviewG
             key={item.noteId}
             item={item}
             onClick={() => onItemClick(item.noteId)}
+            onRemove={onRemove}
+            removing={removingId === item.noteId}
           />
         ))}
       </div>
@@ -40,7 +46,7 @@ const ReviewGroup = ({ label, items, variant = 'default', onItemClick }: ReviewG
   )
 }
 
-export const ReviewList = ({ data, loading, error, onItemClick }: ReviewListProps) => {
+export const ReviewList = ({ data, loading, error, onItemClick, onRemove, removingId }: ReviewListProps) => {
   if (loading) {
     return (
       <div className="review-list__loading">
@@ -72,27 +78,37 @@ export const ReviewList = ({ data, loading, error, onItemClick }: ReviewListProp
         items={data.overdue}
         variant="danger"
         onItemClick={onItemClick}
+        onRemove={onRemove}
+        removingId={removingId}
       />
       <ReviewGroup
         label="今日"
         items={data.today}
         variant="warning"
         onItemClick={onItemClick}
+        onRemove={onRemove}
+        removingId={removingId}
       />
       <ReviewGroup
         label="明日"
         items={data.tomorrow}
         onItemClick={onItemClick}
+        onRemove={onRemove}
+        removingId={removingId}
       />
       <ReviewGroup
         label="今週"
         items={data.thisWeek}
         onItemClick={onItemClick}
+        onRemove={onRemove}
+        removingId={removingId}
       />
       <ReviewGroup
         label="それ以降"
         items={data.later}
         onItemClick={onItemClick}
+        onRemove={onRemove}
+        removingId={removingId}
       />
     </div>
   )
