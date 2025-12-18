@@ -12,6 +12,17 @@ export type Note = {
   updatedAt: number
 }
 
+export type NoteHistory = {
+  id: string
+  noteId: string
+  content: string
+  diff: string | null
+  semanticDiff: string | null
+  prevClusterId: number | null
+  newClusterId: number | null
+  createdAt: number
+}
+
 export type NoteListResponse = {
   notes: Note[]
   total: number

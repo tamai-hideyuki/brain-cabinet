@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'preact/hooks'
-import type { Note } from '../types/note'
-import { fetchNote } from '../api/notesApi'
+import type { Note, NoteHistory } from '../types/note'
+import { fetchNote, fetchNoteHistory } from '../api/notesApi'
 
 export const useNote = (id: string | undefined) => {
   const [note, setNote] = useState<Note | null>(null)
+  const [history, setHistory] = useState<NoteHistory[]>([])
   const [loading, setLoading] = useState(true)
+  const [historyLoading, setHistoryLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -29,5 +31,18 @@ export const useNote = (id: string | undefined) => {
     load()
   }, [id])
 
-  return { note, loading, error }
+  const loadHistory = async () => {
+    if (!id) return
+    setHistoryLoading(true)
+    try {
+      const data = await fetchNoteHistory(id)
+      setHistory(data)
+    } catch (e) {
+      console.error('Failed to load history:', e)
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
+
+  return { note, history, loading, historyLoading, error, loadHistory }
 }

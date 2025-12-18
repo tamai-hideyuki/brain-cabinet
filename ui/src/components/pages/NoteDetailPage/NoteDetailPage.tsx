@@ -11,7 +11,7 @@ type NoteDetailPageProps = RoutableProps & {
 }
 
 export const NoteDetailPage = ({ id }: NoteDetailPageProps) => {
-  const { note, loading, error } = useNote(id)
+  const { note, history, loading, historyLoading, error, loadHistory } = useNote(id)
 
   const handleBack = () => {
     route('/ui/')
@@ -25,7 +25,14 @@ export const NoteDetailPage = ({ id }: NoteDetailPageProps) => {
             ← 一覧に戻る
           </Button>
         </div>
-        <NoteDetail note={note} loading={loading} error={error} />
+        <NoteDetail
+          note={note}
+          history={history}
+          loading={loading}
+          historyLoading={historyLoading}
+          error={error}
+          onLoadHistory={loadHistory}
+        />
       </div>
     </MainLayout>
   )
