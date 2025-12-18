@@ -1,15 +1,32 @@
 .notes-page {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
 .notes-page__header {
   display: flex;
-  align-items: baseline;
-  gap: 0.75rem;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .notes-page__search {
-  max-width: 500px;
+  width: 100%;
+}
+
+/* Tablet and up */
+@media (min-width: 640px) {
+  .notes-page {
+    gap: 1.5rem;
+  }
+
+  .notes-page__header {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 0.75rem;
+  }
+
+  .notes-page__search {
+    max-width: 500px;
+  }
 }

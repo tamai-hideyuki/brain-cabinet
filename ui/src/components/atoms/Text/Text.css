@@ -4,24 +4,24 @@
 }
 
 .text--title {
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   font-weight: 600;
   color: var(--color-text);
 }
 
 .text--subtitle {
-  font-size: 1rem;
+  font-size: 0.9375rem;
   font-weight: 500;
   color: var(--color-text-secondary);
 }
 
 .text--body {
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   color: var(--color-text-muted);
 }
 
 .text--caption {
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   color: var(--color-text-subtle);
 }
 
@@ -35,4 +35,23 @@
   display: -webkit-box;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Tablet and up */
+@media (min-width: 640px) {
+  .text--title {
+    font-size: 1.25rem;
+  }
+
+  .text--subtitle {
+    font-size: 1rem;
+  }
+
+  .text--body {
+    font-size: 0.9375rem;
+  }
+
+  .text--caption {
+    font-size: 0.8125rem;
+  }
 }

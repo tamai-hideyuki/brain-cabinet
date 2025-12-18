@@ -8,6 +8,8 @@
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
+  /* iOS minimum touch target */
+  min-height: 44px;
 }
 
 .btn:disabled {
@@ -45,16 +47,35 @@
 
 /* Sizes */
 .btn--sm {
-  padding: 0.375rem 0.75rem;
-  font-size: 0.875rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  min-height: 36px;
 }
 
 .btn--md {
-  padding: 0.5rem 1rem;
-  font-size: 1rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.9375rem;
 }
 
 .btn--lg {
   padding: 0.75rem 1.5rem;
   font-size: 1.125rem;
+}
+
+/* Tablet and up */
+@media (min-width: 640px) {
+  .btn {
+    min-height: auto;
+  }
+
+  .btn--sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+    min-height: auto;
+  }
+
+  .btn--md {
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+  }
 }

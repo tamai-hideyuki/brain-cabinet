@@ -1,12 +1,16 @@
 .input {
   width: 100%;
-  padding: 0.5rem 0.75rem;
+  padding: 0.625rem 0.75rem;
   border: 1px solid var(--color-border-hover);
   border-radius: 6px;
   font-size: 1rem;
   background: var(--color-bg-surface);
   color: var(--color-text);
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  /* iOS minimum touch target */
+  min-height: 44px;
+  /* Prevent zoom on iOS */
+  font-size: 16px;
 }
 
 .input:focus {
@@ -17,4 +21,13 @@
 
 .input::placeholder {
   color: var(--color-text-disabled);
+}
+
+/* Tablet and up */
+@media (min-width: 640px) {
+  .input {
+    padding: 0.5rem 0.75rem;
+    min-height: auto;
+    font-size: 1rem;
+  }
 }
