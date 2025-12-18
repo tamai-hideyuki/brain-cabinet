@@ -10,6 +10,17 @@
   gap: 0.5rem;
 }
 
+.notes-page__title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.notes-page__promotion-notice {
+  display: flex;
+  align-items: center;
+}
+
 .notes-page__search {
   width: 100%;
 }
@@ -22,7 +33,12 @@
 
   .notes-page__header {
     flex-direction: row;
-    align-items: baseline;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .notes-page__title-row {
     gap: 0.75rem;
   }
 

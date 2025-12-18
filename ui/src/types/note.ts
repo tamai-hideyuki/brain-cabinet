@@ -29,3 +29,13 @@ export type NoteListResponse = {
 }
 
 export type SearchMode = 'keyword' | 'semantic' | 'hybrid'
+
+// Promotion Candidate (scratch -> learning/decision)
+export type PromotionCandidate = {
+  noteId: string
+  title: string
+  currentType: NoteType
+  confidence: number
+  suggestedType: NoteType
+  reason: string
+}

@@ -1,12 +1,13 @@
 import { Text } from '../../atoms/Text'
 import { Badge } from '../../atoms/Badge'
 import { TagList } from '../TagList'
-import type { Note } from '../../../types/note'
+import type { Note, PromotionCandidate } from '../../../types/note'
 import './NoteCard.css'
 
 type NoteCardProps = {
   note: Note
   onClick: () => void
+  promotionCandidate?: PromotionCandidate
 }
 
 const getCategoryBadgeVariant = (category: string | null): 'decision' | 'learning' | 'default' => {
@@ -15,7 +16,13 @@ const getCategoryBadgeVariant = (category: string | null): 'decision' | 'learnin
   return 'default'
 }
 
-export const NoteCard = ({ note, onClick }: NoteCardProps) => {
+const getSuggestedTypeLabel = (suggestedType: string): string => {
+  if (suggestedType === 'decision') return '判断'
+  if (suggestedType === 'learning') return '学習'
+  return suggestedType
+}
+
+export const NoteCard = ({ note, onClick, promotionCandidate }: NoteCardProps) => {
   const isDecision = note.category === '判断' || note.category === 'decision'
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp * 1000) // 秒→ミリ秒に変換
@@ -52,6 +59,11 @@ export const NoteCard = ({ note, onClick }: NoteCardProps) => {
         <div className="note-card__meta">
           {note.category && (
             <Badge variant={getCategoryBadgeVariant(note.category)}>{note.category}</Badge>
+          )}
+          {promotionCandidate && (
+            <Badge variant="promotion" title={promotionCandidate.reason}>
+              昇格候補 → {getSuggestedTypeLabel(promotionCandidate.suggestedType)}
+            </Badge>
           )}
           <Text variant="caption">{formatDate(note.updatedAt)}</Text>
         </div>
