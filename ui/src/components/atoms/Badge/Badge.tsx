@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import './Badge.css'
 
 type BadgeProps = {
-  variant?: 'default' | 'primary' | 'success' | 'warning'
+  variant?: 'default' | 'primary' | 'success' | 'warning' | 'decision' | 'learning'
   children: ReactNode
 }
 

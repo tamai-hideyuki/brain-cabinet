@@ -15,6 +15,15 @@
   box-shadow: var(--shadow-sm);
 }
 
+.note-card--decision {
+  border-left: 3px solid var(--color-decision-border);
+}
+
+.note-card--decision:hover {
+  border-color: var(--color-decision-border);
+  border-left-color: var(--color-decision-border);
+}
+
 .note-card__header {
   display: flex;
   align-items: flex-start;

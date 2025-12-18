@@ -26,3 +26,14 @@
   background: var(--color-warning-light);
   color: var(--color-warning-text);
 }
+
+.badge--decision {
+  background: var(--color-decision-light);
+  color: var(--color-decision-text);
+  font-weight: 600;
+}
+
+.badge--learning {
+  background: var(--color-learning-light);
+  color: var(--color-learning-text);
+}

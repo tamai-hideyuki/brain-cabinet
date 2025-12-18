@@ -9,7 +9,14 @@ type NoteCardProps = {
   onClick: () => void
 }
 
+const getCategoryBadgeVariant = (category: string | null): 'decision' | 'learning' | 'default' => {
+  if (category === '判断' || category === 'decision') return 'decision'
+  if (category === '学習' || category === 'learning') return 'learning'
+  return 'default'
+}
+
 export const NoteCard = ({ note, onClick }: NoteCardProps) => {
+  const isDecision = note.category === '判断' || note.category === 'decision'
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp * 1000) // 秒→ミリ秒に変換
     return date.toLocaleDateString('ja-JP', {
@@ -24,8 +31,10 @@ export const NoteCard = ({ note, onClick }: NoteCardProps) => {
     return text.length > maxLength ? text.slice(0, maxLength) + '...' : text
   }
 
+  const cardClassName = isDecision ? 'note-card note-card--decision' : 'note-card'
+
   return (
-    <article className="note-card" onClick={onClick}>
+    <article className={cardClassName} onClick={onClick}>
       <div className="note-card__header">
         <Text variant="title" truncate>
           {note.title}
@@ -41,7 +50,9 @@ export const NoteCard = ({ note, onClick }: NoteCardProps) => {
       </div>
       <div className="note-card__footer">
         <div className="note-card__meta">
-          {note.category && <Badge variant="primary">{note.category}</Badge>}
+          {note.category && (
+            <Badge variant={getCategoryBadgeVariant(note.category)}>{note.category}</Badge>
+          )}
           <Text variant="caption">{formatDate(note.updatedAt)}</Text>
         </div>
         {note.tags.length > 0 && <TagList tags={note.tags} max={3} />}

@@ -7,6 +7,12 @@ import { Spinner } from '../../atoms/Spinner'
 import type { Note, NoteHistory } from '../../../types/note'
 import './NoteDetail.css'
 
+const getCategoryBadgeVariant = (category: string | null): 'decision' | 'learning' | 'default' => {
+  if (category === '判断' || category === 'decision') return 'decision'
+  if (category === '学習' || category === 'learning') return 'learning'
+  return 'default'
+}
+
 type NoteDetailProps = {
   note: Note | null
   history: NoteHistory[]
@@ -81,7 +87,9 @@ export const NoteDetail = ({
           <Text variant="caption">{note.id}</Text>
         </div>
         <div className="note-detail__meta">
-          {note.category && <Badge variant="primary">{note.category}</Badge>}
+          {note.category && (
+            <Badge variant={getCategoryBadgeVariant(note.category)}>{note.category}</Badge>
+          )}
           <Text variant="caption">更新: {formatDate(note.updatedAt)}</Text>
           <Text variant="caption">作成: {formatDate(note.createdAt)}</Text>
         </div>
