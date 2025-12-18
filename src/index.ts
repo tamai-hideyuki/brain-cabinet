@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
+import { serveStatic } from "@hono/node-server/serve-static";
 import { notesRoute } from "./routes/notes/index";
 import { searchRoute } from "./routes/search/index";
 import { gptRoute } from "./routes/gpt/index";
@@ -61,6 +62,17 @@ app.route("/api/cluster-dynamics", clusterDynamicsRoute);
 app.route("/api/ptm", ptmRoute);
 app.route("/api/insight", insightRoute);
 app.route("/api/command", commandRoute);
+
+// UI静的ファイル配信
+app.use("/ui/assets/*", serveStatic({ root: "./ui/dist", rewriteRequestPath: (p) => p.replace(/^\/ui/, "") }));
+app.get("/ui", (c) => c.redirect("/ui/"));
+// SPA fallback: /ui/* へのリクエストはすべてindex.htmlを返す
+app.get("/ui/*", async (c) => {
+  const indexPath = path.join(__dirname, "../ui/dist/index.html");
+  const html = fs.readFileSync(indexPath, "utf8");
+  return c.html(html);
+});
+
 app.get("/", (c) => c.text("brain-cabinet API running"));
 
 serve({ fetch: app.fetch, port: 3000 }, (info) => {

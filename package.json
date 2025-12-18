@@ -4,6 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsx src/index.ts",
+    "ui:dev": "cd ui && npm run dev",
+    "ui:build": "cd ui && npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
     "migrate": "drizzle-kit push",

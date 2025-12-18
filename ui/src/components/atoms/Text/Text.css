@@ -1,0 +1,38 @@
+.text {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.text--title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.text--subtitle {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.text--body {
+  font-size: 0.9375rem;
+  color: #4b5563;
+}
+
+.text--caption {
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+.text--truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.text--clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

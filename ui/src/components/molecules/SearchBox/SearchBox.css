@@ -1,0 +1,8 @@
+.search-box {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.search-box .input {
+  flex: 1;
+}

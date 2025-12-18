@@ -1,0 +1,17 @@
+.header {
+  display: flex;
+  align-items: center;
+  height: 56px;
+  padding: 0 1.5rem;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.header__logo {
+  text-decoration: none;
+  color: inherit;
+}
+
+.header__logo:hover {
+  opacity: 0.8;
+}

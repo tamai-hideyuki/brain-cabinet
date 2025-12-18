@@ -1,0 +1,9 @@
+.note-detail-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.note-detail-page__nav {
+  display: flex;
+}
