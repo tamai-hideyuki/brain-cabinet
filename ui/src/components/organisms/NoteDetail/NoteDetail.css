@@ -12,6 +12,12 @@
   border-bottom: 1px solid #e5e7eb;
 }
 
+.note-detail__id {
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
 .note-detail__meta {
   display: flex;
   flex-wrap: wrap;

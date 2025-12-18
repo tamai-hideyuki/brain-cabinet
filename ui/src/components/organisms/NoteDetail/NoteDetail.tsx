@@ -51,6 +51,9 @@ export const NoteDetail = ({ note, loading, error }: NoteDetailProps) => {
     <article class="note-detail">
       <header class="note-detail__header">
         <Text variant="title">{note.title}</Text>
+        <div class="note-detail__id">
+          <Text variant="caption">{note.id}</Text>
+        </div>
         <div class="note-detail__meta">
           {note.category && <Badge variant="primary">{note.category}</Badge>}
           <Text variant="caption">更新: {formatDate(note.updatedAt)}</Text>

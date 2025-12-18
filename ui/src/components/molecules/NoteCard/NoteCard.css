@@ -21,6 +21,12 @@
   gap: 0.5rem;
 }
 
+.note-card__id {
+  font-family: monospace;
+  font-size: 0.7rem;
+  color: #9ca3af;
+}
+
 .note-card__body {
   flex: 1;
 }

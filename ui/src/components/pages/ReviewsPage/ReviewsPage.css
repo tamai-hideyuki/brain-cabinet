@@ -1,0 +1,17 @@
+.reviews-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.reviews-page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.reviews-page__title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+}

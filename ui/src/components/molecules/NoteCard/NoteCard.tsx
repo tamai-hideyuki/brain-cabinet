@@ -31,6 +31,9 @@ export const NoteCard = ({ note, onClick }: NoteCardProps) => {
           {note.title}
         </Text>
       </div>
+      <div class="note-card__id">
+        <Text variant="caption">{note.id}</Text>
+      </div>
       <div class="note-card__body">
         <Text variant="body" lines={2}>
           {getPreview(note.content)}

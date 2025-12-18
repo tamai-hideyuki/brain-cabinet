@@ -15,3 +15,21 @@
 .header__logo:hover {
   opacity: 0.8;
 }
+
+.header__nav {
+  display: flex;
+  gap: 1.5rem;
+  margin-left: 2rem;
+}
+
+.header__nav-link {
+  text-decoration: none;
+  color: #6b7280;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: color 0.15s;
+}
+
+.header__nav-link:hover {
+  color: #111827;
+}

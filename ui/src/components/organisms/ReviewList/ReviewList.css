@@ -1,0 +1,55 @@
+.review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.review-list__loading,
+.review-list__error,
+.review-list__empty {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  color: #6b7280;
+}
+
+.review-list__error {
+  color: #dc2626;
+}
+
+.review-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.review-group__header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.review-group--danger .review-group__header {
+  border-bottom-color: #fecaca;
+}
+
+.review-group--danger .review-group__header .text--subtitle {
+  color: #dc2626;
+}
+
+.review-group--warning .review-group__header {
+  border-bottom-color: #fde68a;
+}
+
+.review-group--warning .review-group__header .text--subtitle {
+  color: #d97706;
+}
+
+.review-group__items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
