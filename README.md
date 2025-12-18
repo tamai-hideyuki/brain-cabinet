@@ -1,4 +1,4 @@
-# Brain Cabinet v4.8.0 (Decision-First + Spaced Review)
+# Brain Cabinet v4.9.0 (Decision-First + Spaced Review)
 
 **思考ベースの検索型知識システム — あなたの思考を理解し、成長を見守る外部脳**
 
@@ -632,6 +632,9 @@ pnpm dev
 | テスト | Vitest |
 | 言語 | TypeScript |
 | パッケージマネージャ | pnpm |
+| UI Framework | React 19 + react-router-dom |
+| UI Build | Vite |
+| UI 認証 | Clerk (@clerk/clerk-react) |
 
 ---
 
@@ -769,11 +772,15 @@ brain-cabinet/
 - [x] **Auto-Schedule** - learning/decision ノートを自動でスケジュール
 - [x] **Review API** - queue, list, start, submit, schedule (force対応), cancel, reschedule, questions, regenerateQuestions, stats, overview
 
+### Phase 4.9（v4.9 完了）
+- [x] **Web UI 認証（Clerk）** - Clerk による認証・アクセス制限
+- [x] **Preact → React 移行** - @clerk/clerk-react 対応のため
+- [x] **react-router-dom 導入** - クライアントサイドルーティング
+
 ### Phase 5（予定）
 - [ ] LLM 推論統合（GPT-4 によるタイプ分類）
 - [ ] 要約生成・保存
 - [ ] Webhook / 自動インポート
-- [ ] Web UI
 
 ---
 
@@ -833,6 +840,16 @@ brain-cabinet/
 ---
 
 ## バージョン履歴
+
+### v4.9.0
+- **Web UI 認証（Clerk）**: Clerk 認証による UI アクセス制限
+  - Preact → React への移行（@clerk/clerk-react 対応のため）
+  - preact-router → react-router-dom への移行
+  - `SignedIn` / `SignedOut` によるログイン画面表示
+  - `UserButton` による右上のユーザーメニュー
+  - Allowlist 設定で特定ユーザーのみアクセス可能
+  - 環境変数: `VITE_CLERK_PUBLISHABLE_KEY`
+- **UI 技術スタック更新**: React 19 + react-router-dom + Vite
 
 ### v4.8.0
 - **Fixed Revision for Review（レビューバージョン固定）**: レビュー対象のノートバージョンを固定する機能
@@ -968,4 +985,4 @@ brain-cabinet/
 
 ---
 
-**Brain Cabinet v4.8 (Decision-First + Spaced Review)** — Your External Brain that Remembers Your Decisions and Helps You Learn
+**Brain Cabinet v4.9 (Decision-First + Spaced Review)** — Your External Brain that Remembers Your Decisions and Helps You Learn
