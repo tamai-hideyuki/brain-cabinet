@@ -1,11 +1,18 @@
-# Brain Cabinet v4.9.0 (Decision-First + Spaced Review)
+# Brain Cabinet v5.0.0 (Full-Featured Web UI)
 
 **思考ベースの検索型知識システム — あなたの思考を理解し、成長を見守る外部脳**
 
 > Brain Cabinet は単なるメモ帳ではありません。
 > ノートの**文脈を理解**し、質問に応じて**必要な部分だけを抽出・再構成**する仕組みです。
 >
-> **v4.5 の新機能: Spaced Review + Active Recall**
+> **v5.0 の新機能: フル機能 Web UI**
+> - **Decision ハイライト表示** — 判断/学習ノートを視覚的に区別、バッジ表示で即座に識別
+> - **PTM Snapshot ダッシュボード** — ヘッダーに思考状態インジケーター、Coach アドバイス確認
+> - **Influence Graph 表示** — ノート詳細で影響関係を可視化、クラスタ情報も表示
+> - **Review Queue 統合** — SM-2スケジュール表示、Active Recall質問回答、品質評価送信
+> - **scratch 昇格通知** — 昇格候補バッジ表示、Human Decides原則で人間が最終判断
+>
+> **v4.5 の機能: Spaced Review + Active Recall**
 > - **SM-2アルゴリズム**による間隔反復で最適なタイミングでレビュー
 > - **Active Recall**でノートから自動生成された質問に答えて定着強化
 > - learning/decision ノートを自動でレビュースケジュールに追加
@@ -777,7 +784,15 @@ brain-cabinet/
 - [x] **Preact → React 移行** - @clerk/clerk-react 対応のため
 - [x] **react-router-dom 導入** - クライアントサイドルーティング
 
-### Phase 5（予定）
+### Phase 5（v5.0 完了）
+- [x] **Decision ハイライト表示** - 判断/学習ノートにバッジ表示、検索結果で視覚的に区別
+- [x] **PTM Snapshot ダッシュボード** - ヘッダーに思考状態インジケーター（mode/season/drift）、Coach アドバイス表示
+- [x] **Influence Graph 表示** - ノート詳細で「影響を与えた/受けたノート」を可視化、クラスタ情報も表示
+- [x] **Review Queue 統合** - レビューページでSM-2スケジュール表示、Active Recall質問回答、品質評価（0-5）送信
+- [x] **scratch 昇格通知** - ノート一覧に「昇格候補」バッジ表示、Human Decides原則で人間が最終判断
+- [x] **レスポンシブデザイン** - iPhone対応、モバイルファースト設計
+
+### Phase 6（予定）
 - [ ] LLM 推論統合（GPT-4 によるタイプ分類）
 - [ ] 要約生成・保存
 - [ ] Webhook / 自動インポート
@@ -840,6 +855,36 @@ brain-cabinet/
 ---
 
 ## バージョン履歴
+
+### v5.0.0
+- **フル機能 Web UI**: Brain Cabinet の全機能を Web UI から利用可能に
+  - **Decision ハイライト表示**: 判断/学習ノートにカテゴリバッジ表示、視覚的に即座に識別可能
+  - **PTM Snapshot ダッシュボード**: ヘッダーに「今日の思考状態」インジケーター表示
+    - Mode（探索/統合/定着）、Season（春夏秋冬）、Drift状態（安定/過熱/停滞）をアイコン表示
+    - クリックで Coach アドバイスを確認（CoachModal コンポーネント）
+  - **Influence Graph 表示**: ノート詳細ページに影響関係セクション追加
+    - 「このノートに影響を与えたノート」「このノートが影響を与えたノート」を表示
+    - 影響ノートのタイトル・クラスタ情報を表示、クリックで該当ノートに遷移
+  - **Review Queue 統合**: レビューページを強化
+    - 今日レビューすべきノート（SM-2スケジュール）を一覧表示
+    - Active Recall 質問（recall/concept/reasoning）に回答
+    - 品質評価（0-5）を送信、次回間隔のプレビュー表示
+    - レビュー結果表示、連続レビュー機能
+  - **scratch 昇格通知**: ノート一覧に「昇格候補」バッジを表示
+    - `promotionCandidates` API を活用し、昇格すべきノートを自動検出・提案
+    - パルスアニメーションで目立つバッジデザイン
+    - Human Decides 原則: 自動昇格せず、人間が最終判断を下す
+  - **レスポンシブデザイン**: iPhone 画面に対応
+    - モバイルファースト設計（ブレークポイント 640px）
+    - iOS タッチターゲット最小 44px、ズーム防止
+- **新規 UI コンポーネント**:
+  - `PTMIndicator`: 思考状態表示コンポーネント
+  - `CoachModal`: Coach アドバイス表示モーダル
+  - `InfluenceSection`: 影響関係表示セクション
+  - `ReviewSession`: レビューセッション画面
+  - `ReviewList`: レビュー一覧表示
+- **新規 Hooks**: `usePTM`, `useNoteInfluence`, `useReviews`, `useReviewSession`, `usePromotionCandidates`
+- **新規 API**: `ptmApi`, `influenceApi`, `reviewApi` に対応するフロントエンド API 関数
 
 ### v4.9.0
 - **Web UI 認証（Clerk）**: Clerk 認証による UI アクセス制限
@@ -985,4 +1030,4 @@ brain-cabinet/
 
 ---
 
-**Brain Cabinet v4.9 (Decision-First + Spaced Review)** — Your External Brain that Remembers Your Decisions and Helps You Learn
+**Brain Cabinet v5.0 (Full-Featured Web UI)** — Your External Brain with Complete Visual Interface for Decision-First Architecture, Spaced Review, and Cognitive Growth Tracking
