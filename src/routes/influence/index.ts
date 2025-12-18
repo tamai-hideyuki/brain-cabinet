@@ -107,6 +107,32 @@ influenceRoute.get("/note/:noteId", async (c) => {
   const totalIncomingInfluence = influencers.reduce((sum, e) => sum + e.weight, 0);
   const totalOutgoingInfluence = influenced.reduce((sum, e) => sum + e.weight, 0);
 
+  // influencers にノート情報を付加
+  const enrichedInfluencers = await Promise.all(
+    influencers.slice(0, 5).map(async (edge) => {
+      const sourceNote = await findNoteById(edge.sourceNoteId);
+      return {
+        ...edge,
+        sourceNote: sourceNote
+          ? { id: sourceNote.id, title: sourceNote.title, clusterId: sourceNote.clusterId }
+          : null,
+      };
+    })
+  );
+
+  // influenced にノート情報を付加
+  const enrichedInfluenced = await Promise.all(
+    influenced.slice(0, 5).map(async (edge) => {
+      const targetNote = await findNoteById(edge.targetNoteId);
+      return {
+        ...edge,
+        targetNote: targetNote
+          ? { id: targetNote.id, title: targetNote.title, clusterId: targetNote.clusterId }
+          : null,
+      };
+    })
+  );
+
   return c.json({
     note: note
       ? { id: note.id, title: note.title, clusterId: note.clusterId }
@@ -117,8 +143,8 @@ influenceRoute.get("/note/:noteId", async (c) => {
       totalIncomingInfluence: Math.round(totalIncomingInfluence * 10000) / 10000,
       totalOutgoingInfluence: Math.round(totalOutgoingInfluence * 10000) / 10000,
     },
-    influencers: influencers.slice(0, 5),
-    influenced: influenced.slice(0, 5),
+    influencers: enrichedInfluencers,
+    influenced: enrichedInfluenced,
   });
 });
 
