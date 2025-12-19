@@ -19,7 +19,8 @@ export const Header = ({ title = 'Brain Cabinet' }: HeaderProps) => {
         <Text variant="subtitle">{title}</Text>
       </a>
       <nav className="header__nav">
-        <a href="/ui/" className="header__nav-link">ノート</a>
+        <a href="/ui/" className="header__nav-link">ホーム</a>
+        <a href="/ui/notes" className="header__nav-link">ノート</a>
         <a href="/ui/reviews" className="header__nav-link">レビュー</a>
         <a href="/ui/timeline" className="header__nav-link">タイムライン</a>
         <a href="/ui/graph" className="header__nav-link">グラフ</a>

@@ -5,6 +5,7 @@ import { NoteDetailPage } from './components/pages/NoteDetailPage'
 import { ReviewsPage } from './components/pages/ReviewsPage'
 import { GraphPage } from './components/pages/GraphPage'
 import { TimelinePage } from './components/pages/TimelinePage'
+import { DashboardPage } from './components/pages/DashboardPage'
 
 export function App() {
   return (
@@ -18,8 +19,9 @@ export function App() {
       </SignedOut>
       <SignedIn>
         <Routes>
-          <Route path="/ui" element={<NotesPage />} />
-          <Route path="/ui/" element={<NotesPage />} />
+          <Route path="/ui" element={<DashboardPage />} />
+          <Route path="/ui/" element={<DashboardPage />} />
+          <Route path="/ui/notes" element={<NotesPage />} />
           <Route path="/ui/notes/:id" element={<NoteDetailPage />} />
           <Route path="/ui/reviews" element={<ReviewsPage />} />
           <Route path="/ui/graph" element={<GraphPage />} />
