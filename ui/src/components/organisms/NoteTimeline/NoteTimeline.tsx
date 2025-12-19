@@ -76,6 +76,7 @@ export const NoteTimeline = ({ onNoteClick }: NoteTimelineProps) => {
     const now = new Date()
     return { year: now.getFullYear(), month: now.getMonth() }
   })
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
 
   useEffect(() => {
     const loadNotes = async () => {
@@ -120,6 +121,14 @@ export const NoteTimeline = ({ onNoteClick }: NoteTimelineProps) => {
     })
     return counts
   }, [notes])
+
+  // 選択された日付のノート一覧
+  const selectedDateNotes = useMemo((): Note[] => {
+    if (!selectedDate) return []
+    return notes
+      .filter((note) => formatDate(note.updatedAt) === selectedDate)
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+  }, [notes, selectedDate])
 
   const handlePrevMonth = () => {
     setSelectedMonth((prev) => {
@@ -249,10 +258,12 @@ export const NoteTimeline = ({ onNoteClick }: NoteTimelineProps) => {
               const isToday = dateStr === new Date().toISOString().split('T')[0]
 
               return (
-                <div
+                <button
                   key={dateStr}
-                  className={`note-timeline__calendar-day ${isToday ? 'note-timeline__calendar-day--today' : ''} ${count > 0 ? 'note-timeline__calendar-day--has-notes' : ''}`}
+                  className={`note-timeline__calendar-day ${isToday ? 'note-timeline__calendar-day--today' : ''} ${count > 0 ? 'note-timeline__calendar-day--has-notes' : ''} ${selectedDate === dateStr ? 'note-timeline__calendar-day--selected' : ''}`}
                   title={count > 0 ? `${count}件のノート` : undefined}
+                  onClick={() => count > 0 && setSelectedDate(selectedDate === dateStr ? null : dateStr)}
+                  disabled={count === 0}
                 >
                   <span className="note-timeline__calendar-day-num">{day.getDate()}</span>
                   {count > 0 && (
@@ -265,10 +276,46 @@ export const NoteTimeline = ({ onNoteClick }: NoteTimelineProps) => {
                       {count}
                     </span>
                   )}
-                </div>
+                </button>
               )
             })}
           </div>
+          {selectedDate && selectedDateNotes.length > 0 && (
+            <div className="note-timeline__calendar-selected">
+              <div className="note-timeline__calendar-selected-header">
+                <Text variant="subtitle">{formatDateLabel(selectedDate)}</Text>
+                <Button variant="secondary" size="sm" onClick={() => setSelectedDate(null)}>
+                  閉じる
+                </Button>
+              </div>
+              <div className="note-timeline__calendar-selected-notes">
+                {selectedDateNotes.map((note) => (
+                  <button
+                    key={note.id}
+                    className="note-timeline__note"
+                    onClick={() => onNoteClick?.(note.id)}
+                  >
+                    <Text variant="body" truncate>
+                      {note.title}
+                    </Text>
+                    <div className="note-timeline__note-meta">
+                      {note.category && (
+                        <Badge variant={getCategoryBadgeVariant(note.category)}>
+                          {note.category}
+                        </Badge>
+                      )}
+                      <Text variant="caption">
+                        {new Date(note.updatedAt * 1000).toLocaleTimeString('ja-JP', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </Text>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

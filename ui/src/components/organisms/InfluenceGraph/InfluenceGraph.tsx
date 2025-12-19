@@ -59,9 +59,9 @@ const hashCode = (str: string): number => {
 
 const getInitialPosition = (id: string, index: number) => {
   const hash = hashCode(id)
-  // IDに基づいて円形配置
+  // IDに基づいて円形配置（より広い範囲に配置）
   const angle = (hash % 360) * (Math.PI / 180)
-  const radius = 200 + (index % 5) * 50
+  const radius = 400 + (index % 8) * 100
   return {
     x: Math.cos(angle) * radius,
     y: Math.sin(angle) * radius,
@@ -116,7 +116,7 @@ export const InfluenceGraph = ({ onNodeClick }: InfluenceGraphProps) => {
           },
           font: {
             color: '#ffffff',
-            size: 12,
+            size: 14,
           },
         }
       })
@@ -139,8 +139,8 @@ export const InfluenceGraph = ({ onNodeClick }: InfluenceGraphProps) => {
     const options: Options = {
       nodes: {
         shape: 'dot',
-        size: 16,
-        borderWidth: 2,
+        size: 24,
+        borderWidth: 3,
         shadow: true,
       },
       edges: {
@@ -158,14 +158,15 @@ export const InfluenceGraph = ({ onNodeClick }: InfluenceGraphProps) => {
         enabled: true,
         solver: 'forceAtlas2Based',
         forceAtlas2Based: {
-          gravitationalConstant: -50,
-          centralGravity: 0.01,
-          springLength: 100,
-          springConstant: 0.08,
+          gravitationalConstant: -200,
+          centralGravity: 0.005,
+          springLength: 250,
+          springConstant: 0.05,
+          damping: 0.4,
         },
         stabilization: {
           enabled: true,
-          iterations: 200,
+          iterations: 300,
           updateInterval: 25,
         },
       },

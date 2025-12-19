@@ -170,6 +170,22 @@
   border-color: var(--color-primary);
 }
 
+.note-timeline__calendar-day--selected {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: white;
+}
+
+.note-timeline__calendar-day--selected .note-timeline__calendar-day-count {
+  background: white;
+  color: var(--color-primary);
+}
+
+.note-timeline__calendar-day:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
 .note-timeline__calendar-day-num {
   font-weight: 500;
 }
@@ -188,6 +204,32 @@
   border-radius: 50%;
   font-size: 0.625rem;
   font-weight: 600;
+}
+
+/* Selected date notes panel */
+.note-timeline__calendar-selected {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.note-timeline__calendar-selected-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.note-timeline__calendar-selected-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 300px;
+  overflow-y: auto;
 }
 
 /* Responsive */
