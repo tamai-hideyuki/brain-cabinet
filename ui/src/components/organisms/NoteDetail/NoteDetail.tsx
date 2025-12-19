@@ -4,6 +4,7 @@ import { Badge } from '../../atoms/Badge'
 import { Button } from '../../atoms/Button'
 import { TagList } from '../../molecules/TagList'
 import { Spinner } from '../../atoms/Spinner'
+import { MarkdownContent } from '../../atoms/MarkdownContent'
 import { InfluenceSection } from '../../molecules/InfluenceSection'
 import type { Note, NoteHistory } from '../../../types/note'
 import type { NoteInfluence } from '../../../types/influence'
@@ -104,7 +105,7 @@ export const NoteDetail = ({
         {note.tags.length > 0 && <TagList tags={note.tags} />}
       </header>
       <div className="note-detail__content">
-        <pre>{note.content}</pre>
+        <MarkdownContent content={note.content} />
       </div>
 
       <section className="note-detail__history">
@@ -136,7 +137,7 @@ export const NoteDetail = ({
                 </div>
                 {expandedHistoryId === h.id && (
                   <div className="note-detail__history-item-content">
-                    <pre>{h.content}</pre>
+                    <MarkdownContent content={h.content} />
                   </div>
                 )}
               </div>
