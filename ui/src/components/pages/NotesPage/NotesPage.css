@@ -16,9 +16,10 @@
   gap: 0.5rem;
 }
 
-.notes-page__promotion-notice {
+.notes-page__actions {
   display: flex;
   align-items: center;
+  gap: 0.5rem;
 }
 
 .notes-page__search {
