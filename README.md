@@ -1,9 +1,15 @@
-# Brain Cabinet v5.0.0 (Full-Featured Web UI)
+# Brain Cabinet v5.1.0 (Enhanced Visualization & Navigation)
 
 **思考ベースの検索型知識システム — あなたの思考を理解し、成長を見守る外部脳**
 
 > Brain Cabinet は単なるメモ帳ではありません。
 > ノートの**文脈を理解**し、質問に応じて**必要な部分だけを抽出・再構成**する仕組みです。
+>
+> **v5.1 の新機能: ビジュアライゼーション強化**
+> - **ネットワークグラフ** — vis-network でノート間の影響関係を可視化、物理シミュレーションで配置
+> - **タイムライン表示** — 時系列でノートの更新履歴を表示、カレンダービュー切り替え可能
+> - **ダッシュボード** — PTM状態、今日の活動、レビュー待ち、昇格候補を1画面に集約
+> - **フィルターパネル** — ドロワーでタグ/カテゴリ絞り込み、AND/OR切り替え、使用頻度順ソート
 >
 > **v5.0 の新機能: フル機能 Web UI**
 > - **Decision ハイライト表示** — 判断/学習ノートを視覚的に区別、バッジ表示で即座に識別
@@ -792,6 +798,12 @@ brain-cabinet/
 - [x] **scratch 昇格通知** - ノート一覧に「昇格候補」バッジ表示、Human Decides原則で人間が最終判断
 - [x] **レスポンシブデザイン** - iPhone対応、モバイルファースト設計
 
+### Phase 5.1（v5.1 完了）
+- [x] **ネットワークグラフ** - vis-network でノート間の影響関係をインタラクティブに可視化
+- [x] **タイムライン表示** - 時系列でノートの更新履歴を表示、カレンダービュー切り替え
+- [x] **ダッシュボード（ホーム画面）** - PTM状態、今日の活動、レビュー待ち、昇格候補を1画面に集約
+- [x] **フィルターパネル** - ドロワーでタグ/カテゴリ絞り込み、AND/OR切り替え、使用頻度順ソート
+
 ### Phase 6（予定）
 - [ ] LLM 推論統合（GPT-4 によるタイプ分類）
 - [ ] 要約生成・保存
@@ -855,6 +867,31 @@ brain-cabinet/
 ---
 
 ## バージョン履歴
+
+### v5.1.0
+- **ビジュアライゼーション強化**: 思考の全体像を直感的に把握できる UI を追加
+  - **ネットワークグラフ** (`/ui/graph`): vis-network でノート間の影響関係を可視化
+    - クラスタ別の色分け表示
+    - 物理シミュレーションによる自動配置（forceAtlas2Based）
+    - ノードクリックで該当ノートに遷移
+    - ズーム/ドラッグ操作対応
+  - **タイムライン表示** (`/ui/timeline`): ノートの更新履歴を時系列表示
+    - タイムラインビュー: 日付ごとにグループ化して表示
+    - カレンダービュー: 月間カレンダーで活動状況を俯瞰
+    - 日付クリックでその日のノート一覧を表示
+  - **ダッシュボード** (`/ui/`): アプリのホーム画面として機能
+    - PTM状態サマリー（モード/シーズン/成長角度/Coachアドバイス）
+    - 今日の活動（今日更新されたノート）
+    - レビュー待ち（scratchカテゴリのノート）
+    - 昇格候補（learning/decisionへの昇格推奨ノート）
+    - 最近の更新（直近5件）
+  - **フィルターパネル** (`/ui/notes` のフィルターボタン): ノート絞り込み機能
+    - ドロワー形式で右からスライドイン
+    - タグ/カテゴリ一覧を表示（使用件数バッジ付き）
+    - AND/OR切り替えで絞り込み条件を変更
+    - 使用頻度順/名前順でソート可能
+- **ナビゲーション更新**: ホーム/ノート/レビュー/タイムライン/グラフ
+- **新規ライブラリ**: vis-network, vis-data（グラフ可視化）
 
 ### v5.0.0
 - **フル機能 Web UI**: Brain Cabinet の全機能を Web UI から利用可能に
@@ -1030,4 +1067,4 @@ brain-cabinet/
 
 ---
 
-**Brain Cabinet v5.0 (Full-Featured Web UI)** — Your External Brain with Complete Visual Interface for Decision-First Architecture, Spaced Review, and Cognitive Growth Tracking
+**Brain Cabinet v5.1 (Enhanced Visualization & Navigation)** — Your External Brain with Interactive Graph, Timeline, Dashboard, and Smart Filtering for Decision-First Architecture

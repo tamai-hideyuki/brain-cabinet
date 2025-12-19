@@ -1,6 +1,6 @@
 {
   "name": "brain-cabinet",
-  "version": "5.0.0",
+  "version": "5.1.0",
   "type": "module",
   "scripts": {
     "dev": "tsx src/index.ts",
