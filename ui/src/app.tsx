@@ -3,6 +3,8 @@ import { SignedIn, SignedOut, SignInButton } from '@clerk/clerk-react'
 import { NotesPage } from './components/pages/NotesPage'
 import { NoteDetailPage } from './components/pages/NoteDetailPage'
 import { ReviewsPage } from './components/pages/ReviewsPage'
+import { GraphPage } from './components/pages/GraphPage'
+import { TimelinePage } from './components/pages/TimelinePage'
 
 export function App() {
   return (
@@ -20,6 +22,8 @@ export function App() {
           <Route path="/ui/" element={<NotesPage />} />
           <Route path="/ui/notes/:id" element={<NoteDetailPage />} />
           <Route path="/ui/reviews" element={<ReviewsPage />} />
+          <Route path="/ui/graph" element={<GraphPage />} />
+          <Route path="/ui/timeline" element={<TimelinePage />} />
         </Routes>
       </SignedIn>
     </BrowserRouter>

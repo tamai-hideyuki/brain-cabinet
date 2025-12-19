@@ -238,6 +238,32 @@ export async function rebuildInfluenceGraph(): Promise<{
 }
 
 /**
+ * グラフ全体のエッジを取得（可視化用）
+ */
+export async function getAllInfluenceEdges(limit: number = 200): Promise<InfluenceEdge[]> {
+  const rows = await db.all<{
+    source_note_id: string;
+    target_note_id: string;
+    weight: number;
+    cosine_sim: number;
+    drift_score: number;
+  }>(sql`
+    SELECT source_note_id, target_note_id, weight, cosine_sim, drift_score
+    FROM note_influence_edges
+    ORDER BY weight DESC
+    LIMIT ${limit}
+  `);
+
+  return rows.map((r) => ({
+    sourceNoteId: r.source_note_id,
+    targetNoteId: r.target_note_id,
+    weight: r.weight,
+    cosineSim: r.cosine_sim,
+    driftScore: r.drift_score,
+  }));
+}
+
+/**
  * グラフ全体の統計を取得
  */
 export async function getInfluenceStats(): Promise<{

@@ -3,6 +3,7 @@ import {
   getInfluencersOf,
   getInfluencedBy,
   getInfluenceStats,
+  getAllInfluenceEdges,
 } from "../../services/influence/influenceService";
 import { findNoteById } from "../../repositories/notesRepo";
 
@@ -195,6 +196,49 @@ influenceRoute.get("/summary", async (c) => {
     topInfluenced: topInfluencedDetails,
     topInfluencers: topInfluencerDetails,
     insight,
+  });
+});
+
+/**
+ * GET /api/influence/graph
+ * グラフ全体のノードとエッジを取得（可視化用）
+ */
+influenceRoute.get("/graph", async (c) => {
+  const limitParam = c.req.query("limit");
+  const limit = limitParam ? parseInt(limitParam, 10) : 200;
+
+  const edges = await getAllInfluenceEdges(limit);
+
+  // エッジに含まれるノートIDを収集
+  const noteIds = new Set<string>();
+  edges.forEach((edge) => {
+    noteIds.add(edge.sourceNoteId);
+    noteIds.add(edge.targetNoteId);
+  });
+
+  // ノート情報を取得
+  const notes = await Promise.all(
+    Array.from(noteIds).map(async (noteId) => {
+      const note = await findNoteById(noteId);
+      return note
+        ? { id: note.id, title: note.title, clusterId: note.clusterId }
+        : null;
+    })
+  );
+
+  const validNotes = notes.filter((n) => n !== null);
+
+  return c.json({
+    nodes: validNotes,
+    edges: edges.map((e) => ({
+      source: e.sourceNoteId,
+      target: e.targetNoteId,
+      weight: e.weight,
+    })),
+    stats: {
+      nodeCount: validNotes.length,
+      edgeCount: edges.length,
+    },
   });
 });
 

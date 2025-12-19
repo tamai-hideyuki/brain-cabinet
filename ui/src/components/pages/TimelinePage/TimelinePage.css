@@ -1,0 +1,15 @@
+.timeline-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.timeline-page__header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.timeline-page__content {
+  flex: 1;
+}
