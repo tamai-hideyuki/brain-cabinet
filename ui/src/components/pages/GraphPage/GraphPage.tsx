@@ -8,7 +8,7 @@ export const GraphPage = () => {
   const navigate = useNavigate()
 
   const handleNodeClick = (noteId: string) => {
-    navigate(`/notes/${noteId}`)
+    navigate(`/ui/notes/${noteId}`)
   }
 
   return (

@@ -8,7 +8,7 @@ export const TimelinePage = () => {
   const navigate = useNavigate()
 
   const handleNoteClick = (noteId: string) => {
-    navigate(`/notes/${noteId}`)
+    navigate(`/ui/notes/${noteId}`)
   }
 
   return (

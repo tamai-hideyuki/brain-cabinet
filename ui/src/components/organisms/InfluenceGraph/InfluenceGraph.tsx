@@ -46,6 +46,28 @@ const getClusterColor = (clusterId: number | null): string => {
   return colors[clusterId % colors.length]
 }
 
+// ノードIDから決定的な初期位置を計算（ハッシュ関数）
+const hashCode = (str: string): number => {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash // Convert to 32bit integer
+  }
+  return hash
+}
+
+const getInitialPosition = (id: string, index: number) => {
+  const hash = hashCode(id)
+  // IDに基づいて円形配置
+  const angle = (hash % 360) * (Math.PI / 180)
+  const radius = 200 + (index % 5) * 50
+  return {
+    x: Math.cos(angle) * radius,
+    y: Math.sin(angle) * radius,
+  }
+}
+
 export const InfluenceGraph = ({ onNodeClick }: InfluenceGraphProps) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const networkRef = useRef<Network | null>(null)
@@ -76,23 +98,28 @@ export const InfluenceGraph = ({ onNodeClick }: InfluenceGraphProps) => {
     if (!data || !containerRef.current) return
 
     const nodes = new DataSet(
-      data.nodes.map((node) => ({
-        id: node.id,
-        label: node.title.length > 20 ? node.title.slice(0, 20) + '...' : node.title,
-        title: node.title,
-        color: {
-          background: getClusterColor(node.clusterId),
-          border: getClusterColor(node.clusterId),
-          highlight: {
-            background: '#fbbf24',
-            border: '#f59e0b',
+      data.nodes.map((node, index) => {
+        const pos = getInitialPosition(node.id, index)
+        return {
+          id: node.id,
+          label: node.title.length > 20 ? node.title.slice(0, 20) + '...' : node.title,
+          title: node.title,
+          x: pos.x,
+          y: pos.y,
+          color: {
+            background: getClusterColor(node.clusterId),
+            border: getClusterColor(node.clusterId),
+            highlight: {
+              background: '#fbbf24',
+              border: '#f59e0b',
+            },
           },
-        },
-        font: {
-          color: '#ffffff',
-          size: 12,
-        },
-      }))
+          font: {
+            color: '#ffffff',
+            size: 12,
+          },
+        }
+      })
     )
 
     const edges = new DataSet(
@@ -152,6 +179,11 @@ export const InfluenceGraph = ({ onNodeClick }: InfluenceGraphProps) => {
 
     const network = new Network(containerRef.current, { nodes, edges }, options)
     networkRef.current = network
+
+    // 安定化完了後に物理シミュレーションを停止（配置を固定）
+    network.on('stabilizationIterationsDone', () => {
+      network.setOptions({ physics: { enabled: false } })
+    })
 
     network.on('click', (params) => {
       if (params.nodes.length > 0) {
