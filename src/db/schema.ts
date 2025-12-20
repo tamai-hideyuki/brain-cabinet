@@ -435,3 +435,29 @@ export const reviewSessions = sqliteTable("review_sessions", {
   intervalAfter: integer("interval_after"),                       // レビュー後の間隔
   createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
 });
+
+// ============================================================
+// v5.2 ブックマーク機能（階層構造による参照管理）
+// ============================================================
+
+// ブックマークノードタイプ定義
+export const BOOKMARK_NODE_TYPES = [
+  "folder",    // フォルダ（他のノードを含む）
+  "note",      // ノートへの参照
+  "link",      // 外部リンク
+] as const;
+export type BookmarkNodeType = (typeof BOOKMARK_NODE_TYPES)[number];
+
+// ブックマークノードテーブル
+export const bookmarkNodes = sqliteTable("bookmark_nodes", {
+  id: text("id").primaryKey(),                                    // UUID
+  parentId: text("parent_id"),                                    // 親ノードID（NULLならルート）
+  type: text("type").notNull(),                                   // BookmarkNodeType
+  name: text("name").notNull(),                                   // 表示名
+  noteId: text("note_id"),                                        // type="note" の場合のノートID
+  url: text("url"),                                               // type="link" の場合の外部URL
+  position: integer("position").notNull().default(0),             // 同階層内の表示順
+  isExpanded: integer("is_expanded").notNull().default(1),        // フォルダの展開状態（1: 展開, 0: 折りたたみ）
+  createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
+  updatedAt: integer("updated_at").notNull().default(sql`(strftime('%s','now'))`),
+});

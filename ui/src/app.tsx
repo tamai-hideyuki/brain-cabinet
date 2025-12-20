@@ -6,6 +6,7 @@ import { ReviewsPage } from './components/pages/ReviewsPage'
 import { GraphPage } from './components/pages/GraphPage'
 import { TimelinePage } from './components/pages/TimelinePage'
 import { DashboardPage } from './components/pages/DashboardPage'
+import { BookmarkPage } from './components/pages/BookmarkPage'
 
 export function App() {
   return (
@@ -26,6 +27,7 @@ export function App() {
           <Route path="/ui/reviews" element={<ReviewsPage />} />
           <Route path="/ui/graph" element={<GraphPage />} />
           <Route path="/ui/timeline" element={<TimelinePage />} />
+          <Route path="/ui/bookmarks" element={<BookmarkPage />} />
         </Routes>
       </SignedIn>
     </BrowserRouter>

@@ -1,0 +1,77 @@
+.bookmark-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.bookmark-page__header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.bookmark-page__title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.bookmark-page__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.bookmark-page__create-form {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background-color: var(--color-bg-secondary);
+  border-radius: 0.5rem;
+}
+
+.bookmark-page__input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.375rem;
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-size: 0.875rem;
+  outline: none;
+}
+
+.bookmark-page__input:focus {
+  border-color: var(--color-primary);
+}
+
+.bookmark-page__content {
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  min-height: 300px;
+}
+
+/* Tablet and up */
+@media (min-width: 640px) {
+  .bookmark-page {
+    gap: 1.5rem;
+  }
+
+  .bookmark-page__header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .bookmark-page__title-row {
+    gap: 0.75rem;
+  }
+
+  .bookmark-page__content {
+    padding: 1rem;
+  }
+}

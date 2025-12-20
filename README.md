@@ -1,17 +1,22 @@
-# Brain Cabinet v5.1.0 (Enhanced Visualization & Navigation)
+# Brain Cabinet v5.2.0 (Bookmark Management)
 
 **思考ベースの検索型知識システム — あなたの思考を理解し、成長を見守る外部脳**
 
 > Brain Cabinet は単なるメモ帳ではありません。
 > ノートの**文脈を理解**し、質問に応じて**必要な部分だけを抽出・再構成**する仕組みです。
 >
-> **v5.1 の新機能: ビジュアライゼーション強化**
+> **v5.2 の新機能: ブックマーク機能**
+> - **階層構造ブックマーク** — フォルダ/ノート参照/外部リンクをツリー構造で管理
+> - **人間主導の整理** — AIの自動分類とは別に、人間が意図的に構造化
+> - **ノート横断ショートカット** — 同じノートを複数フォルダから参照可能
+>
+> **v5.1 の機能: ビジュアライゼーション強化**
 > - **ネットワークグラフ** — vis-network でノート間の影響関係を可視化、物理シミュレーションで配置
 > - **タイムライン表示** — 時系列でノートの更新履歴を表示、カレンダービュー切り替え可能
 > - **ダッシュボード** — PTM状態、今日の活動、レビュー待ち、昇格候補を1画面に集約
 > - **フィルターパネル** — ドロワーでタグ/カテゴリ絞り込み、AND/OR切り替え、使用頻度順ソート
 >
-> **v5.0 の新機能: フル機能 Web UI**
+> **v5.0 の機能: フル機能 Web UI**
 > - **Decision ハイライト表示** — 判断/学習ノートを視覚的に区別、バッジ表示で即座に識別
 > - **PTM Snapshot ダッシュボード** — ヘッダーに思考状態インジケーター、Coach アドバイス確認
 > - **Influence Graph 表示** — ノート詳細で影響関係を可視化、クラスタ情報も表示
@@ -804,6 +809,13 @@ brain-cabinet/
 - [x] **ダッシュボード（ホーム画面）** - PTM状態、今日の活動、レビュー待ち、昇格候補を1画面に集約
 - [x] **フィルターパネル** - ドロワーでタグ/カテゴリ絞り込み、AND/OR切り替え、使用頻度順ソート
 
+### Phase 5.2（v5.2 完了）
+- [x] **ブックマーク機能** - 階層構造によるノート参照管理
+  - フォルダ/ノート参照/外部リンクの3タイプ
+  - ツリー表示、展開/折りたたみ
+  - ノード作成/編集/削除
+  - 同一ノートを複数フォルダから参照可能
+
 ### Phase 6（予定）
 - [ ] LLM 推論統合（GPT-4 によるタイプ分類）
 - [ ] 要約生成・保存
@@ -867,6 +879,24 @@ brain-cabinet/
 ---
 
 ## バージョン履歴
+
+### v5.2.0
+- **ブックマーク機能**: 階層構造によるノート参照管理
+  - **ブックマークページ** (`/ui/bookmarks`): ツリー構造でブックマークを管理
+    - フォルダ: 他のノードを含むコンテナ
+    - ノート参照: 既存ノートへのショートカット（同一ノートを複数フォルダから参照可能）
+    - 外部リンク: 外部URLへのリンク
+  - **ツリー操作**: 展開/折りたたみ、リネーム、削除
+  - **フォルダ作成**: ルートまたはサブフォルダとして作成
+  - **参照型設計**: ブックマーク削除してもノート本体は残る
+- **ナビゲーション更新**: ホーム/ノート/ブックマーク/レビュー/タイムライン/グラフ
+- **REST API追加**: `/api/bookmarks` エンドポイント
+  - `GET /api/bookmarks`: ツリー構造で全ブックマーク取得
+  - `POST /api/bookmarks`: ノード作成
+  - `PUT /api/bookmarks/:id`: ノード更新
+  - `DELETE /api/bookmarks/:id`: ノード削除（子ノードも再帰削除）
+  - `POST /api/bookmarks/:id/move`: ノード移動（循環参照防止）
+  - `POST /api/bookmarks/reorder`: 並び順更新
 
 ### v5.1.0
 - **ビジュアライゼーション強化**: 思考の全体像を直感的に把握できる UI を追加
@@ -1067,4 +1097,4 @@ brain-cabinet/
 
 ---
 
-**Brain Cabinet v5.1 (Enhanced Visualization & Navigation)** — Your External Brain with Interactive Graph, Timeline, Dashboard, and Smart Filtering for Decision-First Architecture
+**Brain Cabinet v5.2 (Bookmark Management)** — Your External Brain with Hierarchical Bookmarks, Interactive Graph, Timeline, Dashboard, and Smart Filtering for Decision-First Architecture
