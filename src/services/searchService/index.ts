@@ -1,14 +1,7 @@
 import { searchNotesInDB, SearchOptions } from "../../repositories/searchRepo";
 import { findAllNotes } from "../../repositories/notesRepo";
 import { normalizeText } from "../../utils/normalize";
-import TinySegmenter from "tiny-segmenter";
-
-const segmenter = new TinySegmenter();
-
-// 形態素解析
-const tokenize = (text: string): string[] => {
-  return segmenter.segment(text);
-};
+import { tokenize } from "../../utils/tokenizer";
 
 // -------------------------------------
 // IDF キャッシュ（メモリ内）

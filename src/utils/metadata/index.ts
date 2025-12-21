@@ -1,7 +1,5 @@
-import TinySegmenter from "tiny-segmenter";
 import { CATEGORIES, Category } from "../../db/schema";
-
-const segmenter = new TinySegmenter();
+import { tokenize } from "../tokenizer";
 
 // -------------------------------------
 // 見出し抽出
@@ -95,8 +93,8 @@ export const extractTags = (content: string, maxTags = 10): string[] => {
     tagCounts.set(word, (tagCounts.get(word) || 0) + 1);
   }
 
-  // 3. 日本語の重要語（TinySegmenter で形態素解析）
-  const tokens = segmenter.segment(content);
+  // 3. 日本語の重要語（形態素解析）
+  const tokens = tokenize(content);
   const japaneseWords = tokens.filter(
     (t: string) =>
       t.length >= 2 &&
