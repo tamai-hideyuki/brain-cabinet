@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MainLayout } from '../../templates/MainLayout'
 import { BookmarkTree } from '../../organisms/BookmarkTree'
+import { AddNoteToBookmarkModal } from '../../organisms/AddNoteToBookmarkModal'
 import { Text } from '../../atoms/Text'
 import { Button } from '../../atoms/Button'
 import { useBookmarks } from '../../../hooks/useBookmarks'
@@ -23,6 +24,7 @@ export const BookmarkPage = () => {
   const [isCreating, setIsCreating] = useState(false)
   const [createParentId, setCreateParentId] = useState<string | null>(null)
   const [newFolderName, setNewFolderName] = useState('')
+  const [addNoteModal, setAddNoteModal] = useState<{ folderId: string; folderName: string } | null>(null)
 
   const handleNodeClick = (node: BookmarkNode) => {
     if (node.type === 'note' && node.noteId) {
@@ -69,6 +71,20 @@ export const BookmarkPage = () => {
 
   const handleToggleExpand = async (id: string, isExpanded: boolean) => {
     await toggleExpand(id, isExpanded)
+  }
+
+  const handleAddNote = (folderId: string, folderName: string) => {
+    setAddNoteModal({ folderId, folderName })
+  }
+
+  const handleAddNoteToFolder = async (noteId: string, noteName: string) => {
+    if (!addNoteModal) return
+    await createNode({
+      parentId: addNoteModal.folderId,
+      type: 'note',
+      name: noteName,
+      noteId: noteId,
+    })
   }
 
   return (
@@ -124,11 +140,20 @@ export const BookmarkPage = () => {
             onNodeClick={handleNodeClick}
             onToggleExpand={handleToggleExpand}
             onCreateFolder={handleCreateFolder}
+            onAddNote={handleAddNote}
             onDelete={handleDelete}
             onRename={handleRename}
           />
         </div>
       </div>
+
+      {addNoteModal && (
+        <AddNoteToBookmarkModal
+          folderName={addNoteModal.folderName}
+          onClose={() => setAddNoteModal(null)}
+          onAdd={handleAddNoteToFolder}
+        />
+      )}
     </MainLayout>
   )
 }

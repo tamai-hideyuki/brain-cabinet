@@ -11,6 +11,7 @@ type BookmarkTreeNodeProps = {
   onNodeClick: (node: BookmarkNode) => void
   onToggleExpand: (id: string, isExpanded: boolean) => void
   onCreateFolder: (parentId: string | null) => void
+  onAddNote: (folderId: string, folderName: string) => void
   onDelete: (id: string) => void
   onRename: (id: string, name: string) => void
 }
@@ -21,6 +22,7 @@ const BookmarkTreeNode = ({
   onNodeClick,
   onToggleExpand,
   onCreateFolder,
+  onAddNote,
   onDelete,
   onRename,
 }: BookmarkTreeNodeProps) => {
@@ -120,16 +122,28 @@ const BookmarkTreeNode = ({
         {showActions && !isEditing && (
           <div className="bookmark-tree__actions">
             {node.type === 'folder' && (
-              <button
-                className="bookmark-tree__action-btn"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onCreateFolder(node.id)
-                }}
-                title="サブフォルダを作成"
-              >
-                +
-              </button>
+              <>
+                <button
+                  className="bookmark-tree__action-btn"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onAddNote(node.id, node.name)
+                  }}
+                  title="メモを追加"
+                >
+                  📝
+                </button>
+                <button
+                  className="bookmark-tree__action-btn"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onCreateFolder(node.id)
+                  }}
+                  title="サブフォルダを作成"
+                >
+                  +
+                </button>
+              </>
             )}
             <button
               className="bookmark-tree__action-btn"
@@ -166,6 +180,7 @@ const BookmarkTreeNode = ({
               onNodeClick={onNodeClick}
               onToggleExpand={onToggleExpand}
               onCreateFolder={onCreateFolder}
+              onAddNote={onAddNote}
               onDelete={onDelete}
               onRename={onRename}
             />
@@ -183,6 +198,7 @@ type BookmarkTreeProps = {
   onNodeClick: (node: BookmarkNode) => void
   onToggleExpand: (id: string, isExpanded: boolean) => void
   onCreateFolder: (parentId: string | null) => void
+  onAddNote: (folderId: string, folderName: string) => void
   onDelete: (id: string) => void
   onRename: (id: string, name: string) => void
 }
@@ -194,6 +210,7 @@ export const BookmarkTree = ({
   onNodeClick,
   onToggleExpand,
   onCreateFolder,
+  onAddNote,
   onDelete,
   onRename,
 }: BookmarkTreeProps) => {
@@ -238,6 +255,7 @@ export const BookmarkTree = ({
           onNodeClick={onNodeClick}
           onToggleExpand={onToggleExpand}
           onCreateFolder={onCreateFolder}
+          onAddNote={onAddNote}
           onDelete={onDelete}
           onRename={onRename}
         />
