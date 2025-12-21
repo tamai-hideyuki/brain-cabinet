@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { computeDiff } from "../utils/diff";
 import { extractMetadata } from "../utils/metadata";
+import { invalidateIDFCache } from "../services/searchService";
 
 const SUPPORTED_EXT = [".md", ".txt", ".mdx"];
 
@@ -105,6 +106,9 @@ const importNotes = async (targetDir: string) => {
     }
   }
 
+  // IDFキャッシュを無効化（インポートでDF値が変わる）
+  invalidateIDFCache();
+  console.log("IDF cache invalidated.");
   console.log("Import finished!");
 };
 

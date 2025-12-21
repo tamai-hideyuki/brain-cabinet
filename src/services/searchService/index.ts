@@ -24,57 +24,94 @@ export interface SearchResult {
 }
 
 // -------------------------------------
-// IDF キャッシュ（メモリ内）
+// IDF キャッシュ（クラスベース + TTL）
 // -------------------------------------
-type IDFCache = {
+type IDFCacheData = {
   idfMap: Map<string, number>;
   totalDocs: number;
   lastUpdated: number;
 };
 
-let idfCache: IDFCache | null = null;
-// TTLは削除: Write-through方式に移行
-// ノートのCRUD操作時にinvalidateIDFCache()を呼び出す
+class IDFCacheManager {
+  private cache: IDFCacheData | null = null;
+  private readonly TTL = 60 * 60 * 1000; // 1時間
 
-// -------------------------------------
-// IDF計算（全ノートをスキャン）
-// -------------------------------------
-const buildIDFCache = async (): Promise<IDFCache> => {
-  const allNotes = await findAllNotes();
-  const N = allNotes.length;
-  const docFreq = new Map<string, number>(); // token → 出現ドキュメント数
-
-  // 各ノートをトークン化し、ドキュメント頻度をカウント
-  for (const note of allNotes) {
-    const text = normalizeText(note.content).toLowerCase();
-    const tokens = tokenize(text);
-    const uniqueTokens = new Set(tokens.filter((t) => t.length >= 2));
-
-    for (const token of uniqueTokens) {
-      docFreq.set(token, (docFreq.get(token) || 0) + 1);
+  /**
+   * キャッシュを取得（無効なら自動リビルド）
+   */
+  async get(): Promise<IDFCacheData> {
+    if (!this.isValid()) {
+      await this.rebuild();
     }
+    return this.cache!;
   }
 
-  // IDF値を計算: log(N / df)
-  const idfMap = new Map<string, number>();
-  for (const [token, df] of docFreq) {
-    idfMap.set(token, Math.log(N / df));
+  /**
+   * キャッシュが有効かどうか
+   * - キャッシュが存在する
+   * - TTL内である
+   */
+  private isValid(): boolean {
+    if (!this.cache) return false;
+    return Date.now() - this.cache.lastUpdated < this.TTL;
   }
 
-  return {
-    idfMap,
-    totalDocs: N,
-    lastUpdated: Date.now(),
-  };
-};
+  /**
+   * キャッシュをリビルド
+   */
+  private async rebuild(): Promise<void> {
+    const allNotes = await findAllNotes();
+    const N = allNotes.length;
+    const docFreq = new Map<string, number>();
 
-const getIDFCache = async (): Promise<IDFCache> => {
-  // Write-through方式: キャッシュがなければ構築
-  // 無効化はinvalidateIDFCache()で明示的に行う
-  if (!idfCache) {
-    idfCache = await buildIDFCache();
+    for (const note of allNotes) {
+      const text = normalizeText(note.content).toLowerCase();
+      const tokens = tokenize(text);
+      const uniqueTokens = new Set(tokens.filter((t) => t.length >= 2));
+
+      for (const token of uniqueTokens) {
+        docFreq.set(token, (docFreq.get(token) || 0) + 1);
+      }
+    }
+
+    const idfMap = new Map<string, number>();
+    for (const [token, df] of docFreq) {
+      idfMap.set(token, Math.log(N / df));
+    }
+
+    this.cache = {
+      idfMap,
+      totalDocs: N,
+      lastUpdated: Date.now(),
+    };
   }
-  return idfCache;
+
+  /**
+   * キャッシュを明示的に無効化（write-through用）
+   */
+  invalidate(): void {
+    this.cache = null;
+  }
+
+  /**
+   * デバッグ用: キャッシュの状態を取得
+   */
+  getStats(): { hasCache: boolean; age: number; size: number; ttl: number } {
+    return {
+      hasCache: this.cache !== null,
+      age: this.cache ? Date.now() - this.cache.lastUpdated : 0,
+      size: this.cache?.idfMap.size ?? 0,
+      ttl: this.TTL,
+    };
+  }
+}
+
+// シングルトンインスタンス
+const idfCacheManager = new IDFCacheManager();
+
+// 内部用ヘルパー
+const getIDFCache = async (): Promise<IDFCacheData> => {
+  return idfCacheManager.get();
 };
 
 // -------------------------------------
@@ -437,11 +474,16 @@ export const searchNotes = async (query: string, options?: SearchOptions): Promi
 // ノートのCRUD操作時に呼び出す
 // -------------------------------------
 export const invalidateIDFCache = () => {
-  idfCache = null;
+  idfCacheManager.invalidate();
 };
 
 // 旧名称（後方互換性のため）
 export const clearIDFCache = invalidateIDFCache;
+
+// デバッグ用: キャッシュ状態を取得
+export const getIDFCacheStats = () => {
+  return idfCacheManager.getStats();
+};
 
 // -------------------------------------
 // 意味検索（Semantic Search）
