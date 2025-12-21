@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { searchNotes, searchNotesSemantic } from "../../services/searchService";
+import { searchNotes, searchNotesSemantic, type SearchResult } from "../../services/searchService";
 import { Category, CATEGORIES } from "../../db/schema";
 import { logger } from "../../utils/logger";
 
@@ -66,10 +66,10 @@ searchRoute.get("/categories", (c) => {
  * キーワード検索と意味検索の結果を統合
  */
 const mergeSearchResults = (
-  keywordResults: Array<{ id: string; score: number; [key: string]: any }>,
-  semanticResults: Array<{ id: string; score: number; [key: string]: any }>
-): Array<{ id: string; score: number; [key: string]: any }> => {
-  const merged = new Map<string, { result: any; keywordScore: number; semanticScore: number }>();
+  keywordResults: SearchResult[],
+  semanticResults: SearchResult[]
+): SearchResult[] => {
+  const merged = new Map<string, { result: SearchResult; keywordScore: number; semanticScore: number }>();
 
   // キーワード検索結果を追加
   for (const result of keywordResults) {

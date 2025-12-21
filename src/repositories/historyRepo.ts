@@ -1,11 +1,12 @@
 import { db } from "../db/client";
 import { noteHistory } from "../db/schema";
 import { eq, desc } from "drizzle-orm";
+import type { InsertHistoryData } from "../types/note";
 
 // トランザクション用の型定義
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-export const insertHistory = async (data: any) => {
+export const insertHistory = async (data: InsertHistoryData) => {
   return await db.insert(noteHistory).values(data);
 };
 

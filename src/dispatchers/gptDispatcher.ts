@@ -4,6 +4,7 @@
 
 import * as gptService from "../services/gptService";
 import * as searchService from "../services/searchService";
+import type { SearchResult } from "../services/searchService";
 import { AppError, ErrorCodes } from "../utils/errors";
 import type { Category } from "../db/schema";
 
@@ -16,8 +17,12 @@ type GptSearchPayload = {
   sort?: "relevance" | "updated" | "created";  // ソート順
 };
 
+interface HybridSearchResult extends SearchResult {
+  hybridScore?: number;
+}
+
 // GPT向けに軽量な検索結果を生成（content全文ではなくsnippetのみ）
-const formatForGPT = (results: any[], limit: number) => {
+const formatForGPT = (results: HybridSearchResult[], limit: number) => {
   return results.slice(0, limit).map(note => ({
     id: note.id,
     title: note.title,
@@ -45,7 +50,7 @@ export const gptDispatcher = {
     };
 
     // GPT向けに最適化した検索結果を返す
-    let results: any[];
+    let results: HybridSearchResult[];
     switch (mode) {
       case "semantic":
         results = await searchService.searchNotesSemantic(p.query, options);

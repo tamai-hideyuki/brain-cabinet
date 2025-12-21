@@ -2,6 +2,26 @@ import { searchNotesInDB, SearchOptions } from "../../repositories/searchRepo";
 import { findAllNotes } from "../../repositories/notesRepo";
 import { normalizeText } from "../../utils/normalize";
 import { tokenize } from "../../utils/tokenizer";
+import type { NoteForScoring } from "../../types/note";
+
+/**
+ * 検索結果の共通型
+ */
+export interface SearchResult {
+  id: string;
+  title: string;
+  path: string;
+  content: string;
+  tags: string[];
+  headings: string[];
+  category: string | null;
+  clusterId: number | null;
+  createdAt: number;
+  updatedAt: number;
+  snippet: string;
+  score: number;
+  _debug?: Record<string, unknown>;
+}
 
 // -------------------------------------
 // IDF キャッシュ（メモリ内）
@@ -208,7 +228,7 @@ const makeSnippet = (content: string, query: string): string => {
 // TF-IDF統合スコア（タイトル・見出しの重みづけ強化）
 // -------------------------------------
 const computeTFIDFScore = (
-  note: any,
+  note: NoteForScoring,
   tokens: string[],
   idfMap: Map<string, number>
 ): number => {
@@ -253,7 +273,7 @@ const computeTFIDFScore = (
 // -------------------------------------
 // ノート長さ補正（短文ペナルティ）
 // -------------------------------------
-const computeLengthScore = (note: any): number => {
+const computeLengthScore = (note: NoteForScoring): number => {
   const length = note.content.length;
 
   // 100文字未満: ペナルティ
@@ -269,7 +289,7 @@ const computeLengthScore = (note: any): number => {
 // -------------------------------------
 // 構造スコア（タイトル・見出し一致）
 // -------------------------------------
-const computeStructureScore = (note: any, query: string): number => {
+const computeStructureScore = (note: NoteForScoring, query: string): number => {
   const q = query.toLowerCase();
   const title = note.title.toLowerCase();
   let score = 0;
@@ -296,7 +316,7 @@ const computeStructureScore = (note: any, query: string): number => {
 // -------------------------------------
 // 新規性スコア（Recency）
 // -------------------------------------
-const computeRecencyScore = (note: any): number => {
+const computeRecencyScore = (note: NoteForScoring): number => {
   const age = Math.floor(Date.now() / 1000) - note.updatedAt;
   const daysSinceUpdate = age / (60 * 60 * 24);
 
@@ -314,7 +334,7 @@ const computeRecencyScore = (note: any): number => {
 // カテゴリ・タグ一致スコア
 // -------------------------------------
 const computeMetadataScore = (
-  note: any,
+  note: NoteForScoring,
   query: string,
   options?: SearchOptions
 ): number => {
@@ -370,7 +390,7 @@ const parseJsonArray = (jsonStr: string | null): string[] => {
 // -------------------------------------
 // 検索本体
 // -------------------------------------
-export const searchNotes = async (query: string, options?: SearchOptions) => {
+export const searchNotes = async (query: string, options?: SearchOptions): Promise<SearchResult[]> => {
   const raw = await searchNotesInDB(query, options);
   const { idfMap } = await getIDFCache();
 
@@ -432,7 +452,7 @@ import { findNoteById } from "../../repositories/notesRepo";
 export const searchNotesSemantic = async (
   query: string,
   options?: { category?: string; tags?: string[] }
-) => {
+): Promise<SearchResult[]> => {
   // Embeddingベースで類似ノートを検索
   const similarResults = await searchSimilarNotes(query, 20);
 
@@ -516,9 +536,9 @@ export const searchNotesHybrid = async (
   ]);
 
   // 結果をマージ（IDをキーにスコアを統合）
-  const merged = new Map<string, { note: unknown; score: number; sources: string[] }>();
+  const merged = new Map<string, { note: SearchResult; score: number; sources: string[] }>();
 
-  for (const note of keywordResults as Array<{ id: string; score: number }>) {
+  for (const note of keywordResults) {
     merged.set(note.id, {
       note,
       score: note.score * keywordWeight,
@@ -526,7 +546,7 @@ export const searchNotesHybrid = async (
     });
   }
 
-  for (const note of semanticResults as Array<{ id: string; score: number }>) {
+  for (const note of semanticResults) {
     const existing = merged.get(note.id);
     if (existing) {
       existing.score += note.score * semanticWeight;
@@ -544,7 +564,7 @@ export const searchNotesHybrid = async (
   return Array.from(merged.values())
     .sort((a, b) => b.score - a.score)
     .map((item) => ({
-      ...item.note as object,
+      ...item.note,
       hybridScore: Number(item.score.toFixed(2)),
       _hybridSources: item.sources,
     }));

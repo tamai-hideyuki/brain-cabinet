@@ -13,6 +13,7 @@ import {
   validateCategory,
   validateIdArray,
 } from "../utils/validation";
+import type { Note } from "../types/note";
 
 export const noteDispatcher = {
   async create(payload: unknown) {
@@ -68,7 +69,7 @@ export const noteDispatcher = {
     }
 
     // 軽量化（contentを除外してsnippetに置き換え）
-    const formatNote = (note: any) => ({
+    const formatNote = (note: Note) => ({
       id: note.id,
       title: note.title,
       category: note.category,
