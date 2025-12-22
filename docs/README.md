@@ -12,6 +12,7 @@
 |-------------|------|
 | [architecture.md](./architecture.md) | システム全体の設計書。レイヤー構成、依存関係、各コンポーネントの役割を詳細に解説 |
 | [network-diagram.md](./network-diagram.md) | ネットワーク構成図。Mermaid形式でシステム全体構成、データフロー、コンポーネント依存関係を可視化 |
+| [security-diagram.md](./security-diagram.md) | セキュリティ構成図。認証フロー、アクセス制御、機密情報管理、脅威モデルを解説 |
 | [er-diagram.md](./er-diagram.md) | データベースER図。21テーブルの関係をMermaid形式で表現 |
 
 ### 機能詳細
