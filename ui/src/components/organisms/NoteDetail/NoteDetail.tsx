@@ -26,6 +26,7 @@ type NoteDetailProps = {
   influence: NoteInfluence | null
   influenceLoading: boolean
   onInfluenceNoteClick: (noteId: string) => void
+  onEdit: () => void
 }
 
 export const NoteDetail = ({
@@ -38,6 +39,7 @@ export const NoteDetail = ({
   influence,
   influenceLoading,
   onInfluenceNoteClick,
+  onEdit,
 }: NoteDetailProps) => {
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null)
   const [historyLoaded, setHistoryLoaded] = useState(false)
@@ -91,7 +93,12 @@ export const NoteDetail = ({
   return (
     <article className="note-detail">
       <header className="note-detail__header">
-        <Text variant="title">{note.title}</Text>
+        <div className="note-detail__header-top">
+          <Text variant="title">{note.title}</Text>
+          <Button variant="secondary" size="sm" onClick={onEdit}>
+            編集
+          </Button>
+        </div>
         <div className="note-detail__id">
           <Text variant="caption">{note.id}</Text>
         </div>

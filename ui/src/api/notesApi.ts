@@ -60,3 +60,8 @@ export const fetchPromotionCandidates = async (limit = 10): Promise<PromotionCan
 export const createNote = async (title: string, content: string): Promise<Note> => {
   return sendCommand<Note>('note.create', { title, content })
 }
+
+// Note Update API
+export const updateNote = async (id: string, title: string, content: string): Promise<Note> => {
+  return sendCommand<Note>('note.update', { id, title, content })
+}

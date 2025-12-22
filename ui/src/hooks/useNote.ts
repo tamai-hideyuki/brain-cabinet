@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import type { Note, NoteHistory } from '../types/note'
 import { fetchNote, fetchNoteHistory } from '../api/notesApi'
 
@@ -9,27 +9,27 @@ export const useNote = (id: string | undefined) => {
   const [historyLoading, setHistoryLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
+  const loadNote = useCallback(async () => {
     if (!id) {
       setLoading(false)
       return
     }
 
-    const load = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const data = await fetchNote(id)
-        setNote(data)
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Unknown error')
-      } finally {
-        setLoading(false)
-      }
+    setLoading(true)
+    setError(null)
+    try {
+      const data = await fetchNote(id)
+      setNote(data)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unknown error')
+    } finally {
+      setLoading(false)
     }
-
-    load()
   }, [id])
+
+  useEffect(() => {
+    loadNote()
+  }, [loadNote])
 
   const loadHistory = async () => {
     if (!id) return
@@ -44,5 +44,12 @@ export const useNote = (id: string | undefined) => {
     }
   }
 
-  return { note, history, loading, historyLoading, error, loadHistory }
+  const reload = useCallback(async () => {
+    await loadNote()
+    if (history.length > 0) {
+      await loadHistory()
+    }
+  }, [loadNote, history.length])
+
+  return { note, history, loading, historyLoading, error, loadHistory, reload }
 }
