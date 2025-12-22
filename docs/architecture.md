@@ -2,11 +2,11 @@
 
 ## 概要
 
-**Brain Cabinet v4.8.0** は、思考ベースの検索型知識システムです。単なるメモアプリではなく、ユーザーの思考を理解し、成長を見守る外部脳として機能します。
+**Brain Cabinet v5.2.0** は、思考ベースの検索型知識システムです。単なるメモアプリではなく、ユーザーの思考を理解し、成長を見守る外部脳として機能します。
 
 | 項目 | 値 |
 |------|-----|
-| バージョン | v4.8.0 (Decision-First + Spaced Review) |
+| バージョン | v5.2.0 (Decision-First + Spaced Review + Bookmarks) |
 | 言語 | TypeScript |
 | フレームワーク | Hono (Node.js) |
 | データベース | SQLite (Drizzle ORM) |
@@ -83,7 +83,7 @@ Utils層 (横断的に参照される)
 
 ## 2. データベーススキーマ
 
-### 2.1 テーブル一覧（全20テーブル）
+### 2.1 テーブル一覧（全21テーブル）
 
 #### コアテーブル
 
@@ -135,6 +135,12 @@ Utils層 (横断的に参照される)
 | **workflow_status** | ワークフロー進捗 | id(PK), workflow, status, progress(JSON), clusterJobId, startedAt, completedAt, error |
 | **ptm_snapshots** | 思考モデルスナップショット | id(PK), capturedAt, centerOfGravity(blob), clusterStrengths(blob), influenceMap(blob), imbalanceScore, growthDirection(blob), summary(text) |
 
+#### ブックマークテーブル（v5.2）
+
+| テーブル | 説明 | 主要カラム |
+|---------|------|---------|
+| **bookmark_nodes** | ブックマーク階層構造 | id(PK), parentId, type(folder/note/link), name, noteId, url, position, isExpanded, createdAt, updatedAt |
+
 ### 2.2 ER図
 
 ```
@@ -150,7 +156,8 @@ notes (中心)
   ├── decision_counterevidences (1:N)
   ├── review_schedules (1:1)
   ├── recall_questions (1:N)
-  └── review_sessions (1:N)
+  ├── review_sessions (1:N)
+  └── bookmark_nodes (1:N, type="note")
 
 clusters
   ├── cluster_history (1:N)
@@ -158,6 +165,9 @@ clusters
 
 concept_graph_edges
   └── sourceCluster → targetCluster
+
+bookmark_nodes (v5.2)
+  └── parentId → bookmark_nodes (自己参照、階層構造)
 ```
 
 ### 2.3 主要な型定義
@@ -185,6 +195,9 @@ type ConfidenceDetail = {
 
 // 時間減衰プロファイル（v4.2）
 type DecayProfile = "stable" | "exploratory" | "situational"
+
+// ブックマークノードタイプ（v5.2）
+type BookmarkNodeType = "folder" | "note" | "link"
 ```
 
 ---
@@ -387,7 +400,7 @@ decision
 | ディスパッチャー | ファイル | アクション例 |
 |----------------|----------|-----------|
 | **noteDispatcher** | `noteDispatcher.ts` | note.create, note.get, note.update, note.delete, note.list |
-| **searchDispatcher** | `searchDispatcher.ts` | search.keyword, search.semantic, search.hybrid |
+| **searchDispatcher** | `searchDispatcher.ts` | search.query, search.categories, search.byTitle |
 | **clusterDispatcher** | `clusterDispatcher.ts` | cluster.list, cluster.get, cluster.rebuild |
 | **driftDispatcher** | `driftDispatcher.ts` | drift.getTimeline, drift.getState |
 | **ptmDispatcher** | `ptmDispatcher.ts` | ptm.latest, ptm.history |
@@ -402,7 +415,7 @@ decision
 | **ragDispatcher** | `ragDispatcher.ts` | rag.query |
 | **decisionDispatcher** | `decisionDispatcher.ts` | decision.search, decision.context, decision.compare |
 | **promotionDispatcher** | `promotionDispatcher.ts` | promotion.getCandidates, promotion.dismiss, promotion.promote |
-| **reviewDispatcher** | `reviewDispatcher.ts` | review.queue, review.start, review.submit, review.schedule |
+| **reviewDispatcher** | `reviewDispatcher.ts` | review.queue, review.start, review.submit, review.schedule, review.list, review.fixRevision, review.unfixRevision |
 
 ### 5.2 コマンドディスパッチの流れ
 

@@ -272,6 +272,59 @@ EF は 1.3〜2.5+ の範囲で、レビュー結果に応じて調整される�
 }
 ```
 
+### review.list
+期間別にグルーピングしたレビューリストを取得。
+
+```json
+{
+  "action": "review.list"
+}
+```
+
+### review.fixRevision (v4.6)
+レビュー対象のノートバージョンを固定。更新されてもレビュー時は固定版を使用。
+
+```json
+{
+  "action": "review.fixRevision",
+  "payload": {
+    "noteId": "abc-123",
+    "historyId": "history-uuid"
+  }
+}
+```
+
+**レスポンス例:**
+```json
+{
+  "success": true,
+  "noteId": "abc-123",
+  "fixedRevisionId": "history-uuid",
+  "message": "Review content fixed to specified revision"
+}
+```
+
+### review.unfixRevision (v4.6)
+レビュー対象のバージョン固定を解除。以降は常に最新版でレビュー。
+
+```json
+{
+  "action": "review.unfixRevision",
+  "payload": {
+    "noteId": "abc-123"
+  }
+}
+```
+
+**レスポンス例:**
+```json
+{
+  "success": true,
+  "noteId": "abc-123",
+  "message": "Review content will now use latest version"
+}
+```
+
 ## 質問タイプ
 
 | タイプ | 用途 | 例 |
@@ -328,6 +381,7 @@ SM-2 状態を管理。
 | repetition | 復習回数 |
 | next_review_at | 次回レビュー日時 |
 | is_active | アクティブ/非アクティブ |
+| fixed_revision_id | 固定版の履歴ID（v4.6） |
 
 ### recall_questions
 Active Recall 質問を管理。

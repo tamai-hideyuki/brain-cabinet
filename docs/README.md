@@ -1,6 +1,6 @@
 # Brain Cabinet ドキュメント
 
-> v3 統合 Command API による個人思考ログ管理システム
+> v5.2.0 統合 Command API による個人思考ログ管理システム
 
 ---
 
@@ -112,9 +112,17 @@ Content-Type: application/json
 
 | Action | 説明 | Payload |
 |--------|------|---------|
-| `search.keyword` | キーワード検索 | `{ query, category?, tags? }` |
-| `search.semantic` | セマンティック検索 | `{ query }` |
-| `search.hybrid` | ハイブリッド検索 | `{ query, keywordWeight?, semanticWeight? }` |
+| `search.query` | 検索（モード切替可能） | `{ query, mode?, category?, tags?, limit? }` |
+| `search.categories` | カテゴリ一覧取得 | - |
+| `search.byTitle` | タイトル検索 | `{ title, exact?, limit? }` |
+
+#### search.query の mode パラメータ
+
+| mode | 説明 |
+|------|------|
+| `keyword` | キーワード検索（TF-IDF + FTS5）※デフォルト |
+| `semantic` | セマンティック検索（Embedding類似度） |
+| `hybrid` | ハイブリッド検索（keyword 60% + semantic 40%） |
 
 ---
 
@@ -286,16 +294,26 @@ describe("slugify", () => {
 
 ---
 
-## v3 移行ガイド
+## バージョン履歴
+
+| バージョン | 主な変更 |
+|-----------|---------|
+| v5.2.0 | ブックマーク機能追加 |
+| v4.8.0 | Decision-First + Spaced Review |
+| v4.6.0 | レビュー固定版機能 (fixRevision) |
+| v4.5.0 | Active Recall 質問自動生成 |
+| v3.0.0 | 統合 Command API 導入 |
+
+## v3 移行ガイド（レガシー）
 
 ### v2 → v3 の変更点
 
-| v2 | v3 |
+| v2 | v3+ |
 |----|-----|
-| `GET /api/notes` | `POST /api/command { domain: "note", action: "list" }` |
-| `GET /api/notes/:id` | `POST /api/command { domain: "note", action: "get", payload: { id } }` |
-| `POST /api/notes` | `POST /api/command { domain: "note", action: "create", payload: { ... } }` |
-| `GET /api/search?q=...` | `POST /api/command { domain: "search", action: "hybrid", payload: { query } }` |
+| `GET /api/notes` | `POST /api/command { action: "note.list" }` |
+| `GET /api/notes/:id` | `POST /api/command { action: "note.get", payload: { id } }` |
+| `POST /api/notes` | `POST /api/command { action: "note.create", payload: { ... } }` |
+| `GET /api/search?q=...` | `POST /api/command { action: "search.query", payload: { query, mode: "hybrid" } }` |
 
 ### 移行チェックリスト
 

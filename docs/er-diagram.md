@@ -221,6 +221,23 @@ erDiagram
     }
 
     %% ========================================
+    %% v5.2 Bookmarks
+    %% ========================================
+
+    bookmarkNodes {
+        TEXT id PK "UUID"
+        TEXT parentId FK "→ bookmarkNodes.id (nullable)"
+        TEXT type "folder/note/link"
+        TEXT name "NOT NULL"
+        TEXT noteId FK "→ notes.id (type=note)"
+        TEXT url "external link (type=link)"
+        INTEGER position "sort order"
+        INTEGER isExpanded "1=expanded"
+        INTEGER createdAt
+        INTEGER updatedAt
+    }
+
+    %% ========================================
     %% v4.5 Spaced Review
     %% ========================================
 
@@ -308,6 +325,10 @@ erDiagram
     notes ||--o{ reviewSessions : "review history"
     reviewSchedules ||--o{ reviewSessions : "sessions"
     noteHistory ||--o{ reviewSchedules : "fixed revision (v4.6)"
+
+    %% v5.2 Bookmarks
+    notes ||--o{ bookmarkNodes : "bookmarked (type=note)"
+    bookmarkNodes ||--o{ bookmarkNodes : "parent-child"
 ```
 
 ---
@@ -362,6 +383,11 @@ erDiagram
 | `recallQuestions` | アクティブリコール用の質問 |
 | `reviewSessions` | レビューセッション記録 |
 
+### 8. v5.2 ブックマーク (Bookmarks)
+| テーブル | 説明 |
+|---------|------|
+| `bookmarkNodes` | 階層構造のブックマーク管理（フォルダ/ノート参照/外部リンク） |
+
 ---
 
 ## 主要な外部キー関係
@@ -377,7 +403,8 @@ notes (ハブ)
 ├── recallQuestions (1:N)
 ├── reviewSessions (1:N)
 ├── noteRelations (1:N × 2: source/target)
-└── noteInfluenceEdges (1:N × 2: source/target)
+├── noteInfluenceEdges (1:N × 2: source/target)
+└── bookmarkNodes (1:N, type="note")
 
 clusters (ハブ)
 ├── noteEmbeddings (1:N)
@@ -393,6 +420,9 @@ reviewSchedules
 
 jobStatuses
 └── workflowStatus (optional)
+
+bookmarkNodes (v5.2)
+└── parentId → bookmarkNodes (自己参照、階層構造)
 ```
 
 ---
