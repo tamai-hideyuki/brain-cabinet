@@ -55,3 +55,8 @@ export const searchNotes = async (
 export const fetchPromotionCandidates = async (limit = 10): Promise<PromotionCandidate[]> => {
   return sendCommand<PromotionCandidate[]>('decision.promotionCandidates', { limit })
 }
+
+// Note Create API
+export const createNote = async (title: string, content: string): Promise<Note> => {
+  return sendCommand<Note>('note.create', { title, content })
+}

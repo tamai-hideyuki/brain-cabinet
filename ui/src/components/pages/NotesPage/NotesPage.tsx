@@ -4,6 +4,7 @@ import { MainLayout } from '../../templates/MainLayout'
 import { NoteList } from '../../organisms/NoteList'
 import { SearchBox } from '../../molecules/SearchBox'
 import { FilterDrawer, type FilterState } from '../../organisms/FilterDrawer'
+import { CreateNoteModal } from '../../organisms/CreateNoteModal'
 import { useNotes } from '../../../hooks/useNotes'
 import { usePromotionCandidates } from '../../../hooks/usePromotionCandidates'
 import { Text } from '../../atoms/Text'
@@ -12,10 +13,11 @@ import { Button } from '../../atoms/Button'
 import './NotesPage.css'
 
 export const NotesPage = () => {
-  const { notes, loading, error, search, setSearch, executeSearch } = useNotes()
+  const { notes, loading, error, search, setSearch, executeSearch, reload } = useNotes()
   const { candidates: promotionCandidates } = usePromotionCandidates()
   const navigate = useNavigate()
   const [isFilterOpen, setIsFilterOpen] = useState(false)
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [filter, setFilter] = useState<FilterState>({
     tags: [],
     categories: [],
@@ -65,6 +67,13 @@ export const NotesPage = () => {
               <Badge variant="promotion">昇格候補 {promotionCandidates.length} 件</Badge>
             )}
             <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setIsCreateOpen(true)}
+            >
+              + 新規作成
+            </Button>
+            <Button
               variant={activeFilterCount > 0 ? 'primary' : 'secondary'}
               size="sm"
               onClick={() => setIsFilterOpen(true)}
@@ -96,6 +105,12 @@ export const NotesPage = () => {
         filter={filter}
         onFilterChange={setFilter}
       />
+      {isCreateOpen && (
+        <CreateNoteModal
+          onClose={() => setIsCreateOpen(false)}
+          onCreated={reload}
+        />
+      )}
     </MainLayout>
   )
 }
