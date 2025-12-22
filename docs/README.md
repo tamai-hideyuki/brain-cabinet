@@ -4,7 +4,35 @@
 
 ---
 
-## 目次
+## ドキュメント一覧
+
+### アーキテクチャ・設計
+
+| ドキュメント | 説明 |
+|-------------|------|
+| [architecture.md](./architecture.md) | システム全体の設計書。レイヤー構成、依存関係、各コンポーネントの役割を詳細に解説 |
+| [network-diagram.md](./network-diagram.md) | ネットワーク構成図。Mermaid形式でシステム全体構成、データフロー、コンポーネント依存関係を可視化 |
+| [er-diagram.md](./er-diagram.md) | データベースER図。21テーブルの関係をMermaid形式で表現 |
+
+### 機能詳細
+
+| ドキュメント | 説明 |
+|-------------|------|
+| [spaced-review.md](./spaced-review.md) | 間隔反復学習（Spaced Review）とSM-2アルゴリズムの実装詳細 |
+| [reviewSchedule.md](./reviewSchedule.md) | レビュー評価と再学習スケジュールのクイックリファレンス |
+
+### UI・その他
+
+| ドキュメント | 説明 |
+|-------------|------|
+| [markdown-rendering.md](./markdown-rendering.md) | Markdownレンダリング実装マニュアル |
+| [suggestion.md](./suggestion.md) | UI機能提案書（Decision-First UIの設計概要） |
+| [template.md](./template.md) | ノート作成テンプレート集 |
+| [api-tools.json](./api-tools.json) | GPT Actions インポート用OpenAPI定義 |
+
+---
+
+## 目次（このドキュメント）
 
 1. [概要](#概要)
 2. [クイックスタート](#クイックスタート)
@@ -13,7 +41,7 @@
 5. [GPT連携設定](#gpt連携設定)
 6. [同期コマンド](#同期コマンド)
 7. [テストガイド](#テストガイド)
-8. [v3 移行ガイド](#v3-移行ガイド)
+8. [バージョン履歴](#バージョン履歴)
 
 ---
 
