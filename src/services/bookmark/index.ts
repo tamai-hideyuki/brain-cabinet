@@ -1,5 +1,5 @@
-import { db } from "../db/client";
-import { bookmarkNodes, type BookmarkNodeType, notes } from "../db/schema";
+import { db } from "../../db/client";
+import { bookmarkNodes, type BookmarkNodeType, notes } from "../../db/schema";
 import { eq, isNull, asc, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
 

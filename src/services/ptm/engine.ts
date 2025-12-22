@@ -7,7 +7,7 @@
 
 import { generatePtmSnapshot } from "./snapshot";
 import { computeClusterInfluenceFlow } from "./influence";
-import { getAllClusterIdentities } from "../cluster/identityService";
+import { getAllClusterIdentities } from "../cluster/identity";
 import type {
   PtmSnapshot,
   ClusterIdentity,

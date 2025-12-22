@@ -10,8 +10,8 @@ import type {
   RecallQuestionType,
   QuestionSource,
   NoteType,
-} from "../../db/schema";
-import type { CreateQuestionInput } from "../../repositories/reviewRepo";
+} from "../../../db/schema";
+import type { CreateQuestionInput } from "../../../repositories/reviewRepo";
 import { createHash } from "crypto";
 
 // ============================================================

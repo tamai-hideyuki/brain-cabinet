@@ -7,7 +7,7 @@ import {
   getTrendStats,
   getSummaryStats,
   type TimeUnit,
-} from "../../services/analyticsService";
+} from "../../services/analytics";
 
 export const analyticsRoute = new Hono();
 

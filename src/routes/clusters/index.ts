@@ -13,7 +13,7 @@ import {
   getAllClusterIdentities,
   formatForGpt,
   GPT_IDENTITY_PROMPT,
-} from "../../services/cluster/identityService";
+} from "../../services/cluster/identity";
 
 // ヘルパー関数
 function bufferToFloat32Array(buffer: Buffer | ArrayBuffer | Uint8Array): number[] {

@@ -1,5 +1,5 @@
-import { db } from "../db/client";
-import { notes, noteHistory } from "../db/schema";
+import { db } from "../../db/client";
+import { notes, noteHistory } from "../../db/schema";
 import { sql, gte, lte, desc } from "drizzle-orm";
 
 // ============================================

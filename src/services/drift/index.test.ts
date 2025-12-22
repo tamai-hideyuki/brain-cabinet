@@ -1,4 +1,146 @@
 import { describe, it, expect } from "vitest";
+import {
+  computeDriftScore,
+  classifyDriftEvent,
+  DRIFT_THRESHOLD,
+  LARGE_DRIFT_THRESHOLD,
+} from "./computeDriftScore";
+
+// ============================================================
+// computeDriftScore のテスト
+// ============================================================
+
+describe("computeDriftScore", () => {
+  describe("基本的なドリフトスコア計算", () => {
+    it("semanticDiff のみでドリフトスコアを計算する（クラスター変化なし）", () => {
+      const result = computeDriftScore({
+        semanticDiff: 0.3,
+        oldClusterId: 1,
+        newClusterId: 1,
+      });
+
+      expect(result.driftScore).toBe(0.3);
+      expect(result.clusterJump).toBe(false);
+      expect(result.clusterJumpBonus).toBe(0);
+    });
+
+    it("クラスター変化時にボーナスが加算される", () => {
+      const result = computeDriftScore({
+        semanticDiff: 0.3,
+        oldClusterId: 1,
+        newClusterId: 2,
+      });
+
+      // 0.3 * (1 + 0.5) = 0.45
+      expect(result.driftScore).toBeCloseTo(0.45);
+      expect(result.clusterJump).toBe(true);
+      expect(result.clusterJumpBonus).toBe(0.5);
+    });
+
+    it("oldClusterId が null の場合はクラスタージャンプなし", () => {
+      const result = computeDriftScore({
+        semanticDiff: 0.3,
+        oldClusterId: null,
+        newClusterId: 1,
+      });
+
+      expect(result.driftScore).toBe(0.3);
+      expect(result.clusterJump).toBe(false);
+    });
+
+    it("newClusterId が null の場合はクラスタージャンプなし", () => {
+      const result = computeDriftScore({
+        semanticDiff: 0.3,
+        oldClusterId: 1,
+        newClusterId: null,
+      });
+
+      expect(result.driftScore).toBe(0.3);
+      expect(result.clusterJump).toBe(false);
+    });
+
+    it("両方 null の場合はクラスタージャンプなし", () => {
+      const result = computeDriftScore({
+        semanticDiff: 0.5,
+        oldClusterId: null,
+        newClusterId: null,
+      });
+
+      expect(result.driftScore).toBe(0.5);
+      expect(result.clusterJump).toBe(false);
+    });
+  });
+
+  describe("境界値テスト", () => {
+    it("semanticDiff が 0 の場合", () => {
+      const result = computeDriftScore({
+        semanticDiff: 0,
+        oldClusterId: 1,
+        newClusterId: 2,
+      });
+
+      expect(result.driftScore).toBe(0);
+      expect(result.clusterJump).toBe(true);
+    });
+
+    it("semanticDiff が 1 の場合（最大）", () => {
+      const result = computeDriftScore({
+        semanticDiff: 1.0,
+        oldClusterId: 1,
+        newClusterId: 2,
+      });
+
+      // 1.0 * (1 + 0.5) = 1.5
+      expect(result.driftScore).toBe(1.5);
+    });
+
+    it("同じ clusterId の場合はジャンプなし", () => {
+      const result = computeDriftScore({
+        semanticDiff: 0.5,
+        oldClusterId: 5,
+        newClusterId: 5,
+      });
+
+      expect(result.clusterJump).toBe(false);
+      expect(result.driftScore).toBe(0.5);
+    });
+  });
+});
+
+describe("classifyDriftEvent", () => {
+  it("クラスタージャンプは cluster_shift を返す", () => {
+    expect(classifyDriftEvent(0.1, true)).toBe("cluster_shift");
+    expect(classifyDriftEvent(0.5, true)).toBe("cluster_shift");
+  });
+
+  it("大きな変化は large を返す", () => {
+    expect(classifyDriftEvent(LARGE_DRIFT_THRESHOLD, false)).toBe("large");
+    expect(classifyDriftEvent(0.6, false)).toBe("large");
+    expect(classifyDriftEvent(1.0, false)).toBe("large");
+  });
+
+  it("中程度の変化は medium を返す", () => {
+    expect(classifyDriftEvent(DRIFT_THRESHOLD, false)).toBe("medium");
+    expect(classifyDriftEvent(0.3, false)).toBe("medium");
+    expect(classifyDriftEvent(0.49, false)).toBe("medium");
+  });
+
+  it("小さな変化は null を返す", () => {
+    expect(classifyDriftEvent(0, false)).toBeNull();
+    expect(classifyDriftEvent(0.1, false)).toBeNull();
+    expect(classifyDriftEvent(0.24, false)).toBeNull();
+  });
+
+  it("閾値の境界値", () => {
+    // DRIFT_THRESHOLD = 0.25
+    expect(classifyDriftEvent(0.24, false)).toBeNull();
+    expect(classifyDriftEvent(0.25, false)).toBe("medium");
+
+    // LARGE_DRIFT_THRESHOLD = 0.5
+    expect(classifyDriftEvent(0.49, false)).toBe("medium");
+    expect(classifyDriftEvent(0.5, false)).toBe("large");
+  });
+});
 
 // driftCore の内部ロジックをテスト
 

@@ -2,7 +2,7 @@
  * Analytics ドメイン ディスパッチャー
  */
 
-import * as analyticsService from "../services/analyticsService";
+import * as analyticsService from "../services/analytics";
 
 export const analyticsDispatcher = {
   async summary() {

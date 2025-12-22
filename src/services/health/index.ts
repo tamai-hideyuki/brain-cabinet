@@ -3,9 +3,9 @@
  * サーバーの状態を確認するための機能を提供
  */
 
-import { db } from "../db/client";
+import { db } from "../../db/client";
 import { sql } from "drizzle-orm";
-import { notes } from "../db/schema";
+import { notes } from "../../db/schema";
 
 // サーバー起動時刻を記録
 const serverStartTime = Date.now();

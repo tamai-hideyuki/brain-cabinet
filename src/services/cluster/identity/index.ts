@@ -4,15 +4,15 @@
  * クラスタの「人格」を構成するデータを集約
  */
 
-import { db } from "../../db/client";
+import { db } from "../../../db/client";
 import { sql } from "drizzle-orm";
 import type {
   ClusterIdentity,
   RepresentativeNote,
   ClusterDriftSummary,
   ClusterInfluenceSummary,
-} from "../ptm/types";
-import { round4, bufferToFloat32Array, cosineSimilarity } from "../../utils/math";
+} from "../../ptm/types";
+import { round4, bufferToFloat32Array, cosineSimilarity } from "../../../utils/math";
 
 // ============================================================
 // 代表ノート取得

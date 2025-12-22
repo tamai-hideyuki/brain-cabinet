@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { performHealthCheck } from "../../services/healthService";
+import { performHealthCheck } from "../../services/health";
 import { logger } from "../../utils/logger";
 
 export const healthRoute = new Hono();

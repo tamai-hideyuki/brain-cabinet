@@ -7,7 +7,7 @@ import {
   deleteBookmarkNode,
   moveBookmarkNode,
   reorderBookmarkNodes,
-} from "../../services/bookmarkService";
+} from "../../services/bookmark";
 import { logger } from "../../utils/logger";
 
 export const bookmarksRoute = new Hono();

@@ -2,7 +2,7 @@
  * System/Debug ドメイン ディスパッチャー
  */
 
-import * as healthService from "../services/healthService";
+import * as healthService from "../services/health";
 import * as embeddingService from "../services/embeddingService";
 import { findAllNotes } from "../repositories/notesRepo";
 import { rebuildFTS } from "../repositories/ftsRepo";
