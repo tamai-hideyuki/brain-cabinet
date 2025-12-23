@@ -1,6 +1,6 @@
 # Brain Cabinet ドキュメント
 
-> v5.2.0 統合 Command API による個人思考ログ管理システム
+> v5.3.0 統合 Command API による個人思考ログ管理システム
 
 ---
 
@@ -20,6 +20,7 @@
 
 | ドキュメント | 説明 |
 |-------------|------|
+| [secret-box.md](./secret-box.md) | シークレットBOXアーキテクチャ。画像・動画保存機能の設計と実装詳細 |
 | [spaced-review.md](./spaced-review.md) | 間隔反復学習（Spaced Review）とSM-2アルゴリズムの実装詳細 |
 | [reviewSchedule.md](./reviewSchedule.md) | レビュー評価と再学習スケジュールのクイックリファレンス |
 
@@ -328,6 +329,7 @@ describe("slugify", () => {
 
 | バージョン | 主な変更 |
 |-----------|---------|
+| v5.3.0 | シークレットBOX（画像・動画保存）追加 |
 | v5.2.0 | ブックマーク機能追加 |
 | v4.8.0 | Decision-First + Spaced Review |
 | v4.6.0 | レビュー固定版機能 (fixRevision) |

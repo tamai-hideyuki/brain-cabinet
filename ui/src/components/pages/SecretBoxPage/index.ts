@@ -1,0 +1,1 @@
+export { SecretBoxPage } from './SecretBoxPage'

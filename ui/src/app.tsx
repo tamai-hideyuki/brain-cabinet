@@ -7,6 +7,7 @@ import { GraphPage } from './components/pages/GraphPage'
 import { TimelinePage } from './components/pages/TimelinePage'
 import { DashboardPage } from './components/pages/DashboardPage'
 import { BookmarkPage } from './components/pages/BookmarkPage'
+import { SecretBoxPage } from './components/pages/SecretBoxPage'
 
 export function App() {
   return (
@@ -28,6 +29,7 @@ export function App() {
           <Route path="/ui/graph" element={<GraphPage />} />
           <Route path="/ui/timeline" element={<TimelinePage />} />
           <Route path="/ui/bookmarks" element={<BookmarkPage />} />
+          <Route path="/ui/secret-box" element={<SecretBoxPage />} />
         </Routes>
       </SignedIn>
     </BrowserRouter>

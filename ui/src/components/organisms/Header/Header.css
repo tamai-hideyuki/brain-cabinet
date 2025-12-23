@@ -45,6 +45,10 @@
   color: var(--color-text);
 }
 
+.header__nav-link--secret {
+  color: var(--color-primary);
+}
+
 .header__actions {
   margin-left: auto;
   display: flex;

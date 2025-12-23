@@ -25,6 +25,7 @@ export const Header = ({ title = 'Brain Cabinet' }: HeaderProps) => {
         <a href="/ui/reviews" className="header__nav-link">レビュー</a>
         <a href="/ui/timeline" className="header__nav-link">タイムライン</a>
         <a href="/ui/graph" className="header__nav-link">グラフ</a>
+        <a href="/ui/secret-box" className="header__nav-link header__nav-link--secret">BOX</a>
       </nav>
       <div className="header__actions">
         <PTMIndicator ptm={ptm} loading={ptmLoading} />

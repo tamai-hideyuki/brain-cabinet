@@ -461,3 +461,38 @@ export const bookmarkNodes = sqliteTable("bookmark_nodes", {
   createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
   updatedAt: integer("updated_at").notNull().default(sql`(strftime('%s','now'))`),
 });
+
+// ============================================================
+// v5.3 シークレットBOX機能（メディアストレージ）
+// ============================================================
+
+// シークレットBOXアイテムタイプ定義
+export const SECRET_BOX_ITEM_TYPES = ["image", "video"] as const;
+export type SecretBoxItemType = (typeof SECRET_BOX_ITEM_TYPES)[number];
+
+// シークレットBOXアイテムテーブル
+export const secretBoxItems = sqliteTable("secret_box_items", {
+  id: text("id").primaryKey(),                                    // UUID
+  name: text("name").notNull(),                                   // 表示名
+  originalName: text("original_name").notNull(),                  // 元ファイル名
+  type: text("type").notNull(),                                   // "image" | "video"
+  mimeType: text("mime_type").notNull(),                          // MIME type
+  size: integer("size").notNull(),                                // ファイルサイズ（バイト）
+  data: blob("data").notNull(),                                   // バイナリデータ本体
+  thumbnail: blob("thumbnail"),                                   // サムネイル（動画用）
+  folderId: text("folder_id"),                                    // 所属フォルダID（NULLならルート）
+  position: integer("position").notNull().default(0),             // 表示順
+  createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
+  updatedAt: integer("updated_at").notNull().default(sql`(strftime('%s','now'))`),
+});
+
+// シークレットBOXフォルダテーブル
+export const secretBoxFolders = sqliteTable("secret_box_folders", {
+  id: text("id").primaryKey(),                                    // UUID
+  name: text("name").notNull(),                                   // フォルダ名
+  parentId: text("parent_id"),                                    // 親フォルダID（NULLならルート）
+  position: integer("position").notNull().default(0),             // 表示順
+  isExpanded: integer("is_expanded").notNull().default(1),        // 展開状態（1: 展開, 0: 折りたたみ）
+  createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
+  updatedAt: integer("updated_at").notNull().default(sql`(strftime('%s','now'))`),
+});
