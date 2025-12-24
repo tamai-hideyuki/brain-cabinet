@@ -37,7 +37,7 @@ Thumbs.db
 # Lock files (keep one - pnpm-lock.yaml is used)
 package-lock.json
 
-/notes/
+notes
 
 openapi.json
 openapi-gpt.json

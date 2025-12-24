@@ -1,11 +1,18 @@
-# Brain Cabinet v5.3.0 (Note Link)
+# Brain Cabinet v5.4.0 (Note Images)
 
 **思考ベースの検索型知識システム — あなたの思考を理解し、成長を見守る外部脳**
 
 > Brain Cabinet は単なるメモ帳ではありません。
 > ノートの**文脈を理解**し、質問に応じて**必要な部分だけを抽出・再構成**する仕組みです。
 >
-> **v5.3 の新機能: メモ間リンク**
+> **v5.4 の新機能: ノート画像埋め込み**
+> - **画像埋め込み** — ノートに画像を直接埋め込み、BLOBとして保存
+> - **ドラッグ&ドロップ** — 編集モーダルに画像をドロップして即座にアップロード
+> - **クリップボード貼り付け** — スクリーンショットをそのまま貼り付け可能
+> - **GPT経由アップロード** — Base64画像をコマンドAPIでアップロード
+> - **Markdown表示** — `note-image://` プロトコルで画像を自動表示
+>
+> **v5.3 の機能: メモ間リンク**
 > - **`[[uuid]]` 記法** — メモ本文にUUIDを書くだけでハイパーリンク化
 > - **ワンクリック遷移** — リンクをクリックで該当メモに即座にジャンプ
 > - **削除済みメモ対応** — リンク先が存在しない場合は「ノートが見つかりませんでした」を表示
@@ -314,6 +321,9 @@ POST /api/command
 | `note.delete` | ノート削除 | `{id}` |
 | `note.history` | 履歴取得 | `{id}` |
 | `note.revert` | 履歴復元 | `{noteId, historyId}` |
+| `note.uploadImage` | 画像アップロード（Base64） | `{noteId, imageData, name?, mimeType?}` |
+| `note.listImages` | 画像一覧取得 | `{noteId}` |
+| `note.deleteImage` | 画像削除 | `{imageId}` |
 
 #### Search ドメイン
 | アクション | 説明 | payload |
@@ -834,6 +844,16 @@ brain-cabinet/
   - remark プラグインによるマークダウン拡張
   - 既存のクラスタリング・検索機能への影響なし（UI表示のみの変更）
 
+### Phase 5.4（v5.4 完了）
+- [x] **ノート画像埋め込み機能** - ノートに画像を直接埋め込み
+  - `note_images` テーブル: 画像をBLOBとして保存
+  - **UI対応**: ドラッグ&ドロップ、クリップボード貼り付け
+  - **GPT対応**: Base64画像をコマンドAPIでアップロード
+  - **Markdown表示**: `note-image://` プロトコルを自動変換
+  - **REST API**: `/api/notes/:noteId/images`, `/api/notes/images/:id/data`
+  - **Command API**: `note.uploadImage`, `note.listImages`, `note.deleteImage`
+  - サイズ制限: 10MB、対応形式: JPEG, PNG, GIF, WebP
+
 ### Phase 6（予定）
 - [ ] LLM 推論統合（GPT-4 によるタイプ分類）
 - [ ] 要約生成・保存
@@ -897,6 +917,30 @@ brain-cabinet/
 ---
 
 ## バージョン履歴
+
+### v5.4.0
+- **ノート画像埋め込み機能**: ノートに画像を直接埋め込み、BLOBとして保存
+  - **データベース**: `note_images` テーブル追加（id, noteId, name, mimeType, size, data, createdAt）
+  - **UI対応**: EditNoteModal にドラッグ&ドロップ、クリップボード貼り付け機能を追加
+  - **GPT対応**: Base64エンコードされた画像を `note.uploadImage` でアップロード可能
+  - **Markdown表示**: `note-image://` プロトコルを `/api/notes/images/:id/data` に自動変換
+  - **REST API**:
+    - `POST /api/notes/:noteId/images`: 画像アップロード（multipart/form-data）
+    - `GET /api/notes/images/:id/data`: 画像データ取得
+    - `GET /api/notes/images/:id`: 画像メタデータ取得
+    - `DELETE /api/notes/images/:id`: 画像削除
+    - `GET /api/notes/:noteId/images`: ノートの画像一覧
+  - **Command API**:
+    - `note.uploadImage`: Base64画像をアップロード
+    - `note.listImages`: ノートに紐づく画像一覧を取得
+    - `note.deleteImage`: 画像を削除
+  - **制約**: サイズ上限 10MB、対応形式: JPEG, PNG, GIF, WebP
+  - **実装詳細**:
+    - `noteImagesRepo.ts`: リポジトリ層（CRUD操作）
+    - `noteImages/index.ts`: サービス層（バリデーション、ノート存在確認）
+    - `images.ts`: Hono ルート定義
+    - `noteImagesApi.ts`: フロントエンド API 関数
+    - `MarkdownContent.tsx`: `transformImageUrl` で画像URL変換
 
 ### v5.3.0
 - **メモ間リンク機能**: `[[uuid]]` 記法でメモ間をハイパーリンク
@@ -1131,4 +1175,4 @@ brain-cabinet/
 
 ---
 
-**Brain Cabinet v5.3 (Note Link)** — Your External Brain with Note-to-Note Linking, Hierarchical Bookmarks, Interactive Graph, Timeline, Dashboard, and Smart Filtering for Decision-First Architecture
+**Brain Cabinet v5.4 (Note Images)** — Your External Brain with Image Embedding, Note-to-Note Linking, Hierarchical Bookmarks, Interactive Graph, Timeline, Dashboard, and Smart Filtering for Decision-First Architecture
