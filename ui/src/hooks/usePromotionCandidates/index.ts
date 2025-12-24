@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import type { PromotionCandidate } from '../types/note'
-import { fetchPromotionCandidates } from '../api/notesApi'
+import type { PromotionCandidate } from '../../types/note'
+import { fetchPromotionCandidates } from '../../api/notesApi'
 
 export const usePromotionCandidates = () => {
   const [candidates, setCandidates] = useState<PromotionCandidate[]>([])

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import type { ReviewListResponse } from '../types/review'
-import { fetchReviewList } from '../api/reviewApi'
+import type { ReviewListResponse } from '../../types/review'
+import { fetchReviewList } from '../../api/reviewApi'
 
 export const useReviews = () => {
   const [data, setData] = useState<ReviewListResponse | null>(null)

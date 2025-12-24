@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import type { NoteInfluence } from '../types/influence'
-import { fetchNoteInfluence } from '../api/influenceApi'
+import type { NoteInfluence } from '../../types/influence'
+import { fetchNoteInfluence } from '../../api/influenceApi'
 
 export const useNoteInfluence = (noteId: string | null) => {
   const [influence, setInfluence] = useState<NoteInfluence | null>(null)

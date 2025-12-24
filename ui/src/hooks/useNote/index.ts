@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import type { Note, NoteHistory } from '../types/note'
-import { fetchNote, fetchNoteHistory } from '../api/notesApi'
+import type { Note, NoteHistory } from '../../types/note'
+import { fetchNote, fetchNoteHistory } from '../../api/notesApi'
 
 export const useNote = (id: string | undefined) => {
   const [note, setNote] = useState<Note | null>(null)

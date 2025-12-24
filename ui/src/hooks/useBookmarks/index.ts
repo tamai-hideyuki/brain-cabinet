@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
-import type { BookmarkNode, CreateBookmarkParams, UpdateBookmarkParams } from '../types/bookmark'
+import type { BookmarkNode, CreateBookmarkParams, UpdateBookmarkParams } from '../../types/bookmark'
 import {
   fetchBookmarkTree,
   createBookmarkNode,
   updateBookmarkNode,
   deleteBookmarkNode,
   moveBookmarkNode,
-} from '../api/bookmarkApi'
+} from '../../api/bookmarkApi'
 
 export const useBookmarks = () => {
   const [tree, setTree] = useState<BookmarkNode[]>([])

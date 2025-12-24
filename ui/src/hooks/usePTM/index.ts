@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import type { PtmSummary } from '../types/ptm'
-import { fetchPtmSummary } from '../api/ptmApi'
+import type { PtmSummary } from '../../types/ptm'
+import { fetchPtmSummary } from '../../api/ptmApi'
 
 export const usePTM = () => {
   const [ptm, setPtm] = useState<PtmSummary | null>(null)

@@ -8,6 +8,8 @@
     "ui:build": "cd ui && npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:ui": "cd ui && npm test",
+    "test:all": "vitest run && cd ui && npm test",
     "migrate": "drizzle-kit push",
     "import-notes": "tsx src/importer/import-notes.ts",
     "export-notes": "tsx src/exporter/export-notes.ts",

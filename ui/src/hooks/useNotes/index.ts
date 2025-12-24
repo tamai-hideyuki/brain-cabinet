@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import type { Note, SearchMode } from '../types/note'
-import { fetchNotes, searchNotes } from '../api/notesApi'
+import type { Note, SearchMode } from '../../types/note'
+import { fetchNotes, searchNotes } from '../../api/notesApi'
 
 // ノートを更新日時優先、作成日時が新しい順にソート
 const sortNotes = (notes: Note[]): Note[] => {

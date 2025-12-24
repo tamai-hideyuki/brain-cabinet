@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
-import type { StartReviewResult, SubmitReviewResult } from '../types/review'
-import { startReview, submitReview } from '../api/reviewApi'
+import type { StartReviewResult, SubmitReviewResult } from '../../types/review'
+import { startReview, submitReview } from '../../api/reviewApi'
 
 type ReviewSessionState = {
   session: StartReviewResult | null
