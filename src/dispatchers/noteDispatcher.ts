@@ -4,6 +4,7 @@
 
 import * as notesService from "../services/notesService";
 import * as historyService from "../services/historyService";
+import * as noteImagesService from "../services/noteImages";
 import {
   validateTitle,
   validateContent,
@@ -148,5 +149,74 @@ export const noteDispatcher = {
     const ids = validateIdArray(p?.ids);
     const category = validateCategory(p?.category);
     return notesService.batchUpdateCategory(ids, category as any);
+  },
+
+  // 画像操作
+
+  /**
+   * 画像をアップロード（Base64）
+   * GPT経由で画像をノートに追加する
+   */
+  async uploadImage(payload: unknown) {
+    const p = payload as {
+      noteId?: string;
+      imageData?: string;  // Base64エンコード
+      name?: string;
+      mimeType?: string;
+    } | undefined;
+
+    const noteId = validateId(p?.noteId, "noteId");
+
+    if (!p?.imageData) {
+      throw new Error("imageData (Base64) is required");
+    }
+
+    const image = await noteImagesService.uploadNoteImageFromBase64(noteId, p.imageData, {
+      name: p.name,
+      mimeType: p.mimeType,
+    });
+
+    return {
+      imageId: image.id,
+      name: image.name,
+      size: image.size,
+      mimeType: image.mimeType,
+      markdown: `![${image.name}](note-image://${image.id})`,
+    };
+  },
+
+  /**
+   * ノートの画像一覧を取得
+   */
+  async listImages(payload: unknown) {
+    const p = payload as { noteId?: string } | undefined;
+    const noteId = validateId(p?.noteId, "noteId");
+    const images = await noteImagesService.getNoteImages(noteId);
+    return {
+      noteId,
+      images: images.map((img) => ({
+        id: img.id,
+        name: img.name,
+        size: img.size,
+        mimeType: img.mimeType,
+        markdown: `![${img.name}](note-image://${img.id})`,
+        createdAt: img.createdAt,
+      })),
+      count: images.length,
+    };
+  },
+
+  /**
+   * 画像を削除
+   */
+  async deleteImage(payload: unknown) {
+    const p = payload as { imageId?: string } | undefined;
+    const imageId = validateId(p?.imageId, "imageId");
+    const image = await noteImagesService.removeNoteImage(imageId);
+    return {
+      deleted: true,
+      imageId: image.id,
+      name: image.name,
+    };
   },
 };

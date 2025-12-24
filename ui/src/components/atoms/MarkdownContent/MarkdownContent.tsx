@@ -10,6 +10,17 @@ type MarkdownContentProps = {
   className?: string
 }
 
+/**
+ * note-image:// プロトコルを実際のAPI URLに変換
+ */
+const transformImageUrl = (src: string): string => {
+  if (src.startsWith('note-image://')) {
+    const imageId = src.replace('note-image://', '')
+    return `/api/notes/images/${imageId}/data`
+  }
+  return src
+}
+
 export const MarkdownContent = ({ content, className = '' }: MarkdownContentProps) => {
   return (
     <div className={`markdown-content ${className}`.trim()}>
@@ -22,6 +33,18 @@ export const MarkdownContent = ({ content, className = '' }: MarkdownContentProp
               return <NoteLink href={href}>{children}</NoteLink>
             }
             return <a href={href}>{children}</a>
+          },
+          img: ({ src, alt, ...props }) => {
+            const transformedSrc = src ? transformImageUrl(src) : ''
+            return (
+              <img
+                src={transformedSrc}
+                alt={alt || ''}
+                className="markdown-content__image"
+                loading="lazy"
+                {...props}
+              />
+            )
           },
         }}
       >

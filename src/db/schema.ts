@@ -486,6 +486,21 @@ export const secretBoxItems = sqliteTable("secret_box_items", {
   updatedAt: integer("updated_at").notNull().default(sql`(strftime('%s','now'))`),
 });
 
+// ============================================================
+// v5.4 ノート画像埋め込み機能
+// ============================================================
+
+// ノート画像テーブル
+export const noteImages = sqliteTable("note_images", {
+  id: text("id").primaryKey(),                                      // UUID
+  noteId: text("note_id").notNull(),                                // 紐づくノートID
+  name: text("name").notNull(),                                     // 表示名
+  mimeType: text("mime_type").notNull(),                            // MIME type
+  size: integer("size").notNull(),                                  // ファイルサイズ（バイト）
+  data: blob("data").notNull(),                                     // バイナリデータ本体
+  createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
+});
+
 // シークレットBOXフォルダテーブル
 export const secretBoxFolders = sqliteTable("secret_box_folders", {
   id: text("id").primaryKey(),                                    // UUID

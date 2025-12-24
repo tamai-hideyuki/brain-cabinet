@@ -131,6 +131,34 @@
   cursor: not-allowed;
 }
 
+.edit-note-modal__label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.edit-note-modal__field--content {
+  position: relative;
+}
+
+.edit-note-modal__field--dragging .edit-note-modal__textarea {
+  border-color: var(--color-primary);
+  border-style: dashed;
+}
+
+.edit-note-modal__drop-overlay {
+  position: absolute;
+  inset: 2rem 0 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(var(--color-primary-rgb, 59, 130, 246), 0.1);
+  border: 2px dashed var(--color-primary);
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 10;
+}
+
 .edit-note-modal__actions {
   display: flex;
   gap: 0.75rem;

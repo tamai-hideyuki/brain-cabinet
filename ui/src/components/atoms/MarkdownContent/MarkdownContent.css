@@ -164,11 +164,17 @@
 }
 
 /* Images */
-.markdown-content img {
+.markdown-content img,
+.markdown-content__image {
   max-width: 100%;
   height: auto;
   border-radius: 6px;
   margin: 0.5rem 0;
+  display: block;
+}
+
+.markdown-content__image {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 /* Checkbox list (task list) */

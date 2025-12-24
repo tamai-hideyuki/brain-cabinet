@@ -1,8 +1,9 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Text } from '../../atoms/Text'
 import { Button } from '../../atoms/Button'
 import { Spinner } from '../../atoms/Spinner'
 import { updateNote } from '../../../api/notesApi'
+import { uploadNoteImage } from '../../../api/noteImagesApi'
 import type { Note } from '../../../types/note'
 import './EditNoteModal.css'
 
@@ -16,7 +17,10 @@ export const EditNoteModal = ({ note, onClose, onUpdated }: EditNoteModalProps) 
   const [title, setTitle] = useState(note.title)
   const [content, setContent] = useState(note.content)
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     setTitle(note.title)
@@ -24,6 +28,89 @@ export const EditNoteModal = ({ note, onClose, onUpdated }: EditNoteModalProps) 
   }, [note])
 
   const hasChanges = title !== note.title || content !== note.content
+
+  // 画像アップロード処理
+  const handleImageUpload = useCallback(async (files: FileList) => {
+    const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'))
+    if (imageFiles.length === 0) return
+
+    setUploading(true)
+    setError(null)
+
+    try {
+      for (const file of imageFiles) {
+        const result = await uploadNoteImage(note.id, file)
+
+        // カーソル位置にMarkdownを挿入
+        const textarea = textareaRef.current
+        if (textarea) {
+          const start = textarea.selectionStart
+          const end = textarea.selectionEnd
+          const before = content.substring(0, start)
+          const after = content.substring(end)
+          const newContent = `${before}\n${result.markdown}\n${after}`
+          setContent(newContent)
+
+          // カーソル位置を更新
+          setTimeout(() => {
+            const newPos = start + result.markdown.length + 2
+            textarea.selectionStart = newPos
+            textarea.selectionEnd = newPos
+            textarea.focus()
+          }, 0)
+        } else {
+          setContent(prev => `${prev}\n${result.markdown}\n`)
+        }
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '画像のアップロードに失敗しました')
+    } finally {
+      setUploading(false)
+    }
+  }, [note.id, content])
+
+  // ドラッグ&ドロップイベント
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+  }, [])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+  }, [])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+
+    const files = e.dataTransfer.files
+    if (files.length > 0) {
+      handleImageUpload(files)
+    }
+  }, [handleImageUpload])
+
+  // ペーストイベント（クリップボードからの画像）
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    const items = e.clipboardData.items
+    const imageItems = Array.from(items).filter(item => item.type.startsWith('image/'))
+
+    if (imageItems.length > 0) {
+      e.preventDefault()
+      const files = imageItems
+        .map(item => item.getAsFile())
+        .filter((f): f is File => f !== null)
+
+      if (files.length > 0) {
+        const dataTransfer = new DataTransfer()
+        files.forEach(f => dataTransfer.items.add(f))
+        handleImageUpload(dataTransfer.files)
+      }
+    }
+  }, [handleImageUpload])
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
@@ -102,19 +189,32 @@ export const EditNoteModal = ({ note, onClose, onUpdated }: EditNoteModalProps) 
             />
           </div>
 
-          <div className="edit-note-modal__field">
+          <div
+            className={`edit-note-modal__field edit-note-modal__field--content ${isDragging ? 'edit-note-modal__field--dragging' : ''}`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
             <label htmlFor="edit-note-content" className="edit-note-modal__label">
               内容
+              {uploading && <Spinner size="sm" />}
             </label>
             <textarea
+              ref={textareaRef}
               id="edit-note-content"
               className="edit-note-modal__textarea"
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="ノートの内容を入力..."
+              onPaste={handlePaste}
+              placeholder="ノートの内容を入力...（画像をドラッグ&ドロップまたは貼り付け可能）"
               rows={12}
-              disabled={saving}
+              disabled={saving || uploading}
             />
+            {isDragging && (
+              <div className="edit-note-modal__drop-overlay">
+                <Text variant="body">画像をドロップしてアップロード</Text>
+              </div>
+            )}
           </div>
 
           <div className="edit-note-modal__actions">
