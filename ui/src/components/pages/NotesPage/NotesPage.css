@@ -1,7 +1,7 @@
 .notes-page {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .notes-page__header {
@@ -12,7 +12,8 @@
 
 .notes-page__title-row {
   display: flex;
-  align-items: baseline;
+  align-items: center;
+  justify-content: space-between;
   gap: 0.5rem;
 }
 
@@ -24,6 +25,14 @@
 
 .notes-page__search {
   width: 100%;
+}
+
+/* モバイル用の検索バー最適化 */
+@media (max-width: 639px) {
+  .notes-page__search input {
+    font-size: 16px; /* iOS zoom防止 */
+    min-height: 44px;
+  }
 }
 
 /* Tablet and up */

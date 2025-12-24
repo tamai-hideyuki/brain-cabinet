@@ -1,13 +1,24 @@
 .dashboard-page {
-  padding: 1rem;
+  padding: 0;
   max-width: 800px;
   margin: 0 auto;
 }
 
 .dashboard-page__header {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 }
 
 .dashboard-page__content {
   /* Content styles handled by Dashboard component */
+}
+
+/* Tablet and up */
+@media (min-width: 640px) {
+  .dashboard-page {
+    padding: 1rem;
+  }
+
+  .dashboard-page__header {
+    margin-bottom: 1.5rem;
+  }
 }

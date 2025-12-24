@@ -1,11 +1,19 @@
-# Brain Cabinet v5.4.0 (Note Images)
+# Brain Cabinet v5.5.0 (Mobile Responsive)
 
 **思考ベースの検索型知識システム — あなたの思考を理解し、成長を見守る外部脳**
 
 > Brain Cabinet は単なるメモ帳ではありません。
 > ノートの**文脈を理解**し、質問に応じて**必要な部分だけを抽出・再構成**する仕組みです。
 >
-> **v5.4 の新機能: ノート画像埋め込み**
+> **v5.5 の新機能: モバイルレスポンシブ強化**
+> - **ハンバーガーメニュー** — モバイルでスライドインナビゲーション
+> - **iPhoneセーフエリア対応** — ノッチ・ホームバーを考慮した表示
+> - **タッチ最適化** — 44px/48pxのタッチターゲット確保
+> - **100dvh対応** — iOS Safari のアドレスバーを考慮した高さ計算
+> - **カレンダー最適化** — モバイルでも見やすいグリッドサイズ
+> - **ノート一覧最適化** — モバイルでコンパクトなリスト表示、デスクトップでグリッド表示
+>
+> **v5.4 の機能: ノート画像埋め込み**
 > - **画像埋め込み** — ノートに画像を直接埋め込み、BLOBとして保存
 > - **ドラッグ&ドロップ** — 編集モーダルに画像をドロップして即座にアップロード
 > - **クリップボード貼り付け** — スクリーンショットをそのまま貼り付け可能
@@ -854,6 +862,17 @@ brain-cabinet/
   - **Command API**: `note.uploadImage`, `note.listImages`, `note.deleteImage`
   - サイズ制限: 10MB、対応形式: JPEG, PNG, GIF, WebP
 
+### Phase 5.5（v5.5 完了）
+- [x] **モバイルレスポンシブ強化** - iPhone 16 Pro Max 対応
+  - **ハンバーガーメニュー**: モバイルでスライドインナビゲーション
+  - **iPhoneセーフエリア対応**: `env(safe-area-inset-*)` でノッチ・ホームバー対応
+  - **タッチ最適化**: 44px/48px のタッチターゲット確保
+  - **100dvh対応**: iOS Safari のアドレスバーを考慮した高さ計算
+  - **カレンダー最適化**: モバイルでも見やすいグリッドサイズ調整
+  - **FilterDrawer改善**: 画面幅に応じた可変幅
+  - **viewport-fit=cover**: フルスクリーン表示対応
+  - **ノート一覧最適化**: モバイルでコンパクトなリスト表示、プレビュー非表示
+
 ### Phase 6（予定）
 - [ ] LLM 推論統合（GPT-4 によるタイプ分類）
 - [ ] 要約生成・保存
@@ -917,6 +936,39 @@ brain-cabinet/
 ---
 
 ## バージョン履歴
+
+### v5.5.0
+- **モバイルレスポンシブ強化**: iPhone 16 Pro Max 向けに UI を最適化
+  - **ヘッダー改善**:
+    - モバイルでハンバーガーメニューを追加（スライドインナビゲーション）
+    - デスクトップでは従来通りの横並びナビゲーション
+    - メニュー開閉時のアニメーション（X ⇔ ☰）
+    - 背景オーバーレイとスクロールロック
+  - **iPhoneセーフエリア対応**:
+    - `viewport-fit=cover` でフルスクリーン表示
+    - `env(safe-area-inset-*)` でノッチ・ホームバーを考慮したパディング
+    - ヘッダー、モバイルナビ、FilterDrawer、MainLayout に適用
+  - **タッチ最適化**:
+    - タッチターゲット 44px/48px 確保（Apple HIG 準拠）
+    - `-webkit-tap-highlight-color: transparent` でタップハイライト削除
+  - **高さ計算の最適化**:
+    - `100dvh` 使用で iOS Safari のアドレスバーを考慮
+    - GraphPage: モバイル用の高さ計算調整
+    - MainLayout: `min-height: 100dvh` でフルハイト表示
+  - **カレンダー最適化**:
+    - モバイルで 40px の最小サイズ確保
+    - グリッド間隔の調整
+    - カウンターバッジのサイズ調整
+  - **FilterDrawer改善**:
+    - 固定幅 320px → `min(320px, calc(100vw - 3rem))` で画面幅に対応
+    - セーフエリア対応パディング追加
+  - **DashboardPage改善**:
+    - モバイル用のパディング調整
+    - ノートアイテムのタッチターゲット確保
+  - **ノート一覧（NotesPage）改善**:
+    - NoteCard: モバイルではプレビュー本文・ID非表示でコンパクト化
+    - NoteList: モバイルでは縦並びリスト、デスクトップではグリッド表示
+    - NotesPage: 検索バーにfont-size: 16px（iOS zoom防止）、min-height: 44px
 
 ### v5.4.0
 - **ノート画像埋め込み機能**: ノートに画像を直接埋め込み、BLOBとして保存
@@ -1175,4 +1227,4 @@ brain-cabinet/
 
 ---
 
-**Brain Cabinet v5.4 (Note Images)** — Your External Brain with Image Embedding, Note-to-Note Linking, Hierarchical Bookmarks, Interactive Graph, Timeline, Dashboard, and Smart Filtering for Decision-First Architecture
+**Brain Cabinet v5.5 (Mobile Responsive)** — Your External Brain with Mobile-First Design, Image Embedding, Note-to-Note Linking, Hierarchical Bookmarks, Interactive Graph, Timeline, Dashboard, and Smart Filtering for Decision-First Architecture
