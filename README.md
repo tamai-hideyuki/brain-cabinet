@@ -1,11 +1,16 @@
-# Brain Cabinet v5.2.0 (Bookmark Management)
+# Brain Cabinet v5.3.0 (Note Link)
 
 **思考ベースの検索型知識システム — あなたの思考を理解し、成長を見守る外部脳**
 
 > Brain Cabinet は単なるメモ帳ではありません。
 > ノートの**文脈を理解**し、質問に応じて**必要な部分だけを抽出・再構成**する仕組みです。
 >
-> **v5.2 の新機能: ブックマーク機能**
+> **v5.3 の新機能: メモ間リンク**
+> - **`[[uuid]]` 記法** — メモ本文にUUIDを書くだけでハイパーリンク化
+> - **ワンクリック遷移** — リンクをクリックで該当メモに即座にジャンプ
+> - **削除済みメモ対応** — リンク先が存在しない場合は「ノートが見つかりませんでした」を表示
+>
+> **v5.2 の機能: ブックマーク機能**
 > - **階層構造ブックマーク** — フォルダ/ノート参照/外部リンクをツリー構造で管理
 > - **人間主導の整理** — AIの自動分類とは別に、人間が意図的に構造化
 > - **ノート横断ショートカット** — 同じノートを複数フォルダから参照可能
@@ -821,6 +826,14 @@ brain-cabinet/
   - **作成のみUIから可能**（編集・更新・削除はGPT経由）
   - GPTからは引き続きCRUD全操作が可能
 
+### Phase 5.3（v5.3 完了）
+- [x] **メモ間リンク機能** - `[[uuid]]` 記法でメモ間をハイパーリンク
+  - メモ本文に `[[uuid]]` と書くとリンク化
+  - クリックで該当メモに遷移
+  - 削除済みメモへのリンクは「ノートが見つかりませんでした」を表示
+  - remark プラグインによるマークダウン拡張
+  - 既存のクラスタリング・検索機能への影響なし（UI表示のみの変更）
+
 ### Phase 6（予定）
 - [ ] LLM 推論統合（GPT-4 によるタイプ分類）
 - [ ] 要約生成・保存
@@ -884,6 +897,17 @@ brain-cabinet/
 ---
 
 ## バージョン履歴
+
+### v5.3.0
+- **メモ間リンク機能**: `[[uuid]]` 記法でメモ間をハイパーリンク
+  - メモ本文に `[[uuid]]` と書くと自動的にリンク化
+  - クリックで該当メモに遷移
+  - 削除済みメモへのリンクは「ノートが見つかりませんでした」を表示
+  - **実装詳細**:
+    - `remarkNoteLink.ts`: remark プラグインで `[[uuid]]` を検出しリンクノードに変換
+    - `NoteLink.tsx`: リンククリックでページ遷移を処理
+    - `urlTransform` 設定: react-markdown のURLサニタイズを回避し `note://` プロトコルを許可
+  - **影響範囲**: UI表示のみ。クラスタリング・検索・データベースへの影響なし
 
 ### v5.2.0
 - **ブックマーク機能**: 階層構造によるノート参照管理
@@ -1107,4 +1131,4 @@ brain-cabinet/
 
 ---
 
-**Brain Cabinet v5.2 (Bookmark Management)** — Your External Brain with Hierarchical Bookmarks, Interactive Graph, Timeline, Dashboard, and Smart Filtering for Decision-First Architecture
+**Brain Cabinet v5.3 (Note Link)** — Your External Brain with Note-to-Note Linking, Hierarchical Bookmarks, Interactive Graph, Timeline, Dashboard, and Smart Filtering for Decision-First Architecture
