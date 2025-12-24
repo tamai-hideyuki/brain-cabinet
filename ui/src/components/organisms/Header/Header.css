@@ -77,6 +77,22 @@
   color: var(--color-text);
 }
 
+.header__icon-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  color: var(--color-text-subtle);
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.header__icon-link:hover {
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+}
+
 /* Tablet and up */
 @media (min-width: 640px) {
   .header {

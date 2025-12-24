@@ -14,6 +14,7 @@ import { insightRoute } from "./routes/insight/index";
 import commandRoute from "./routes/command/index";
 import { bookmarksRoute } from "./routes/bookmarks/index";
 import { secretBoxRoute } from "./routes/secret-box/index";
+import { systemRoute } from "./routes/system/index";
 import { logger } from "./utils/logger";
 import fs from "fs";
 import path from "path";
@@ -66,6 +67,7 @@ app.route("/api/insight", insightRoute);
 app.route("/api/command", commandRoute);
 app.route("/api/bookmarks", bookmarksRoute);
 app.route("/api/secret-box", secretBoxRoute);
+app.route("/api/system", systemRoute);
 
 // UI静的ファイル配信
 app.use("/ui/assets/*", serveStatic({ root: "./ui/dist", rewriteRequestPath: (p) => p.replace(/^\/ui/, "") }));

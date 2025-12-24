@@ -8,6 +8,7 @@ import { TimelinePage } from './components/pages/TimelinePage'
 import { DashboardPage } from './components/pages/DashboardPage'
 import { BookmarkPage } from './components/pages/BookmarkPage'
 import { SecretBoxPage } from './components/pages/SecretBoxPage'
+import { SystemPage } from './components/pages/SystemPage'
 
 export function App() {
   return (
@@ -30,6 +31,7 @@ export function App() {
           <Route path="/ui/timeline" element={<TimelinePage />} />
           <Route path="/ui/bookmarks" element={<BookmarkPage />} />
           <Route path="/ui/secret-box" element={<SecretBoxPage />} />
+          <Route path="/ui/system" element={<SystemPage />} />
         </Routes>
       </SignedIn>
     </BrowserRouter>
