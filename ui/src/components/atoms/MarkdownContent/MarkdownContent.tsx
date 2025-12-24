@@ -15,6 +15,7 @@ export const MarkdownContent = ({ content, className = '' }: MarkdownContentProp
     <div className={`markdown-content ${className}`.trim()}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkBreaks, remarkNoteLink]}
+        urlTransform={(url) => url}
         components={{
           a: ({ href, children }) => {
             if (href?.startsWith('note://')) {

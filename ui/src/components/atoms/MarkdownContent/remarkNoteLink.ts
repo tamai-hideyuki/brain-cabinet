@@ -1,17 +1,18 @@
-import { visit } from 'unist-util-visit'
+import { visit, SKIP } from 'unist-util-visit'
 import type { Plugin } from 'unified'
-import type { Text, Link } from 'mdast'
+import type { Text, Link, Root } from 'mdast'
 import type { Node, Parent } from 'unist'
 
 const UUID_PATTERN = /\[\[([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\]\]/gi
 
-export const remarkNoteLink: Plugin = () => {
-  return (tree) => {
+export const remarkNoteLink: Plugin<[], Root> = () => {
+  return (tree: Root) => {
     visit(tree, 'text', (node: Text, index: number | undefined, parent: Parent | undefined) => {
       if (index === undefined || parent === undefined) return
 
       const value = node.value
-      const matches = [...value.matchAll(UUID_PATTERN)]
+      const regex = new RegExp(UUID_PATTERN.source, 'gi')
+      const matches = [...value.matchAll(regex)]
 
       if (matches.length === 0) return
 
@@ -51,6 +52,9 @@ export const remarkNoteLink: Plugin = () => {
 
       // 親ノードの子を置き換え
       parent.children.splice(index, 1, ...newNodes as Node[])
+
+      // 追加したノードをスキップして無限ループを防ぐ
+      return [SKIP, index + newNodes.length]
     })
   }
 }
