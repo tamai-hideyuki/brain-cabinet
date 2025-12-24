@@ -111,6 +111,18 @@
   text-decoration: underline;
 }
 
+/* Note Links */
+.markdown-content .note-link {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  cursor: pointer;
+}
+
+.markdown-content .note-link:hover {
+  text-decoration-style: solid;
+}
+
 /* Horizontal Rule */
 .markdown-content hr {
   border: none;
