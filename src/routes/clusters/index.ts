@@ -14,6 +14,10 @@ import {
   formatForGpt,
   GPT_IDENTITY_PROMPT,
 } from "../../services/cluster/identity";
+import {
+  getClusterQualityMetrics,
+  getGlobalQualityMetrics,
+} from "../../services/cluster/metrics";
 
 // ヘルパー関数
 function bufferToFloat32Array(buffer: Buffer | ArrayBuffer | Uint8Array): number[] {
@@ -278,5 +282,76 @@ clustersRoute.post("/rebuild", async (c) => {
     note: regenerateEmbeddings
       ? "Embedding 未生成ノートを自動生成してからクラスタリングします"
       : "既存の Embedding のみでクラスタリングします",
+  });
+});
+
+// ============================================================
+// v5.8 クラスター品質メトリクス
+// ============================================================
+
+/**
+ * GET /api/clusters/quality
+ * 全体のクラスター品質メトリクスを取得
+ */
+clustersRoute.get("/quality", async (c) => {
+  const metrics = await getGlobalQualityMetrics();
+
+  return c.json({
+    overview: {
+      overallSilhouette: metrics.overallSilhouette,
+      daviesBouldinIndex: metrics.daviesBouldinIndex,
+      clusterCount: metrics.clusterCount,
+      totalNotes: metrics.totalNotes,
+      optimalKEstimate: metrics.optimalKEstimate,
+    },
+    qualityAssessment: metrics.qualityAssessment,
+    clusters: metrics.clusterMetrics.map((cm) => ({
+      clusterId: cm.clusterId,
+      qualityGrade: cm.qualityGrade,
+      cohesion: cm.cohesion,
+      silhouette: cm.silhouette.avgSilhouette,
+      hasSubClusters: cm.subClusterAnalysis.hasSubClusters,
+    })),
+  });
+});
+
+/**
+ * GET /api/clusters/:id/quality
+ * 特定クラスターの品質メトリクスを取得
+ */
+clustersRoute.get("/:id/quality", async (c) => {
+  const idParam = c.req.param("id");
+  const clusterId = parseInt(idParam, 10);
+
+  if (isNaN(clusterId)) {
+    return c.json({ error: "Invalid cluster ID" }, 400);
+  }
+
+  const metrics = await getClusterQualityMetrics(clusterId);
+
+  if (!metrics) {
+    return c.json({ error: "Cluster not found or no data available" }, 404);
+  }
+
+  return c.json({
+    clusterId: metrics.clusterId,
+    qualityGrade: metrics.qualityGrade,
+    cohesion: metrics.cohesion,
+    silhouette: {
+      average: metrics.silhouette.avgSilhouette,
+      min: metrics.silhouette.minSilhouette,
+      max: metrics.silhouette.maxSilhouette,
+      noteCount: metrics.silhouette.noteCount,
+    },
+    subClusterAnalysis: {
+      hasSubClusters: metrics.subClusterAnalysis.hasSubClusters,
+      separationScore: metrics.subClusterAnalysis.separationScore,
+      subClusterCount: metrics.subClusterAnalysis.subClusters.length,
+      subClusters: metrics.subClusterAnalysis.subClusters.map((sc) => ({
+        noteCount: sc.noteIds.length,
+        internalCohesion: sc.internalCohesion,
+      })),
+    },
+    recommendations: metrics.recommendations,
   });
 });
