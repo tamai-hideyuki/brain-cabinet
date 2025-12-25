@@ -3,6 +3,7 @@ import { Network, type Options } from 'vis-network'
 import { DataSet } from 'vis-data'
 import { Text } from '../../atoms/Text'
 import { Spinner } from '../../atoms/Spinner'
+import { fetchWithAuth } from '../../../api/client'
 import './InfluenceGraph.css'
 
 type GraphNode = {
@@ -80,7 +81,7 @@ export const InfluenceGraph = ({ onNodeClick }: InfluenceGraphProps) => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch('/api/influence/graph?limit=150')
+        const res = await fetchWithAuth('/api/influence/graph?limit=150')
         if (!res.ok) throw new Error('Failed to fetch graph data')
         const json = await res.json()
         setData(json)
