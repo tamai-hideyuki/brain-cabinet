@@ -1,4 +1,4 @@
-# Brain Cabinet v5.5.0 (Mobile Responsive)
+# Brain Cabinet v5.13.0 (GPT Context Optimization)
 
 **思考ベースの検索型知識システム — あなたの思考を理解し、成長を見守る外部脳**
 
@@ -394,7 +394,8 @@ POST /api/command
 | アクション | 説明 | payload |
 |-----------|------|---------|
 | `gpt.search` | GPT向け検索 | `{query, mode?}` |
-| `gpt.context` | コンテキスト | `{noteId}` |
+| `gpt.context` | ノートコンテキスト | `{noteId}` |
+| `gpt.unifiedContext` | 統合コンテキスト（v5.13） | `{focus?, maxPriorities?, maxRecommendations?}` |
 | `gpt.task` | タスク推奨 | - |
 | `gpt.overview` | 概要 | - |
 | `gpt.coachDecision` | 判断コーチング | `{query}` |
@@ -878,6 +879,18 @@ brain-cabinet/
   - セルフチェック記録をメモ末尾に自動追加
   - 「すぐ記録して」で即時記録も可能
 
+### Phase 5.13（v5.13 完了）
+- [x] **GPT向け統合コンテキスト** - 複数分析APIを1エンドポイントで集約
+  - `GET /api/gpt/context` - 優先事項・最近の活動・レコメンデーションを統合
+  - focus パラメータで overview/trends/warnings/recommendations を切り替え
+  - キャッシュ対応（TTL 15分）でレスポンス高速化
+- [x] **キャッシュレイヤー（v5.12）** - 重い分析エンドポイントのTTLキャッシュ
+  - `analysis_cache` テーブルでキャッシュを永続化
+  - ノートCRUD時に自動無効化
+- [x] **マルチタイムスケール分析（v5.9）** - 週次/月次/四半期トレンドの並列追跡
+- [x] **ドリフト方向追跡（v5.10）** - 思考の進化方向を可視化
+- [x] **因果推論（v5.11）** - ノート間の因果関係を分析
+
 ### Phase 6（予定）
 - [ ] LLM 推論統合（GPT-4 によるタイプ分類）
 - [ ] 要約生成・保存
@@ -941,6 +954,31 @@ brain-cabinet/
 ---
 
 ## バージョン履歴
+
+### v5.13.0
+- **GPT向け統合コンテキスト**: 複数の分析APIを1つのエンドポイントに集約
+  - `GET /api/gpt/context` または `gpt.unifiedContext` アクション
+  - **priorities**: 優先事項（insight/warning/opportunity）を重要度順で提供
+  - **recentActivity**: 過去30日間の活動サマリー（新規ノート数、更新数、トレンド）
+  - **recommendations**: アクション推奨（explore/review/connect/organize）
+  - **detailEndpoints**: 詳細APIへのパス（深掘り用）
+  - focus パラメータ: overview（デフォルト）/ trends / warnings / recommendations
+  - キャッシュ対応（TTL 15分）でGPT Actions利用時のレイテンシを削減
+- **v5.12 キャッシュレイヤー**: 重い分析エンドポイントのTTLキャッシュ
+  - `analysis_cache` テーブルでDB永続化
+  - ノートのCRUD時に自動無効化
+  - タイムスケール分析: 1時間、因果サマリー: 30分、クラスタ品質: 2時間
+- **v5.11 因果推論**: ノート間の因果関係を分析
+  - Granger因果性テスト、介入効果分析、反事実分析
+  - ピボットノート検出（思考の転換点）
+- **v5.10 ドリフト方向追跡**: 思考の進化パターンを可視化
+  - driftVector = newEmbedding - oldEmbedding
+  - クラスター間フロー分析
+  - trajectory: expansion/contraction/pivot/lateral/stable
+- **v5.9 マルチタイムスケール分析**: 複数時間軸でのトレンド追跡
+  - 週次/月次/四半期トレンドの並列分析
+  - 季節パターン検出
+  - フェーズ遷移検出（dormant/emerging/expansion/consolidation/declining）
 
 ### v5.5.0
 - **セルフチェック・プロンプト**: 判断記録前の自己確認フロー（GPT側機能）

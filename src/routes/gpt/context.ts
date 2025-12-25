@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { getContextForGPT } from "../../services/gptService";
+import { getGptContext } from "../../services/gptService/context/gptContext";
 import { logger } from "../../utils/logger";
 
 export const contextRoute = new Hono();
@@ -37,5 +38,40 @@ contextRoute.get("/notes/:id/context", async (c) => {
   } catch (e) {
     logger.error({ err: e, noteId: id }, "GPT context fetch failed");
     return c.json({ error: (e as Error).message }, 404);
+  }
+});
+
+// ============================================================
+// v5.13 GPT向け統合コンテキスト
+// ============================================================
+
+/**
+ * GPT向け統合コンテキスト取得
+ * GET /api/gpt/context
+ *
+ * 複数の分析APIを集約し、GPTが効率的に活用できる形式で提供
+ *
+ * Query params:
+ * - focus: フォーカス領域（overview/trends/warnings/recommendations、デフォルト: overview）
+ * - maxPriorities: 優先事項の最大件数（デフォルト: 5）
+ * - maxRecommendations: レコメンデーションの最大件数（デフォルト: 3）
+ */
+contextRoute.get("/context", async (c) => {
+  const focus = c.req.query("focus") as "overview" | "trends" | "warnings" | "recommendations" | undefined;
+  const maxPrioritiesParam = c.req.query("maxPriorities");
+  const maxRecommendationsParam = c.req.query("maxRecommendations");
+
+  const options = {
+    focus: focus ?? "overview",
+    maxPriorities: maxPrioritiesParam ? parseInt(maxPrioritiesParam, 10) : 5,
+    maxRecommendations: maxRecommendationsParam ? parseInt(maxRecommendationsParam, 10) : 3,
+  };
+
+  try {
+    const context = await getGptContext(options);
+    return c.json(context);
+  } catch (e) {
+    logger.error({ err: e }, "GPT unified context fetch failed");
+    return c.json({ error: (e as Error).message }, 500);
   }
 });

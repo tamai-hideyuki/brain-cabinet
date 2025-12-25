@@ -3,6 +3,7 @@
  */
 
 import * as gptService from "../services/gptService";
+import { getGptContext } from "../services/gptService/context/gptContext";
 import * as searchService from "../services/searchService";
 import type { SearchResult } from "../services/searchService";
 import { AppError, ErrorCodes } from "../utils/errors";
@@ -105,5 +106,18 @@ export const gptDispatcher = {
       throw new AppError(ErrorCodes.VALIDATION_REQUIRED, "query is required", { field: "query" });
     }
     return gptService.coachDecision(p.query);
+  },
+
+  async unifiedContext(payload: unknown) {
+    const p = payload as {
+      focus?: "overview" | "trends" | "warnings" | "recommendations";
+      maxPriorities?: number;
+      maxRecommendations?: number;
+    } | undefined;
+    return getGptContext({
+      focus: p?.focus,
+      maxPriorities: p?.maxPriorities,
+      maxRecommendations: p?.maxRecommendations,
+    });
   },
 };
