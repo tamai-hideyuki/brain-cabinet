@@ -8,6 +8,10 @@ import {
   getSummaryStats,
   type TimeUnit,
 } from "../../services/analytics";
+import {
+  analyzeClusterTimescales,
+  analyzeGlobalTimescales,
+} from "../../services/analytics/multiTimescale";
 
 export const analyticsRoute = new Hono();
 
@@ -156,5 +160,115 @@ analyticsRoute.get("/trends", async (c) => {
     endDate: new Date(dateRange.end * 1000).toISOString().split("T")[0],
     periods: periodSummary,
     raw: trends,
+  });
+});
+
+// ============================================================
+// v5.9 マルチタイムスケール分析
+// ============================================================
+
+/**
+ * GET /api/analytics/timescale
+ * 全体のマルチタイムスケール分析を取得
+ */
+analyticsRoute.get("/timescale", async (c) => {
+  const analysis = await analyzeGlobalTimescales();
+
+  return c.json({
+    analysisDate: analysis.analysisDate,
+    overview: {
+      clusterCount: analysis.clusterCount,
+      activeClusterCount: analysis.activeClusterCount,
+    },
+    globalTrends: {
+      weekly: {
+        direction: analysis.globalTrends.weekly.direction,
+        velocity: analysis.globalTrends.weekly.velocity,
+        confidence: analysis.globalTrends.weekly.confidence,
+      },
+      monthly: {
+        direction: analysis.globalTrends.monthly.direction,
+        velocity: analysis.globalTrends.monthly.velocity,
+        confidence: analysis.globalTrends.monthly.confidence,
+      },
+      quarterly: {
+        direction: analysis.globalTrends.quarterly.direction,
+        velocity: analysis.globalTrends.quarterly.velocity,
+        confidence: analysis.globalTrends.quarterly.confidence,
+      },
+    },
+    topGrowingClusters: analysis.topGrowingClusters,
+    topDecliningClusters: analysis.topDecliningClusters,
+    seasonalPatterns: analysis.seasonalPatterns.map((sp) => ({
+      clusterId: sp.clusterId,
+      peakMonths: sp.pattern.peakMonths,
+      troughMonths: sp.pattern.troughMonths,
+      amplitude: sp.pattern.amplitude,
+    })),
+    phaseTransitions: analysis.phaseTransitions.map((pt) => ({
+      clusterId: pt.clusterId,
+      currentPhase: pt.transition.currentPhase,
+      previousPhase: pt.transition.previousPhase,
+      transitionDate: pt.transition.transitionDate,
+      daysInCurrentPhase: pt.transition.daysInCurrentPhase,
+    })),
+  });
+});
+
+/**
+ * GET /api/analytics/timescale/cluster/:id
+ * 特定クラスターのマルチタイムスケール分析を取得
+ */
+analyticsRoute.get("/timescale/cluster/:id", async (c) => {
+  const idParam = c.req.param("id");
+  const clusterId = parseInt(idParam, 10);
+
+  if (isNaN(clusterId)) {
+    return c.json({ error: "Invalid cluster ID" }, 400);
+  }
+
+  const analysis = await analyzeClusterTimescales(clusterId);
+
+  if (!analysis) {
+    return c.json({ error: "Cluster not found or no data available" }, 404);
+  }
+
+  return c.json({
+    clusterId: analysis.clusterId,
+    trends: {
+      weekly: {
+        direction: analysis.trends.weekly.direction,
+        velocity: analysis.trends.weekly.velocity,
+        confidence: analysis.trends.weekly.confidence,
+        dataPoints: analysis.trends.weekly.dataPoints,
+      },
+      monthly: {
+        direction: analysis.trends.monthly.direction,
+        velocity: analysis.trends.monthly.velocity,
+        confidence: analysis.trends.monthly.confidence,
+        dataPoints: analysis.trends.monthly.dataPoints,
+      },
+      quarterly: {
+        direction: analysis.trends.quarterly.direction,
+        velocity: analysis.trends.quarterly.velocity,
+        confidence: analysis.trends.quarterly.confidence,
+        dataPoints: analysis.trends.quarterly.dataPoints,
+      },
+    },
+    seasonalPattern: {
+      detected: analysis.seasonalPattern.detected,
+      peakMonths: analysis.seasonalPattern.peakMonths,
+      troughMonths: analysis.seasonalPattern.troughMonths,
+      amplitude: analysis.seasonalPattern.amplitude,
+      confidence: analysis.seasonalPattern.confidence,
+    },
+    phaseTransition: {
+      currentPhase: analysis.phaseTransition.currentPhase,
+      previousPhase: analysis.phaseTransition.previousPhase,
+      transitionDate: analysis.phaseTransition.transitionDate,
+      stability: analysis.phaseTransition.stability,
+      daysInCurrentPhase: analysis.phaseTransition.daysInCurrentPhase,
+    },
+    insight: analysis.insight,
   });
 });
