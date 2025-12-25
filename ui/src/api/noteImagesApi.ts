@@ -1,6 +1,7 @@
 /**
  * ノート画像 API
  */
+import { fetchWithAuth } from './client'
 
 const API_BASE = '/api/notes'
 
@@ -31,7 +32,7 @@ export const uploadNoteImage = async (
     formData.append('name', name)
   }
 
-  const res = await fetch(`${API_BASE}/${noteId}/images`, {
+  const res = await fetchWithAuth(`${API_BASE}/${noteId}/images`, {
     method: 'POST',
     body: formData,
   })
@@ -48,7 +49,7 @@ export const uploadNoteImage = async (
  * ノートの画像一覧を取得
  */
 export const getNoteImages = async (noteId: string): Promise<NoteImageMeta[]> => {
-  const res = await fetch(`${API_BASE}/${noteId}/images`)
+  const res = await fetchWithAuth(`${API_BASE}/${noteId}/images`)
 
   if (!res.ok) {
     throw new Error('Failed to get note images')
@@ -61,7 +62,7 @@ export const getNoteImages = async (noteId: string): Promise<NoteImageMeta[]> =>
  * 画像を削除
  */
 export const deleteNoteImage = async (imageId: string): Promise<NoteImageMeta> => {
-  const res = await fetch(`${API_BASE}/images/${imageId}`, {
+  const res = await fetchWithAuth(`${API_BASE}/images/${imageId}`, {
     method: 'DELETE',
   })
 

@@ -4,19 +4,20 @@ import type {
   UpdateBookmarkParams,
   MoveBookmarkParams,
 } from '../types/bookmark'
+import { fetchWithAuth } from './client'
 
 const API_BASE = '/api/bookmarks'
 
 // ブックマークツリー取得
 export const fetchBookmarkTree = async (): Promise<BookmarkNode[]> => {
-  const res = await fetch(API_BASE)
+  const res = await fetchWithAuth(API_BASE)
   if (!res.ok) throw new Error('Failed to fetch bookmark tree')
   return res.json()
 }
 
 // 単一ノード取得
 export const fetchBookmarkNode = async (id: string): Promise<BookmarkNode> => {
-  const res = await fetch(`${API_BASE}/${id}`)
+  const res = await fetchWithAuth(`${API_BASE}/${id}`)
   if (!res.ok) throw new Error('Failed to fetch bookmark node')
   return res.json()
 }
@@ -25,7 +26,7 @@ export const fetchBookmarkNode = async (id: string): Promise<BookmarkNode> => {
 export const createBookmarkNode = async (
   params: CreateBookmarkParams
 ): Promise<BookmarkNode> => {
-  const res = await fetch(API_BASE, {
+  const res = await fetchWithAuth(API_BASE, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
@@ -39,7 +40,7 @@ export const updateBookmarkNode = async (
   id: string,
   params: UpdateBookmarkParams
 ): Promise<BookmarkNode> => {
-  const res = await fetch(`${API_BASE}/${id}`, {
+  const res = await fetchWithAuth(`${API_BASE}/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
@@ -50,7 +51,7 @@ export const updateBookmarkNode = async (
 
 // ノード削除
 export const deleteBookmarkNode = async (id: string): Promise<void> => {
-  const res = await fetch(`${API_BASE}/${id}`, {
+  const res = await fetchWithAuth(`${API_BASE}/${id}`, {
     method: 'DELETE',
   })
   if (!res.ok) throw new Error('Failed to delete bookmark node')
@@ -61,7 +62,7 @@ export const moveBookmarkNode = async (
   id: string,
   params: MoveBookmarkParams
 ): Promise<BookmarkNode> => {
-  const res = await fetch(`${API_BASE}/${id}/move`, {
+  const res = await fetchWithAuth(`${API_BASE}/${id}/move`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
@@ -75,7 +76,7 @@ export const reorderBookmarkNodes = async (
   parentId: string | null,
   orderedIds: string[]
 ): Promise<void> => {
-  const res = await fetch(`${API_BASE}/reorder`, {
+  const res = await fetchWithAuth(`${API_BASE}/reorder`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ parentId, orderedIds }),

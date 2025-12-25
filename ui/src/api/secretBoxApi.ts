@@ -10,6 +10,7 @@ import type {
   UpdateSecretBoxItemParams,
   UpdateSecretBoxFolderParams,
 } from '../types/secretBox';
+import { fetchWithAuth } from './client';
 
 const API_BASE = '/api/secret-box';
 
@@ -17,7 +18,7 @@ const API_BASE = '/api/secret-box';
  * ツリー構造取得
  */
 export const fetchSecretBoxTree = async (): Promise<SecretBoxFullTree> => {
-  const res = await fetch(API_BASE);
+  const res = await fetchWithAuth(API_BASE);
   if (!res.ok) {
     const error = await res.json();
     throw new Error(error.error?.message || 'Failed to fetch secret box tree');
@@ -34,7 +35,7 @@ export const fetchSecretBoxItems = async (folderId?: string | null): Promise<Sec
     params.set('folderId', folderId === null ? 'null' : folderId);
   }
   const url = `${API_BASE}/items${params.toString() ? '?' + params.toString() : ''}`;
-  const res = await fetch(url);
+  const res = await fetchWithAuth(url);
   if (!res.ok) {
     const error = await res.json();
     throw new Error(error.error?.message || 'Failed to fetch items');
@@ -57,7 +58,7 @@ export const uploadSecretBoxItem = async (
     formData.append('folderId', folderId === null ? 'null' : folderId);
   }
 
-  const res = await fetch(`${API_BASE}/items`, {
+  const res = await fetchWithAuth(`${API_BASE}/items`, {
     method: 'POST',
     body: formData,
   });
@@ -75,7 +76,7 @@ export const updateSecretBoxItem = async (
   id: string,
   params: UpdateSecretBoxItemParams
 ): Promise<SecretBoxItem> => {
-  const res = await fetch(`${API_BASE}/items/${id}`, {
+  const res = await fetchWithAuth(`${API_BASE}/items/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
@@ -91,7 +92,7 @@ export const updateSecretBoxItem = async (
  * アイテム削除
  */
 export const deleteSecretBoxItem = async (id: string): Promise<void> => {
-  const res = await fetch(`${API_BASE}/items/${id}`, { method: 'DELETE' });
+  const res = await fetchWithAuth(`${API_BASE}/items/${id}`, { method: 'DELETE' });
   if (!res.ok) {
     const error = await res.json();
     throw new Error(error.error?.message || 'Failed to delete item');
@@ -121,7 +122,7 @@ export const fetchSecretBoxFolders = async (parentId?: string | null): Promise<S
     params.set('parentId', parentId === null ? 'null' : parentId);
   }
   const url = `${API_BASE}/folders${params.toString() ? '?' + params.toString() : ''}`;
-  const res = await fetch(url);
+  const res = await fetchWithAuth(url);
   if (!res.ok) {
     const error = await res.json();
     throw new Error(error.error?.message || 'Failed to fetch folders');
@@ -135,7 +136,7 @@ export const fetchSecretBoxFolders = async (parentId?: string | null): Promise<S
 export const createSecretBoxFolder = async (
   params: CreateSecretBoxFolderParams
 ): Promise<SecretBoxFolder> => {
-  const res = await fetch(`${API_BASE}/folders`, {
+  const res = await fetchWithAuth(`${API_BASE}/folders`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
@@ -154,7 +155,7 @@ export const updateSecretBoxFolder = async (
   id: string,
   params: UpdateSecretBoxFolderParams
 ): Promise<SecretBoxFolder> => {
-  const res = await fetch(`${API_BASE}/folders/${id}`, {
+  const res = await fetchWithAuth(`${API_BASE}/folders/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
@@ -170,7 +171,7 @@ export const updateSecretBoxFolder = async (
  * フォルダ削除
  */
 export const deleteSecretBoxFolder = async (id: string): Promise<void> => {
-  const res = await fetch(`${API_BASE}/folders/${id}`, { method: 'DELETE' });
+  const res = await fetchWithAuth(`${API_BASE}/folders/${id}`, { method: 'DELETE' });
   if (!res.ok) {
     const error = await res.json();
     throw new Error(error.error?.message || 'Failed to delete folder');

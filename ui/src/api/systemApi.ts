@@ -1,3 +1,5 @@
+import { fetchWithAuth } from './client'
+
 export type TableInfo = {
   name: string
   label: string
@@ -13,7 +15,7 @@ export type StorageStats = {
 const API_BASE = '/api'
 
 export const fetchStorageStats = async (): Promise<StorageStats> => {
-  const res = await fetch(`${API_BASE}/system/storage`)
+  const res = await fetchWithAuth(`${API_BASE}/system/storage`)
   if (!res.ok) throw new Error('Failed to fetch storage stats')
   return res.json()
 }

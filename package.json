@@ -2,6 +2,12 @@
   "name": "brain-cabinet",
   "version": "5.2.0",
   "type": "module",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "hnswlib-node",
+      "sharp"
+    ]
+  },
   "scripts": {
     "dev": "tsx src/index.ts",
     "ui:dev": "cd ui && npm run dev",
@@ -19,9 +25,11 @@
     "init-embeddings": "tsx src/scripts/init-embeddings.ts"
   },
   "dependencies": {
+    "@clerk/backend": "^2.29.0",
     "@hono/node-server": "^1.19.6",
     "@xenova/transformers": "^2.17.2",
     "diff-match-patch": "^1.0.5",
+    "dotenv": "^17.2.3",
     "drizzle-orm": "^0.44.7",
     "hnswlib-node": "^3.0.0",
     "hono": "^4.0.0",

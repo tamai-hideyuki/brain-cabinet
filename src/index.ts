@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
@@ -15,6 +16,7 @@ import commandRoute from "./routes/command/index";
 import { bookmarksRoute } from "./routes/bookmarks/index";
 import { secretBoxRoute } from "./routes/secret-box/index";
 import { systemRoute } from "./routes/system/index";
+import { authMiddleware } from "./middleware/auth";
 import { logger } from "./utils/logger";
 import fs from "fs";
 import path from "path";
@@ -54,6 +56,10 @@ app.onError((err, c) => {
 });
 
 app.get("/openapi.json", (c) => c.json(openapi));
+
+// API認証ミドルウェア
+app.use("/api/*", authMiddleware);
+
 app.route("/api/notes", notesRoute);
 app.route("/api/search", searchRoute);
 app.route("/api/gpt", gptRoute);

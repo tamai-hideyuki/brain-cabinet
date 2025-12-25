@@ -4,6 +4,7 @@ import type {
   SubmitReviewInput,
   SubmitReviewResult,
 } from '../types/review'
+import { fetchWithAuth } from './client'
 
 const API_BASE = '/api'
 
@@ -14,7 +15,7 @@ type CommandResponse<T> = {
 }
 
 async function sendCommand<T>(action: string, payload?: Record<string, unknown>): Promise<T> {
-  const res = await fetch(`${API_BASE}/command`, {
+  const res = await fetchWithAuth(`${API_BASE}/command`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action, payload }),

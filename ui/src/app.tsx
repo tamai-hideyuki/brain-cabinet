@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { SignedIn, SignedOut, SignInButton } from '@clerk/clerk-react'
+import { SignedIn, SignedOut, SignInButton, useAuth } from '@clerk/clerk-react'
+import { setTokenGetter } from './api/client'
 import { NotesPage } from './components/pages/NotesPage'
 import { NoteDetailPage } from './components/pages/NoteDetailPage'
 import { ReviewsPage } from './components/pages/ReviewsPage'
@@ -9,6 +11,16 @@ import { DashboardPage } from './components/pages/DashboardPage'
 import { BookmarkPage } from './components/pages/BookmarkPage'
 import { SecretBoxPage } from './components/pages/SecretBoxPage'
 import { SystemPage } from './components/pages/SystemPage'
+
+function AuthInitializer({ children }: { children: React.ReactNode }) {
+  const { getToken } = useAuth()
+
+  useEffect(() => {
+    setTokenGetter(getToken)
+  }, [getToken])
+
+  return <>{children}</>
+}
 
 export function App() {
   return (
@@ -21,18 +33,20 @@ export function App() {
         </div>
       </SignedOut>
       <SignedIn>
-        <Routes>
-          <Route path="/ui" element={<DashboardPage />} />
-          <Route path="/ui/" element={<DashboardPage />} />
-          <Route path="/ui/notes" element={<NotesPage />} />
-          <Route path="/ui/notes/:id" element={<NoteDetailPage />} />
-          <Route path="/ui/reviews" element={<ReviewsPage />} />
-          <Route path="/ui/graph" element={<GraphPage />} />
-          <Route path="/ui/timeline" element={<TimelinePage />} />
-          <Route path="/ui/bookmarks" element={<BookmarkPage />} />
-          <Route path="/ui/secret-box" element={<SecretBoxPage />} />
-          <Route path="/ui/system" element={<SystemPage />} />
-        </Routes>
+        <AuthInitializer>
+          <Routes>
+            <Route path="/ui" element={<DashboardPage />} />
+            <Route path="/ui/" element={<DashboardPage />} />
+            <Route path="/ui/notes" element={<NotesPage />} />
+            <Route path="/ui/notes/:id" element={<NoteDetailPage />} />
+            <Route path="/ui/reviews" element={<ReviewsPage />} />
+            <Route path="/ui/graph" element={<GraphPage />} />
+            <Route path="/ui/timeline" element={<TimelinePage />} />
+            <Route path="/ui/bookmarks" element={<BookmarkPage />} />
+            <Route path="/ui/secret-box" element={<SecretBoxPage />} />
+            <Route path="/ui/system" element={<SystemPage />} />
+          </Routes>
+        </AuthInitializer>
       </SignedIn>
     </BrowserRouter>
   )
