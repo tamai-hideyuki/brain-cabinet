@@ -12,6 +12,7 @@ import {
   analyzeClusterTimescales,
   analyzeGlobalTimescales,
 } from "../../services/analytics/multiTimescale";
+import { getOrCompute, generateCacheKey } from "../../services/cache";
 
 export const analyticsRoute = new Hono();
 
@@ -172,7 +173,12 @@ analyticsRoute.get("/trends", async (c) => {
  * 全体のマルチタイムスケール分析を取得
  */
 analyticsRoute.get("/timescale", async (c) => {
-  const analysis = await analyzeGlobalTimescales();
+  const cacheKey = generateCacheKey("analytics_timescale", {});
+  const analysis = await getOrCompute(
+    cacheKey,
+    "analytics_timescale",
+    () => analyzeGlobalTimescales()
+  );
 
   return c.json({
     analysisDate: analysis.analysisDate,
@@ -227,7 +233,12 @@ analyticsRoute.get("/timescale/cluster/:id", async (c) => {
     return c.json({ error: "Invalid cluster ID" }, 400);
   }
 
-  const analysis = await analyzeClusterTimescales(clusterId);
+  const cacheKey = generateCacheKey("analytics_timescale_cluster", { clusterId });
+  const analysis = await getOrCompute(
+    cacheKey,
+    "analytics_timescale_cluster",
+    () => analyzeClusterTimescales(clusterId)
+  );
 
   if (!analysis) {
     return c.json({ error: "Cluster not found or no data available" }, 404);

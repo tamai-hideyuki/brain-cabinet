@@ -19,6 +19,7 @@ import {
 } from "../../services/drift/driftDirection";
 import { db } from "../../db/client";
 import { sql } from "drizzle-orm";
+import { getOrCompute, generateCacheKey } from "../../services/cache";
 
 export const driftRoute = new Hono();
 
@@ -478,7 +479,12 @@ driftRoute.get("/flows", async (c) => {
     return c.json({ error: "Invalid range" }, 400);
   }
 
-  const flows = await analyzeDriftFlows(rangeDays);
+  const cacheKey = generateCacheKey("drift_flows", { rangeDays });
+  const flows = await getOrCompute(
+    cacheKey,
+    "drift_flows",
+    () => analyzeDriftFlows(rangeDays)
+  );
 
   return c.json({
     range: `${rangeDays}d`,

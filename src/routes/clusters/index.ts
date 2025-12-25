@@ -18,6 +18,7 @@ import {
   getClusterQualityMetrics,
   getGlobalQualityMetrics,
 } from "../../services/cluster/metrics";
+import { getOrCompute, generateCacheKey } from "../../services/cache";
 
 // ヘルパー関数
 function bufferToFloat32Array(buffer: Buffer | ArrayBuffer | Uint8Array): number[] {
@@ -294,7 +295,12 @@ clustersRoute.post("/rebuild", async (c) => {
  * 全体のクラスター品質メトリクスを取得
  */
 clustersRoute.get("/quality", async (c) => {
-  const metrics = await getGlobalQualityMetrics();
+  const cacheKey = generateCacheKey("clusters_quality", {});
+  const metrics = await getOrCompute(
+    cacheKey,
+    "clusters_quality",
+    () => getGlobalQualityMetrics()
+  );
 
   return c.json({
     overview: {

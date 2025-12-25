@@ -541,3 +541,29 @@ export const secretBoxFolders = sqliteTable("secret_box_folders", {
   createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
   updatedAt: integer("updated_at").notNull().default(sql`(strftime('%s','now'))`),
 });
+
+// ============================================================
+// v5.12 分析キャッシュ機能
+// ============================================================
+
+// キャッシュキータイプ定義
+export const CACHE_KEY_TYPES = [
+  "analytics_timescale",       // マルチタイムスケール分析
+  "analytics_timescale_cluster", // クラスター別タイムスケール分析
+  "influence_causal_summary",  // 因果分析サマリー
+  "drift_flows",               // ドリフトフロー分析
+  "clusters_quality",          // クラスター品質メトリクス
+  "gpt_context",               // GPT向けコンテキスト
+] as const;
+export type CacheKeyType = (typeof CACHE_KEY_TYPES)[number];
+
+// 分析キャッシュテーブル
+export const analysisCache = sqliteTable("analysis_cache", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  cacheKey: text("cache_key").notNull(),                          // キャッシュキー（タイプ + パラメータ）
+  keyType: text("key_type").notNull(),                            // CacheKeyType
+  data: text("data").notNull(),                                   // JSON文字列
+  ttlSeconds: integer("ttl_seconds").notNull(),                   // TTL（秒）
+  createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
+  expiresAt: integer("expires_at").notNull(),                     // 有効期限（Unix秒）
+});

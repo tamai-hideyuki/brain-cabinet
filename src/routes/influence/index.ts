@@ -19,6 +19,7 @@ import {
 } from "../../services/influence/causalInference";
 import { findNoteById } from "../../repositories/notesRepo";
 import { DECAY_PRESETS, calculateHalfLife } from "../../services/timeDecay";
+import { getOrCompute, generateCacheKey } from "../../services/cache";
 
 export const influenceRoute = new Hono();
 
@@ -684,7 +685,12 @@ function interpretGrangerResult(result: {
  * 全体の因果関係サマリー
  */
 influenceRoute.get("/causal/summary", async (c) => {
-  const summary = await getGlobalCausalSummary();
+  const cacheKey = generateCacheKey("influence_causal_summary", {});
+  const summary = await getOrCompute(
+    cacheKey,
+    "influence_causal_summary",
+    () => getGlobalCausalSummary()
+  );
 
   // Top influencers にノート情報を付加
   const enrichedInfluencers = await Promise.all(

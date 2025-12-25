@@ -11,6 +11,7 @@ import { getHistoryById } from "../historyService";
 import { enqueueJob } from "../jobs/job-queue";
 import { invalidateIDFCache } from "../searchService";
 import { inferAndSave } from "../inference";
+import { invalidateAnalysisCache } from "../cache/invalidation";
 import { NotFoundError, AppError, ErrorCodes } from "../../utils/errors";
 import type { Category } from "../../db/schema";
 
@@ -71,6 +72,9 @@ export const createNote = async (title: string, content: string) => {
     // IDFキャッシュを無効化（新規ノート追加でDF値が変わる）
     invalidateIDFCache();
 
+    // 分析キャッシュを無効化（新規ノートは全分析に影響）
+    invalidateAnalysisCache();
+
     // 非同期ジョブをキューに追加（Embedding生成 + Relation構築）
     enqueueJob("NOTE_ANALYZE", {
       noteId: note.id,
@@ -97,6 +101,9 @@ export const deleteNote = async (id: string) => {
   // IDFキャッシュを無効化（ノート削除でDF値が変わる）
   invalidateIDFCache();
 
+  // 分析キャッシュを無効化（ノート削除は全分析に影響）
+  invalidateAnalysisCache();
+
   return formatNoteForAPI(deleted);
 };
 
@@ -122,6 +129,8 @@ export const updateNote = async (id: string, newContent: string, newTitle?: stri
     // IDFキャッシュを無効化（コンテンツ変更でTF値が変わる可能性）
     if (contentChanged) {
       invalidateIDFCache();
+      // 分析キャッシュを無効化（コンテンツ変更は全分析に影響）
+      invalidateAnalysisCache();
     }
 
     // 非同期ジョブをキューに追加
