@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   computeDriftScore,
   classifyDriftEvent,
+  getChangeTypeModifier,
   DRIFT_THRESHOLD,
   LARGE_DRIFT_THRESHOLD,
 } from "./computeDriftScore";
@@ -103,6 +104,133 @@ describe("computeDriftScore", () => {
 
       expect(result.clusterJump).toBe(false);
       expect(result.driftScore).toBe(0.5);
+    });
+  });
+
+  describe("v5.6: 変化タイプによる修正", () => {
+    it("changeType が未指定の場合は修正なし", () => {
+      const result = computeDriftScore({
+        semanticDiff: 0.3,
+        oldClusterId: 1,
+        newClusterId: 1,
+      });
+
+      expect(result.changeTypeModifier).toBe(0);
+      expect(result.driftScore).toBe(0.3);
+    });
+
+    it("pivot は +0.3 の修正を適用", () => {
+      const result = computeDriftScore({
+        semanticDiff: 0.3,
+        oldClusterId: 1,
+        newClusterId: 1,
+        changeType: "pivot",
+      });
+
+      // 0.3 * (1 + 0 + 0.3) = 0.39
+      expect(result.changeTypeModifier).toBe(0.3);
+      expect(result.driftScore).toBeCloseTo(0.39);
+    });
+
+    it("expansion は +0.1 の修正を適用", () => {
+      const result = computeDriftScore({
+        semanticDiff: 0.5,
+        oldClusterId: 1,
+        newClusterId: 1,
+        changeType: "expansion",
+      });
+
+      // 0.5 * (1 + 0 + 0.1) = 0.55
+      expect(result.changeTypeModifier).toBe(0.1);
+      expect(result.driftScore).toBeCloseTo(0.55);
+    });
+
+    it("contraction は修正なし", () => {
+      const result = computeDriftScore({
+        semanticDiff: 0.4,
+        oldClusterId: 1,
+        newClusterId: 1,
+        changeType: "contraction",
+      });
+
+      expect(result.changeTypeModifier).toBe(0);
+      expect(result.driftScore).toBe(0.4);
+    });
+
+    it("deepening は -0.1 の修正を適用（ドリフト抑制）", () => {
+      const result = computeDriftScore({
+        semanticDiff: 0.5,
+        oldClusterId: 1,
+        newClusterId: 1,
+        changeType: "deepening",
+      });
+
+      // 0.5 * (1 + 0 - 0.1) = 0.45
+      expect(result.changeTypeModifier).toBe(-0.1);
+      expect(result.driftScore).toBeCloseTo(0.45);
+    });
+
+    it("refinement は -0.2 の修正を適用（最大の抑制）", () => {
+      const result = computeDriftScore({
+        semanticDiff: 0.5,
+        oldClusterId: 1,
+        newClusterId: 1,
+        changeType: "refinement",
+      });
+
+      // 0.5 * (1 + 0 - 0.2) = 0.4
+      expect(result.changeTypeModifier).toBe(-0.2);
+      expect(result.driftScore).toBeCloseTo(0.4);
+    });
+
+    it("クラスタージャンプと変化タイプを組み合わせる", () => {
+      const result = computeDriftScore({
+        semanticDiff: 0.3,
+        oldClusterId: 1,
+        newClusterId: 2,
+        changeType: "pivot",
+      });
+
+      // 0.3 * (1 + 0.5 + 0.3) = 0.54
+      expect(result.clusterJump).toBe(true);
+      expect(result.clusterJumpBonus).toBe(0.5);
+      expect(result.changeTypeModifier).toBe(0.3);
+      expect(result.driftScore).toBeCloseTo(0.54);
+    });
+
+    it("スコアは0〜1.5の範囲に収める", () => {
+      // 最大値テスト: 1.0 * (1 + 0.5 + 0.3) = 1.8 → 1.5にクランプ
+      const maxResult = computeDriftScore({
+        semanticDiff: 1.0,
+        oldClusterId: 1,
+        newClusterId: 2,
+        changeType: "pivot",
+      });
+      expect(maxResult.driftScore).toBe(1.5);
+
+      // 最小値テスト: refinementで負の修正でも0未満にはならない
+      const minResult = computeDriftScore({
+        semanticDiff: 0.1,
+        oldClusterId: 1,
+        newClusterId: 1,
+        changeType: "refinement",
+      });
+      expect(minResult.driftScore).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe("getChangeTypeModifier", () => {
+    it("各変化タイプに対して正しい修正値を返す", () => {
+      expect(getChangeTypeModifier("pivot")).toBe(0.3);
+      expect(getChangeTypeModifier("expansion")).toBe(0.1);
+      expect(getChangeTypeModifier("contraction")).toBe(0);
+      expect(getChangeTypeModifier("deepening")).toBe(-0.1);
+      expect(getChangeTypeModifier("refinement")).toBe(-0.2);
+    });
+
+    it("null/undefinedの場合は0を返す", () => {
+      expect(getChangeTypeModifier(null)).toBe(0);
+      expect(getChangeTypeModifier(undefined)).toBe(0);
     });
   });
 });

@@ -37,6 +37,8 @@ export const noteHistory = sqliteTable("note_history", {
   semanticDiff: text("semantic_diff"),          // 意味的差分スコア（0.0〜1.0）JSON文字列
   prevClusterId: integer("prev_cluster_id"),    // v3: 変更前のクラスタID
   newClusterId: integer("new_cluster_id"),      // v3: 変更後のクラスタID
+  changeType: text("change_type"),              // v5.6: 変化タイプ (SemanticChangeType)
+  changeDetail: text("change_detail"),          // v5.6: 変化詳細情報 (JSON)
   createdAt: integer("created_at").notNull(),   // 履歴保存日時
 });
 
@@ -127,6 +129,34 @@ export const DRIFT_TYPES = [
   "divergence",     // 発散（多方向に分散しすぎ）
 ] as const;
 export type DriftType = (typeof DRIFT_TYPES)[number];
+
+// ============================================================
+// v5.6 セマンティック変化タイプ（Semantic Change Classification）
+// ============================================================
+
+// 変化タイプ定義
+export const SEMANTIC_CHANGE_TYPES = [
+  "expansion",    // 拡張: 既存の概念を広げた（情報追加、範囲拡大）
+  "contraction",  // 縮小: 絞り込み・要約（情報削減、焦点化）
+  "pivot",        // 転換: 別の方向へ転換（主題変更、方向転換）
+  "deepening",    // 深化: 同概念の深掘り（詳細化、具体化）
+  "refinement",   // 洗練: 表現の改善（推敲、誤字修正、意味は同じ）
+] as const;
+export type SemanticChangeType = (typeof SEMANTIC_CHANGE_TYPES)[number];
+
+// セマンティック変化の詳細情報
+export type SemanticChangeDetail = {
+  type: SemanticChangeType;           // 変化タイプ
+  confidence: number;                  // 分類の確信度 (0.0〜1.0)
+  magnitude: number;                   // 変化の大きさ (0.0〜1.0) = semantic_diff
+  direction: number[];                 // 変化方向ベクトル（正規化済み、次元はembeddingと同じ）
+  metrics: {
+    contentLengthRatio: number;        // 長さ比率: new/old (>1: 拡張, <1: 縮小)
+    topicShift: number;                // トピック移動度 (0.0〜1.0)
+    vocabularyOverlap: number;         // 語彙重複率 (0.0〜1.0)
+    structuralSimilarity: number;      // 構造類似度 (0.0〜1.0) - 見出し・段落構造
+  };
+};
 
 // ドリフト・偏り検出イベント
 export const driftEvents = sqliteTable("drift_events", {

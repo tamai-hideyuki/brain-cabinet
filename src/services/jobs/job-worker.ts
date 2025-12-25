@@ -16,6 +16,10 @@ import { randomUUID } from "crypto";
 import type { NoteAnalyzePayload } from "./job-queue";
 import type { RelationType } from "../../db/schema";
 import { generateInfluenceEdges } from "../influence/influenceService";
+import {
+  analyzeSemanticChange,
+  serializeChangeDetail,
+} from "../semanticChange";
 
 // 設定値
 const SEMANTIC_DIFF_THRESHOLD = 0.05; // 5%以上変化したときだけ履歴を切る
@@ -66,9 +70,10 @@ export const handleNoteAnalyzeJob = async (payload: NoteAnalyzePayload) => {
   // 2. Semantic Diff計算（更新時のみ）
   let semanticDiff: number | null = null;
   let shouldSaveHistory = false;
+  let beforeEmb: number[] | null = null;
 
   if (previousContent) {
-    const beforeEmb = await generateEmbedding(previousContent);
+    beforeEmb = await generateEmbedding(previousContent);
     semanticDiff = semanticChangeScore(beforeEmb, embedding);
 
     logger.debug(
@@ -83,9 +88,18 @@ export const handleNoteAnalyzeJob = async (payload: NoteAnalyzePayload) => {
   }
 
   // 3. 履歴保存（意味的に大きな変化があった場合のみ）
-  if (shouldSaveHistory && previousContent) {
+  if (shouldSaveHistory && previousContent && beforeEmb) {
     const textDiff = computeDiff(previousContent, note.content);
     const newClusterId = note.clusterId ?? null;
+
+    // v5.6: セマンティック変化を分析
+    const changeDetail = analyzeSemanticChange(
+      previousContent,
+      note.content,
+      beforeEmb,
+      embedding,
+      semanticDiff ?? undefined
+    );
 
     await insertHistory({
       id: randomUUID(),
@@ -95,11 +109,19 @@ export const handleNoteAnalyzeJob = async (payload: NoteAnalyzePayload) => {
       semanticDiff: semanticDiff !== null ? String(semanticDiff) : null,
       prevClusterId: previousClusterId ?? null,  // v3: クラスタ遷移追跡
       newClusterId,                               // v3: 現在のクラスタID
+      changeType: changeDetail.type,              // v5.6: 変化タイプ
+      changeDetail: serializeChangeDetail(changeDetail, false),  // v5.6: 詳細（方向ベクトル除く）
       createdAt: Math.floor(Date.now() / 1000),
     });
     logger.debug(
-      { noteId, semanticDiff, prevClusterId: previousClusterId, newClusterId },
-      "[JobWorker] History saved with cluster info"
+      {
+        noteId,
+        semanticDiff,
+        changeType: changeDetail.type,
+        prevClusterId: previousClusterId,
+        newClusterId,
+      },
+      "[JobWorker] History saved with semantic change detail"
     );
   }
 

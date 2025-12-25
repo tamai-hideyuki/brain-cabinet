@@ -52,5 +52,7 @@ export interface InsertHistoryData {
   semanticDiff?: string | null;
   prevClusterId?: number | null;
   newClusterId?: number | null;
+  changeType?: string | null;        // v5.6: SemanticChangeType
+  changeDetail?: string | null;      // v5.6: SemanticChangeDetail (JSON)
   createdAt: number;
 }
