@@ -10,8 +10,17 @@ import { db } from "../../db/client";
 import { sql } from "drizzle-orm";
 import { computeDriftScore } from "../drift/computeDriftScore";
 import { getAllEmbeddings, getEmbedding } from "../../repositories/embeddingRepo";
+import {
+  applyTimeDecayToEdges,
+  filterByDecayedWeight,
+  sortByDecayedWeight,
+  calculateTimeDecayStats,
+  DEFAULT_DECAY_RATE,
+  type TimeDecayStats,
+} from "../timeDecay";
 
 const INFLUENCE_THRESHOLD = 0.15;
+const DECAYED_WEIGHT_THRESHOLD = 0.05; // 時間減衰後の最小閾値
 
 /**
  * コサイン類似度を計算（L2 正規化済みなので dot product）
@@ -35,6 +44,17 @@ export type InfluenceEdge = {
   weight: number;
   cosineSim: number;
   driftScore: number;
+  createdAt?: number;
+};
+
+/**
+ * 時間減衰適用済みの影響エッジ (v5.7)
+ */
+export type InfluenceEdgeWithDecay = InfluenceEdge & {
+  createdAt: number;
+  decayedWeight: number;
+  daysSinceCreation: number;
+  decayFactor: number;
 };
 
 /**
@@ -131,8 +151,9 @@ export async function getInfluencersOf(
     weight: number;
     cosine_sim: number;
     drift_score: number;
+    created_at: number;
   }>(sql`
-    SELECT source_note_id, target_note_id, weight, cosine_sim, drift_score
+    SELECT source_note_id, target_note_id, weight, cosine_sim, drift_score, created_at
     FROM note_influence_edges
     WHERE target_note_id = ${noteId}
     ORDER BY weight DESC
@@ -145,7 +166,58 @@ export async function getInfluencersOf(
     weight: r.weight,
     cosineSim: r.cosine_sim,
     driftScore: r.drift_score,
+    createdAt: r.created_at,
   }));
+}
+
+/**
+ * 特定ノートに影響を与えているノート一覧を取得（時間減衰適用）(v5.7)
+ */
+export async function getInfluencersOfWithDecay(
+  noteId: string,
+  options: {
+    limit?: number;
+    lambda?: number;
+    minDecayedWeight?: number;
+  } = {}
+): Promise<InfluenceEdgeWithDecay[]> {
+  const { limit = 10, lambda = DEFAULT_DECAY_RATE, minDecayedWeight = DECAYED_WEIGHT_THRESHOLD } = options;
+
+  // 減衰後に除外される可能性があるため、多めに取得
+  const fetchLimit = limit * 3;
+
+  const rows = await db.all<{
+    source_note_id: string;
+    target_note_id: string;
+    weight: number;
+    cosine_sim: number;
+    drift_score: number;
+    created_at: number;
+  }>(sql`
+    SELECT source_note_id, target_note_id, weight, cosine_sim, drift_score, created_at
+    FROM note_influence_edges
+    WHERE target_note_id = ${noteId}
+    ORDER BY weight DESC
+    LIMIT ${fetchLimit}
+  `);
+
+  const edges = rows.map((r) => ({
+    sourceNoteId: r.source_note_id,
+    targetNoteId: r.target_note_id,
+    weight: r.weight,
+    cosineSim: r.cosine_sim,
+    driftScore: r.drift_score,
+    createdAt: r.created_at,
+  }));
+
+  // 時間減衰を適用
+  const withDecay = applyTimeDecayToEdges(edges, lambda);
+
+  // フィルタリング、ソート、リミット
+  const filtered = filterByDecayedWeight(withDecay, minDecayedWeight);
+  const sorted = sortByDecayedWeight(filtered);
+
+  return sorted.slice(0, limit);
 }
 
 /**
@@ -161,8 +233,9 @@ export async function getInfluencedBy(
     weight: number;
     cosine_sim: number;
     drift_score: number;
+    created_at: number;
   }>(sql`
-    SELECT source_note_id, target_note_id, weight, cosine_sim, drift_score
+    SELECT source_note_id, target_note_id, weight, cosine_sim, drift_score, created_at
     FROM note_influence_edges
     WHERE source_note_id = ${noteId}
     ORDER BY weight DESC
@@ -175,7 +248,54 @@ export async function getInfluencedBy(
     weight: r.weight,
     cosineSim: r.cosine_sim,
     driftScore: r.drift_score,
+    createdAt: r.created_at,
   }));
+}
+
+/**
+ * 特定ノートが影響を与えているノート一覧を取得（時間減衰適用）(v5.7)
+ */
+export async function getInfluencedByWithDecay(
+  noteId: string,
+  options: {
+    limit?: number;
+    lambda?: number;
+    minDecayedWeight?: number;
+  } = {}
+): Promise<InfluenceEdgeWithDecay[]> {
+  const { limit = 10, lambda = DEFAULT_DECAY_RATE, minDecayedWeight = DECAYED_WEIGHT_THRESHOLD } = options;
+
+  const fetchLimit = limit * 3;
+
+  const rows = await db.all<{
+    source_note_id: string;
+    target_note_id: string;
+    weight: number;
+    cosine_sim: number;
+    drift_score: number;
+    created_at: number;
+  }>(sql`
+    SELECT source_note_id, target_note_id, weight, cosine_sim, drift_score, created_at
+    FROM note_influence_edges
+    WHERE source_note_id = ${noteId}
+    ORDER BY weight DESC
+    LIMIT ${fetchLimit}
+  `);
+
+  const edges = rows.map((r) => ({
+    sourceNoteId: r.source_note_id,
+    targetNoteId: r.target_note_id,
+    weight: r.weight,
+    cosineSim: r.cosine_sim,
+    driftScore: r.drift_score,
+    createdAt: r.created_at,
+  }));
+
+  const withDecay = applyTimeDecayToEdges(edges, lambda);
+  const filtered = filterByDecayedWeight(withDecay, minDecayedWeight);
+  const sorted = sortByDecayedWeight(filtered);
+
+  return sorted.slice(0, limit);
 }
 
 /**
@@ -247,8 +367,9 @@ export async function getAllInfluenceEdges(limit: number = 200): Promise<Influen
     weight: number;
     cosine_sim: number;
     drift_score: number;
+    created_at: number;
   }>(sql`
-    SELECT source_note_id, target_note_id, weight, cosine_sim, drift_score
+    SELECT source_note_id, target_note_id, weight, cosine_sim, drift_score, created_at
     FROM note_influence_edges
     ORDER BY weight DESC
     LIMIT ${limit}
@@ -260,7 +381,77 @@ export async function getAllInfluenceEdges(limit: number = 200): Promise<Influen
     weight: r.weight,
     cosineSim: r.cosine_sim,
     driftScore: r.drift_score,
+    createdAt: r.created_at,
   }));
+}
+
+/**
+ * グラフ全体のエッジを取得（時間減衰適用）(v5.7)
+ */
+export async function getAllInfluenceEdgesWithDecay(
+  options: {
+    limit?: number;
+    lambda?: number;
+    minDecayedWeight?: number;
+  } = {}
+): Promise<InfluenceEdgeWithDecay[]> {
+  const { limit = 200, lambda = DEFAULT_DECAY_RATE, minDecayedWeight = DECAYED_WEIGHT_THRESHOLD } = options;
+
+  // 減衰後に除外される可能性があるため、多めに取得
+  const fetchLimit = limit * 2;
+
+  const rows = await db.all<{
+    source_note_id: string;
+    target_note_id: string;
+    weight: number;
+    cosine_sim: number;
+    drift_score: number;
+    created_at: number;
+  }>(sql`
+    SELECT source_note_id, target_note_id, weight, cosine_sim, drift_score, created_at
+    FROM note_influence_edges
+    ORDER BY weight DESC
+    LIMIT ${fetchLimit}
+  `);
+
+  const edges = rows.map((r) => ({
+    sourceNoteId: r.source_note_id,
+    targetNoteId: r.target_note_id,
+    weight: r.weight,
+    cosineSim: r.cosine_sim,
+    driftScore: r.drift_score,
+    createdAt: r.created_at,
+  }));
+
+  const withDecay = applyTimeDecayToEdges(edges, lambda);
+  const filtered = filterByDecayedWeight(withDecay, minDecayedWeight);
+  const sorted = sortByDecayedWeight(filtered);
+
+  return sorted.slice(0, limit);
+}
+
+/**
+ * 時間減衰統計を取得 (v5.7)
+ */
+export async function getInfluenceDecayStats(
+  lambda: number = DEFAULT_DECAY_RATE
+): Promise<TimeDecayStats> {
+  const rows = await db.all<{
+    weight: number;
+    created_at: number;
+  }>(sql`
+    SELECT weight, created_at
+    FROM note_influence_edges
+  `);
+
+  const edges = rows.map((r) => ({
+    weight: r.weight,
+    createdAt: r.created_at,
+  }));
+
+  const withDecay = applyTimeDecayToEdges(edges, lambda);
+
+  return calculateTimeDecayStats(withDecay, DECAYED_WEIGHT_THRESHOLD);
 }
 
 /**

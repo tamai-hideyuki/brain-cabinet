@@ -1,11 +1,16 @@
 import { Hono } from "hono";
 import {
   getInfluencersOf,
+  getInfluencersOfWithDecay,
   getInfluencedBy,
+  getInfluencedByWithDecay,
   getInfluenceStats,
   getAllInfluenceEdges,
+  getAllInfluenceEdgesWithDecay,
+  getInfluenceDecayStats,
 } from "../../services/influence/influenceService";
 import { findNoteById } from "../../repositories/notesRepo";
+import { DECAY_PRESETS, calculateHalfLife } from "../../services/timeDecay";
 
 export const influenceRoute = new Hono();
 
@@ -239,6 +244,164 @@ influenceRoute.get("/graph", async (c) => {
       nodeCount: validNotes.length,
       edgeCount: edges.length,
     },
+  });
+});
+
+// ============================================================
+// v5.7 時間減衰対応エンドポイント
+// ============================================================
+
+/**
+ * 減衰プリセット名からλ値を取得
+ */
+function getDecayLambda(preset?: string): number {
+  if (!preset) return DECAY_PRESETS.balanced;
+  if (preset in DECAY_PRESETS) {
+    return DECAY_PRESETS[preset as keyof typeof DECAY_PRESETS];
+  }
+  const parsed = parseFloat(preset);
+  if (!isNaN(parsed) && parsed > 0) return parsed;
+  return DECAY_PRESETS.balanced;
+}
+
+/**
+ * GET /api/influence/decay/stats
+ * 時間減衰統計を取得 (v5.7)
+ */
+influenceRoute.get("/decay/stats", async (c) => {
+  const decayParam = c.req.query("decay");
+  const lambda = getDecayLambda(decayParam);
+
+  const stats = await getInfluenceDecayStats(lambda);
+
+  return c.json({
+    lambda,
+    halfLifeDays: Math.round(calculateHalfLife(lambda) * 10) / 10,
+    ...stats,
+  });
+});
+
+/**
+ * GET /api/influence/decay/graph
+ * 時間減衰適用済みグラフを取得 (v5.7)
+ */
+influenceRoute.get("/decay/graph", async (c) => {
+  const limitParam = c.req.query("limit");
+  const limit = limitParam ? parseInt(limitParam, 10) : 200;
+  const decayParam = c.req.query("decay");
+  const lambda = getDecayLambda(decayParam);
+
+  const edges = await getAllInfluenceEdgesWithDecay({ limit, lambda });
+
+  // エッジに含まれるノートIDを収集
+  const noteIds = new Set<string>();
+  edges.forEach((edge) => {
+    noteIds.add(edge.sourceNoteId);
+    noteIds.add(edge.targetNoteId);
+  });
+
+  // ノート情報を取得
+  const notes = await Promise.all(
+    Array.from(noteIds).map(async (noteId) => {
+      const note = await findNoteById(noteId);
+      return note
+        ? { id: note.id, title: note.title, clusterId: note.clusterId }
+        : null;
+    })
+  );
+
+  const validNotes = notes.filter((n) => n !== null);
+
+  return c.json({
+    decay: {
+      lambda,
+      halfLifeDays: Math.round(calculateHalfLife(lambda) * 10) / 10,
+    },
+    nodes: validNotes,
+    edges: edges.map((e) => ({
+      source: e.sourceNoteId,
+      target: e.targetNoteId,
+      weight: e.weight,
+      decayedWeight: e.decayedWeight,
+      daysSinceCreation: e.daysSinceCreation,
+      decayFactor: e.decayFactor,
+    })),
+    stats: {
+      nodeCount: validNotes.length,
+      edgeCount: edges.length,
+    },
+  });
+});
+
+/**
+ * GET /api/influence/decay/note/:noteId/influencers
+ * 時間減衰適用済みの影響元ノート一覧 (v5.7)
+ */
+influenceRoute.get("/decay/note/:noteId/influencers", async (c) => {
+  const noteId = c.req.param("noteId");
+  const limitParam = c.req.query("limit");
+  const limit = limitParam ? parseInt(limitParam, 10) : 10;
+  const decayParam = c.req.query("decay");
+  const lambda = getDecayLambda(decayParam);
+
+  const edges = await getInfluencersOfWithDecay(noteId, { limit, lambda });
+
+  const enrichedEdges = await Promise.all(
+    edges.map(async (edge) => {
+      const note = await findNoteById(edge.sourceNoteId);
+      return {
+        ...edge,
+        sourceNote: note
+          ? { id: note.id, title: note.title, clusterId: note.clusterId }
+          : null,
+      };
+    })
+  );
+
+  return c.json({
+    noteId,
+    decay: {
+      lambda,
+      halfLifeDays: Math.round(calculateHalfLife(lambda) * 10) / 10,
+    },
+    influencers: enrichedEdges,
+    count: enrichedEdges.length,
+  });
+});
+
+/**
+ * GET /api/influence/decay/note/:noteId/influenced
+ * 時間減衰適用済みの影響先ノート一覧 (v5.7)
+ */
+influenceRoute.get("/decay/note/:noteId/influenced", async (c) => {
+  const noteId = c.req.param("noteId");
+  const limitParam = c.req.query("limit");
+  const limit = limitParam ? parseInt(limitParam, 10) : 10;
+  const decayParam = c.req.query("decay");
+  const lambda = getDecayLambda(decayParam);
+
+  const edges = await getInfluencedByWithDecay(noteId, { limit, lambda });
+
+  const enrichedEdges = await Promise.all(
+    edges.map(async (edge) => {
+      const note = await findNoteById(edge.targetNoteId);
+      return {
+        ...edge,
+        targetNote: note
+          ? { id: note.id, title: note.title, clusterId: note.clusterId }
+          : null,
+      };
+    })
+  );
+
+  return c.json({
+    noteId,
+    decay: {
+      lambda,
+      halfLifeDays: Math.round(calculateHalfLife(lambda) * 10) / 10,
+    },
+    influenced: enrichedEdges,
+    count: enrichedEdges.length,
   });
 });
 
