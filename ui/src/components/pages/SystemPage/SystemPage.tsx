@@ -3,6 +3,11 @@ import { MainLayout } from '../../templates/MainLayout'
 import { Text } from '../../atoms/Text'
 import { Spinner } from '../../atoms/Spinner'
 import { fetchStorageStats, type StorageStats, type TableInfo } from '../../../api/systemApi'
+import {
+  getMetricsSummary,
+  clearMetrics,
+  type MetricsSummary,
+} from '../../../stores/metricsStore'
 import './SystemPage.css'
 
 const formatBytes = (bytes: number): string => {
@@ -17,17 +22,27 @@ const formatNumber = (n: number): string => {
   return n.toLocaleString('ja-JP')
 }
 
+const formatLatency = (ms: number): string => {
+  if (ms < 1000) return `${Math.round(ms)}ms`
+  return `${(ms / 1000).toFixed(2)}s`
+}
+
 export const SystemPage = () => {
   const [stats, setStats] = useState<StorageStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [metrics, setMetrics] = useState<MetricsSummary | null>(null)
 
   useEffect(() => {
     const load = async () => {
       try {
         setLoading(true)
-        const data = await fetchStorageStats()
-        setStats(data)
+        const [storageData, metricsData] = await Promise.all([
+          fetchStorageStats(),
+          getMetricsSummary(),
+        ])
+        setStats(storageData)
+        setMetrics(metricsData)
       } catch (e) {
         setError(e instanceof Error ? e.message : 'データ取得に失敗しました')
       } finally {
@@ -36,6 +51,12 @@ export const SystemPage = () => {
     }
     load()
   }, [])
+
+  const handleClearMetrics = async () => {
+    await clearMetrics()
+    const metricsData = await getMetricsSummary()
+    setMetrics(metricsData)
+  }
 
   const calculatePercentage = (size: number): number => {
     if (!stats || stats.totalSize === 0) return 0
@@ -139,6 +160,132 @@ export const SystemPage = () => {
             </div>
           </>
         )}
+
+        {/* パフォーマンスメトリクス（v5.14） */}
+        <div className="system-page__section" id="metrics">
+          <div className="system-page__section-header">
+            <Text variant="subtitle">パフォーマンスメトリクス</Text>
+            {metrics && metrics.totalRequests > 0 && (
+              <button
+                className="system-page__clear-btn"
+                onClick={handleClearMetrics}
+              >
+                クリア
+              </button>
+            )}
+          </div>
+
+          {metrics && metrics.totalRequests > 0 ? (
+            <>
+              <div className="system-page__summary">
+                <div className="system-page__summary-card">
+                  <Text variant="caption">総リクエスト数</Text>
+                  <Text variant="title">{formatNumber(metrics.totalRequests)}</Text>
+                </div>
+                <div className="system-page__summary-card">
+                  <Text variant="caption">平均サーバー処理時間</Text>
+                  <Text variant="title">{formatLatency(metrics.avgServerLatency)}</Text>
+                </div>
+                <div className="system-page__summary-card">
+                  <Text variant="caption">平均ネットワーク時間</Text>
+                  <Text variant="title">{formatLatency(metrics.avgNetworkLatency)}</Text>
+                </div>
+                <div className="system-page__summary-card">
+                  <Text variant="caption">平均トータル時間</Text>
+                  <Text variant="title">{formatLatency(metrics.avgTotalLatency)}</Text>
+                </div>
+                <div className="system-page__summary-card">
+                  <Text variant="caption">平均ペイロードサイズ</Text>
+                  <Text variant="title">{formatBytes(metrics.avgPayloadSize)}</Text>
+                </div>
+                <div className="system-page__summary-card">
+                  <Text variant="caption">キャッシュヒット率</Text>
+                  <Text variant="title">{(metrics.cacheHitRate * 100).toFixed(1)}%</Text>
+                </div>
+              </div>
+
+              <div className="system-page__metrics-section">
+                <span className="system-page__metrics-label">アクション別統計</span>
+                <div className="system-page__table-wrapper">
+                  <table className="system-page__table">
+                    <thead>
+                      <tr>
+                        <th className="system-page__table-header">アクション</th>
+                        <th className="system-page__table-header system-page__table-header--right">回数</th>
+                        <th className="system-page__table-header system-page__table-header--right">平均サーバー</th>
+                        <th className="system-page__table-header system-page__table-header--right">平均トータル</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(metrics.byAction)
+                        .sort((a, b) => b[1].count - a[1].count)
+                        .map(([action, data]) => (
+                          <tr key={action} className="system-page__table-row">
+                            <td className="system-page__table-cell">
+                              <code className="system-page__action-name">{action}</code>
+                            </td>
+                            <td className="system-page__table-cell system-page__table-cell--count">
+                              {formatNumber(data.count)}
+                            </td>
+                            <td className="system-page__table-cell system-page__table-cell--size">
+                              {formatLatency(data.avgServerLatency)}
+                            </td>
+                            <td className="system-page__table-cell system-page__table-cell--size">
+                              {formatLatency(data.avgTotalLatency)}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {metrics.recentRequests.length > 0 && (
+                <div className="system-page__metrics-section">
+                  <span className="system-page__metrics-label">直近のリクエスト</span>
+                  <div className="system-page__table-wrapper">
+                    <table className="system-page__table">
+                      <thead>
+                        <tr>
+                          <th className="system-page__table-header">アクション</th>
+                          <th className="system-page__table-header system-page__table-header--right">サーバー</th>
+                          <th className="system-page__table-header system-page__table-header--right">ネットワーク</th>
+                          <th className="system-page__table-header system-page__table-header--right">トータル</th>
+                          <th className="system-page__table-header system-page__table-header--right">サイズ</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {metrics.recentRequests.map((req) => (
+                          <tr key={req.id} className="system-page__table-row">
+                            <td className="system-page__table-cell">
+                              <code className="system-page__action-name">{req.action}</code>
+                            </td>
+                            <td className="system-page__table-cell system-page__table-cell--size">
+                              {formatLatency(req.serverLatency)}
+                            </td>
+                            <td className="system-page__table-cell system-page__table-cell--size">
+                              {formatLatency(req.networkLatency)}
+                            </td>
+                            <td className="system-page__table-cell system-page__table-cell--size">
+                              {formatLatency(req.totalLatency)}
+                            </td>
+                            <td className="system-page__table-cell system-page__table-cell--size">
+                              {formatBytes(req.payloadSize)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="system-page__empty-metrics">
+              <Text variant="body">まだメトリクスがありません。APIリクエストを実行するとデータが収集されます。</Text>
+            </div>
+          )}
+        </div>
       </div>
     </MainLayout>
   )

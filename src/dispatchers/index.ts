@@ -4,7 +4,7 @@
  * すべてのコマンドを action 名に基づいてディスパッチする中枢モジュール
  */
 
-import type { BrainCommand, CommandResponse } from "../types/command";
+import type { BrainCommand, CommandResponse, BcMeta } from "../types/command";
 import { logger } from "../utils/logger";
 
 // ドメイン別ディスパッチャー
@@ -92,11 +92,19 @@ export async function dispatch(cmd: BrainCommand): Promise<CommandResponse> {
     const duration = Date.now() - startTime;
     logger.info({ action: cmd.action, duration }, "Command executed");
 
+    // パフォーマンスメトリクス（v5.14）
+    const _bcMeta: BcMeta = {
+      serverLatency: duration,
+      cached: false, // TODO: キャッシュヒット検出は将来拡張
+      action: cmd.action,
+    };
+
     return {
       success: true,
       action: cmd.action,
       result,
       timestamp: Date.now(),
+      _bcMeta,
     };
   } catch (error) {
     const duration = Date.now() - startTime;
@@ -108,6 +116,13 @@ export async function dispatch(cmd: BrainCommand): Promise<CommandResponse> {
       "Command execution failed"
     );
 
+    // エラー時もメトリクスを付加
+    const _bcMeta: BcMeta = {
+      serverLatency: duration,
+      cached: false,
+      action: cmd.action,
+    };
+
     return {
       success: false,
       action: cmd.action,
@@ -116,6 +131,7 @@ export async function dispatch(cmd: BrainCommand): Promise<CommandResponse> {
         message: error instanceof Error ? error.message : "Unknown error",
       },
       timestamp: Date.now(),
+      _bcMeta,
     };
   }
 }

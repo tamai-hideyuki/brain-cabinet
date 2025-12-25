@@ -653,11 +653,27 @@ export type BrainCommand =
 // ============================================
 // レスポンス型
 // ============================================
+
+/**
+ * パフォーマンスメトリクス（v5.14）
+ * クライアントサイドでのモニタリング用
+ */
+export type BcMeta = {
+  /** サーバー処理時間（ms） */
+  serverLatency: number;
+  /** キャッシュヒットしたか */
+  cached: boolean;
+  /** 実行したアクション */
+  action: string;
+};
+
 export type CommandSuccessResponse<T = unknown> = {
   success: true;
   action: string;
   result: T;
   timestamp: number;
+  /** パフォーマンスメトリクス（v5.14） */
+  _bcMeta?: BcMeta;
 };
 
 export type CommandErrorResponse = {
@@ -668,6 +684,8 @@ export type CommandErrorResponse = {
     message: string;
   };
   timestamp: number;
+  /** パフォーマンスメトリクス（v5.14） */
+  _bcMeta?: BcMeta;
 };
 
 export type CommandResponse<T = unknown> =
