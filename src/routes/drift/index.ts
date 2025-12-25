@@ -10,6 +10,13 @@ import {
   detectWarning,
   generateDriftInsight,
 } from "../../services/drift/driftCore";
+import {
+  analyzeDriftDirection,
+  analyzeDriftDirectionByHistoryId,
+  analyzeDriftFlows,
+  analyzeRecentDrifts,
+  generateDriftDirectionSummary,
+} from "../../services/drift/driftDirection";
 import { db } from "../../db/client";
 import { sql } from "drizzle-orm";
 
@@ -326,5 +333,160 @@ driftRoute.get("/insight", async (c) => {
   return c.json({
     range: `${rangeDays}d`,
     ...insight,
+  });
+});
+
+// ============================================================
+// v5.10 ドリフト方向性追跡
+// ============================================================
+
+/**
+ * GET /api/drift/direction/note/:id
+ * 特定ノートのドリフト方向を分析
+ */
+driftRoute.get("/direction/note/:id", async (c) => {
+  const noteId = c.req.param("id");
+
+  const direction = await analyzeDriftDirection(noteId);
+
+  if (!direction) {
+    return c.json({ error: "No drift data available for this note" }, 404);
+  }
+
+  return c.json({
+    noteId: direction.noteId,
+    historyId: direction.historyId,
+    driftScore: direction.driftScore,
+    magnitude: direction.magnitude,
+    trajectory: direction.trajectory,
+    primaryDirection: direction.primaryDirection,
+    secondaryDirection: direction.secondaryDirection,
+    movingAwayFrom: direction.movingAwayFrom,
+    alignmentCount: direction.allAlignments.length,
+  });
+});
+
+/**
+ * GET /api/drift/direction/history/:id
+ * 特定履歴IDのドリフト方向を分析
+ */
+driftRoute.get("/direction/history/:id", async (c) => {
+  const idParam = c.req.param("id");
+  const historyId = parseInt(idParam, 10);
+
+  if (isNaN(historyId)) {
+    return c.json({ error: "Invalid history ID" }, 400);
+  }
+
+  const direction = await analyzeDriftDirectionByHistoryId(historyId);
+
+  if (!direction) {
+    return c.json({ error: "No drift data available for this history" }, 404);
+  }
+
+  return c.json({
+    noteId: direction.noteId,
+    historyId: direction.historyId,
+    driftScore: direction.driftScore,
+    magnitude: direction.magnitude,
+    trajectory: direction.trajectory,
+    primaryDirection: direction.primaryDirection,
+    secondaryDirection: direction.secondaryDirection,
+    movingAwayFrom: direction.movingAwayFrom,
+    allAlignments: direction.allAlignments,
+  });
+});
+
+/**
+ * GET /api/drift/direction/recent
+ * 最近のドリフト方向一覧を取得
+ *
+ * Query:
+ * - range: 日数（default: "30d"）
+ * - limit: 件数（default: 20）
+ */
+driftRoute.get("/direction/recent", async (c) => {
+  const rangeParam = c.req.query("range") ?? "30d";
+  const limitParam = c.req.query("limit") ?? "20";
+
+  const match = rangeParam.match(/^(\d+)d$/);
+  const rangeDays = match ? parseInt(match[1], 10) : 30;
+  const limit = parseInt(limitParam, 10);
+
+  if (isNaN(rangeDays) || rangeDays < 1 || rangeDays > 365) {
+    return c.json({ error: "Invalid range" }, 400);
+  }
+
+  if (isNaN(limit) || limit < 1 || limit > 100) {
+    return c.json({ error: "Invalid limit (1-100)" }, 400);
+  }
+
+  const directions = await analyzeRecentDrifts(rangeDays, limit);
+
+  return c.json({
+    range: `${rangeDays}d`,
+    limit,
+    count: directions.length,
+    directions: directions.map((d) => ({
+      noteId: d.noteId,
+      historyId: d.historyId,
+      driftScore: d.driftScore,
+      magnitude: d.magnitude,
+      trajectory: d.trajectory,
+      primaryDirection: d.primaryDirection,
+    })),
+  });
+});
+
+/**
+ * GET /api/drift/direction/summary
+ * ドリフト方向のサマリーを取得
+ *
+ * Query:
+ * - range: 日数（default: "30d"）
+ */
+driftRoute.get("/direction/summary", async (c) => {
+  const rangeParam = c.req.query("range") ?? "30d";
+  const match = rangeParam.match(/^(\d+)d$/);
+  const rangeDays = match ? parseInt(match[1], 10) : 30;
+
+  if (isNaN(rangeDays) || rangeDays < 1 || rangeDays > 365) {
+    return c.json({ error: "Invalid range" }, 400);
+  }
+
+  const summary = await generateDriftDirectionSummary(rangeDays);
+
+  return c.json({
+    range: `${rangeDays}d`,
+    ...summary,
+  });
+});
+
+/**
+ * GET /api/drift/flows
+ * クラスター間のドリフトフローを分析
+ *
+ * Query:
+ * - range: 日数（default: "90d"）
+ */
+driftRoute.get("/flows", async (c) => {
+  const rangeParam = c.req.query("range") ?? "90d";
+  const match = rangeParam.match(/^(\d+)d$/);
+  const rangeDays = match ? parseInt(match[1], 10) : 90;
+
+  if (isNaN(rangeDays) || rangeDays < 1 || rangeDays > 365) {
+    return c.json({ error: "Invalid range" }, 400);
+  }
+
+  const flows = await analyzeDriftFlows(rangeDays);
+
+  return c.json({
+    range: `${rangeDays}d`,
+    analysisDate: flows.analysisDate,
+    totalDrifts: flows.totalDrifts,
+    dominantFlow: flows.dominantFlow,
+    insight: flows.insight,
+    flows: flows.flows.slice(0, 10),  // Top 10 flows
+    clusterSummaries: flows.clusterSummaries,
   });
 })
