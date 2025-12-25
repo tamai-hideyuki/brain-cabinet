@@ -9,6 +9,14 @@ import {
   getAllInfluenceEdgesWithDecay,
   getInfluenceDecayStats,
 } from "../../services/influence/influenceService";
+import {
+  analyzeCausality,
+  analyzeCausalRelations,
+  analyzeInterventionEffect,
+  analyzeCounterfactual,
+  testGrangerCausality,
+  getGlobalCausalSummary,
+} from "../../services/influence/causalInference";
 import { findNoteById } from "../../repositories/notesRepo";
 import { DECAY_PRESETS, calculateHalfLife } from "../../services/timeDecay";
 
@@ -432,4 +440,305 @@ function generateInsight(stats: {
   }
 
   return `${stats.totalEdges}件の影響関係が存在します。`;
+}
+
+// ============================================================
+// v5.11 因果推論エンドポイント
+// ============================================================
+
+/**
+ * GET /api/influence/causal/note/:noteId
+ * 特定ノートの総合因果分析
+ */
+influenceRoute.get("/causal/note/:noteId", async (c) => {
+  const noteId = c.req.param("noteId");
+
+  const analysis = await analyzeCausality(noteId);
+
+  return c.json({
+    noteId: analysis.noteId,
+    grangerCausality: {
+      causes: analysis.grangerCausality.causes,
+      causedBy: analysis.grangerCausality.causedBy,
+      bidirectional: analysis.grangerCausality.bidirectional,
+    },
+    interventionEffect: {
+      clusterDriftAcceleration: analysis.interventionEffect.clusterDriftAcceleration,
+      affectedNotes: analysis.interventionEffect.affectedNotes,
+      significance: analysis.interventionEffect.significance,
+      effectSize: analysis.interventionEffect.effectSize,
+      timeToEffect: analysis.interventionEffect.timeToEffect,
+    },
+    counterfactual: {
+      title: analysis.counterfactual.title,
+      missingConcepts: analysis.counterfactual.missingConcepts,
+      alternativePath: analysis.counterfactual.alternativePath,
+      impactScore: analysis.counterfactual.impactScore,
+      pivotProbability: analysis.counterfactual.pivotProbability,
+      dependentNotes: analysis.counterfactual.dependentNotes.length,
+    },
+    insight: analysis.insight,
+  });
+});
+
+/**
+ * GET /api/influence/causal/note/:noteId/granger
+ * 特定ノートのGranger因果関係
+ */
+influenceRoute.get("/causal/note/:noteId/granger", async (c) => {
+  const noteId = c.req.param("noteId");
+  const limitParam = c.req.query("limit");
+  const limit = limitParam ? parseInt(limitParam, 10) : 10;
+
+  const relations = await analyzeCausalRelations(noteId, limit);
+
+  // ノート情報を付加
+  const enrichCauses = await Promise.all(
+    relations.causes.map(async (id) => {
+      const note = await findNoteById(id);
+      return { noteId: id, title: note?.title ?? "Unknown" };
+    })
+  );
+
+  const enrichCausedBy = await Promise.all(
+    relations.causedBy.map(async (id) => {
+      const note = await findNoteById(id);
+      return { noteId: id, title: note?.title ?? "Unknown" };
+    })
+  );
+
+  const enrichBidirectional = await Promise.all(
+    relations.bidirectional.map(async (id) => {
+      const note = await findNoteById(id);
+      return { noteId: id, title: note?.title ?? "Unknown" };
+    })
+  );
+
+  return c.json({
+    noteId,
+    causes: enrichCauses,
+    causedBy: enrichCausedBy,
+    bidirectional: enrichBidirectional,
+    summary: {
+      totalCauses: relations.causes.length,
+      totalCausedBy: relations.causedBy.length,
+      totalBidirectional: relations.bidirectional.length,
+    },
+  });
+});
+
+/**
+ * GET /api/influence/causal/note/:noteId/intervention
+ * 特定ノートの介入効果分析
+ */
+influenceRoute.get("/causal/note/:noteId/intervention", async (c) => {
+  const noteId = c.req.param("noteId");
+
+  const effect = await analyzeInterventionEffect(noteId);
+
+  return c.json({
+    noteId: effect.noteId,
+    clusterDriftAcceleration: effect.clusterDriftAcceleration,
+    affectedNotes: effect.affectedNotes,
+    avgDriftIncrease: effect.avgDriftIncrease,
+    significance: effect.significance,
+    effectSize: effect.effectSize,
+    timeToEffect: effect.timeToEffect,
+    interpretation: interpretInterventionEffect(effect),
+  });
+});
+
+/**
+ * 介入効果の解釈を生成
+ */
+function interpretInterventionEffect(effect: {
+  clusterDriftAcceleration: number;
+  significance: number;
+  effectSize: number;
+}): string {
+  if (effect.significance < 0.3) {
+    return "統計的に有意な効果は検出されませんでした。";
+  }
+
+  if (effect.effectSize > 0.8) {
+    return "非常に大きな効果がありました。このノートはクラスター全体の思考を大きく変化させました。";
+  }
+
+  if (effect.effectSize > 0.5) {
+    return "中程度の効果がありました。周囲のノートに明確な影響を与えています。";
+  }
+
+  if (effect.effectSize > 0.2) {
+    return "小さいながらも検出可能な効果がありました。";
+  }
+
+  return "効果は限定的でした。";
+}
+
+/**
+ * GET /api/influence/causal/note/:noteId/counterfactual
+ * 特定ノートの反実仮想分析
+ */
+influenceRoute.get("/causal/note/:noteId/counterfactual", async (c) => {
+  const noteId = c.req.param("noteId");
+
+  const counterfactual = await analyzeCounterfactual(noteId);
+
+  // 依存ノートの情報を付加
+  const dependentNotesWithInfo = await Promise.all(
+    counterfactual.dependentNotes.slice(0, 5).map(async (id) => {
+      const note = await findNoteById(id);
+      return { noteId: id, title: note?.title ?? "Unknown" };
+    })
+  );
+
+  return c.json({
+    noteId: counterfactual.noteId,
+    title: counterfactual.title,
+    missingConcepts: counterfactual.missingConcepts,
+    alternativePath: counterfactual.alternativePath,
+    impactScore: counterfactual.impactScore,
+    pivotProbability: counterfactual.pivotProbability,
+    dependentNotes: dependentNotesWithInfo,
+    totalDependentNotes: counterfactual.dependentNotes.length,
+  });
+});
+
+/**
+ * GET /api/influence/causal/test
+ * 2つのノート間のGranger因果検定
+ *
+ * Query:
+ * - source: ソースノートID
+ * - target: ターゲットノートID
+ * - lag: ラグ日数（デフォルト: 7）
+ */
+influenceRoute.get("/causal/test", async (c) => {
+  const sourceNoteId = c.req.query("source");
+  const targetNoteId = c.req.query("target");
+  const lagParam = c.req.query("lag");
+  const lag = lagParam ? parseInt(lagParam, 10) : 7;
+
+  if (!sourceNoteId || !targetNoteId) {
+    return c.json({ error: "source and target query parameters are required" }, 400);
+  }
+
+  if (isNaN(lag) || lag < 1 || lag > 30) {
+    return c.json({ error: "lag must be between 1 and 30" }, 400);
+  }
+
+  const result = await testGrangerCausality(sourceNoteId, targetNoteId, lag);
+
+  // ノート情報を取得
+  const [sourceNote, targetNote] = await Promise.all([
+    findNoteById(sourceNoteId),
+    findNoteById(targetNoteId),
+  ]);
+
+  return c.json({
+    source: {
+      noteId: sourceNoteId,
+      title: sourceNote?.title ?? "Unknown",
+    },
+    target: {
+      noteId: targetNoteId,
+      title: targetNote?.title ?? "Unknown",
+    },
+    lag,
+    fStatistic: result.fStatistic,
+    pValue: result.pValue,
+    causalStrength: result.causalStrength,
+    direction: result.direction,
+    interpretation: interpretGrangerResult(result),
+  });
+});
+
+/**
+ * Granger因果検定の結果を解釈
+ */
+function interpretGrangerResult(result: {
+  causalStrength: number;
+  direction: string;
+  pValue: number;
+}): string {
+  if (result.direction === "bidirectional") {
+    return "双方向の因果関係が検出されました。互いに影響し合っています。";
+  }
+
+  if (result.direction === "unidirectional") {
+    if (result.causalStrength > 0.7) {
+      return "強い一方向の因果関係が検出されました。ソースがターゲットに明確に影響しています。";
+    }
+    return "一方向の因果関係が検出されました。";
+  }
+
+  if (result.pValue > 0.1) {
+    return "因果関係は検出されませんでした。相関があっても因果ではない可能性があります。";
+  }
+
+  return "弱い因果関係の可能性があります。より多くのデータが必要です。";
+}
+
+/**
+ * GET /api/influence/causal/summary
+ * 全体の因果関係サマリー
+ */
+influenceRoute.get("/causal/summary", async (c) => {
+  const summary = await getGlobalCausalSummary();
+
+  // Top influencers にノート情報を付加
+  const enrichedInfluencers = await Promise.all(
+    summary.topCausalInfluencers.map(async (inf) => {
+      const note = await findNoteById(inf.noteId);
+      return {
+        ...inf,
+        title: note?.title ?? "Unknown",
+      };
+    })
+  );
+
+  return c.json({
+    overview: {
+      totalCausalPairs: summary.totalCausalPairs,
+      strongCausalRelations: summary.strongCausalRelations,
+      avgCausalStrength: summary.avgCausalStrength,
+    },
+    topCausalInfluencers: enrichedInfluencers,
+    pivotNotes: summary.pivotNotes,
+    insight: generateCausalSummaryInsight(summary),
+  });
+});
+
+/**
+ * 因果サマリーのインサイトを生成
+ */
+function generateCausalSummaryInsight(summary: {
+  totalCausalPairs: number;
+  strongCausalRelations: number;
+  avgCausalStrength: number;
+  pivotNotes: Array<{ noteId: string; title: string; pivotProbability: number }>;
+}): string {
+  if (summary.totalCausalPairs === 0) {
+    return "因果関係の分析には十分なデータがありません。";
+  }
+
+  const parts: string[] = [];
+
+  const strongRatio = summary.strongCausalRelations / summary.totalCausalPairs;
+  if (strongRatio > 0.3) {
+    parts.push("思考間の因果的つながりが強く、体系的な知識構造が形成されています。");
+  } else if (strongRatio > 0.1) {
+    parts.push("中程度の因果的つながりがあり、知識が徐々に連携しています。");
+  }
+
+  if (summary.pivotNotes.length > 0) {
+    const topPivot = summary.pivotNotes[0];
+    parts.push(`「${topPivot.title}」が思考の転換点として重要な役割を果たしています。`);
+  }
+
+  if (parts.length === 0) {
+    return `${summary.totalCausalPairs}件の因果関係が検出されています。`;
+  }
+
+  return parts.join(" ");
 }
