@@ -16,7 +16,7 @@ export const NoteDetailPage = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
   const handleBack = () => {
-    navigate('/ui/')
+    navigate('/ui/notes')
   }
 
   const handleNoteClick = (noteId: string) => {
