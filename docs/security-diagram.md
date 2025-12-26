@@ -81,7 +81,7 @@ sequenceDiagram
 
     Note over U,DB: 認証後のAPI呼び出し
     U->>UI: ノート作成リクエスト
-    UI->>API: POST /api/command
+    UI->>API: POST /api/v1
     API->>DB: INSERT note
     DB->>API: 成功
     API->>UI: { ok: true, data: {...} }
@@ -99,7 +99,7 @@ sequenceDiagram
 | `/` | 不要 | ヘルスチェック |
 | `/openapi.json` | 不要 | API仕様書 |
 | `/ui/*` | **Clerk必須** | Web UI（SPAフォールバック） |
-| `/api/command` | 不要* | 統合Command API |
+| `/api/v1` | 不要* | 統合Command API |
 | `/api/notes/*` | 不要* | ノートCRUD（レガシー） |
 | `/api/search/*` | 不要* | 検索API |
 | `/api/gpt/*` | 不要* | GPT連携API |

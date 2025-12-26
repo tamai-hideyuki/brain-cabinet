@@ -16,11 +16,8 @@ type NoteListResult = {
   total: number
 }
 
-// search.query の結果型
-type SearchQueryResult = {
-  results: Array<Note & { score: number }>
-  total: number
-}
+// search.query の結果型（配列が直接返される）
+type SearchQueryResult = Array<Note & { score: number }>
 
 export const fetchNotes = async (): Promise<Note[]> => {
   const result = await sendCommand<NoteListResult>('note.list', { limit: 100 })
@@ -52,7 +49,7 @@ export const searchNotes = async (
   mode: SearchMode = 'keyword'
 ): Promise<Note[]> => {
   const result = await sendCommand<SearchQueryResult>('search.query', { query, mode })
-  return result.results
+  return result
 }
 
 // Promotion Candidates API

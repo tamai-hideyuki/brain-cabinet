@@ -70,7 +70,7 @@ app.route("/api/influence", influenceRoute);
 app.route("/api/cluster-dynamics", clusterDynamicsRoute);
 app.route("/api/ptm", ptmRoute);
 app.route("/api/insight", insightRoute);
-app.route("/api/command", commandRoute);
+app.route("/api/v1", commandRoute);
 app.route("/api/bookmarks", bookmarksRoute);
 app.route("/api/secret-box", secretBoxRoute);
 app.route("/api/system", systemRoute);

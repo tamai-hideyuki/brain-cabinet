@@ -24,7 +24,7 @@ flowchart TB
         subgraph Routes["REST API Routes"]
             NotesRoute["/api/notes"]
             SearchRoute["/api/search"]
-            CommandRoute["/api/command"]
+            CommandRoute["/api/v1"]
             GPTRoute["/api/gpt"]
             ClustersRoute["/api/clusters"]
             AnalyticsRoute["/api/analytics"]
@@ -137,7 +137,7 @@ sequenceDiagram
     participant DB as SQLite
 
     User->>UI: ノート作成
-    UI->>API: POST /api/command<br/>{action: "note.create"}
+    UI->>API: POST /api/v1<br/>{action: "note.create"}
     API->>Disp: noteDispatcher.create()
     Disp->>Service: notesService.createNote()
 

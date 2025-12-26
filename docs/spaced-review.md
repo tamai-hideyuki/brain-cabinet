@@ -348,13 +348,13 @@ EF は 1.3〜2.5+ の範囲で、レビュー結果に応じて調整される�
 
 ```bash
 # 1. 今日のレビュー待ちを確認
-curl -X POST /api/command -d '{"action": "review.queue"}'
+curl -X POST /api/v1 -d '{"action": "review.queue"}'
 
 # 2. レビュー開始（質問と共にノート内容が返される）
-curl -X POST /api/command -d '{"action": "review.start", "payload": {"noteId": "xxx"}}'
+curl -X POST /api/v1 -d '{"action": "review.start", "payload": {"noteId": "xxx"}}'
 
 # 3. 質問に答えた後、結果を送信
-curl -X POST /api/command -d '{"action": "review.submit", "payload": {"scheduleId": 1, "quality": 4}}'
+curl -X POST /api/v1 -d '{"action": "review.submit", "payload": {"scheduleId": 1, "quality": 4}}'
 
 # 4. 次のノートへ（繰り返し）
 ```

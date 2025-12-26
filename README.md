@@ -137,14 +137,14 @@
 すべての操作を単一エンドポイントで実行：
 
 ```
-POST /api/command
+POST /api/v1
 {
   "action": "gpt.search",
   "payload": { "query": "TypeScript" }
 }
 ```
 
-- **単一エンドポイント**: `/api/command` で全機能にアクセス
+- **単一エンドポイント**: `/api/v1` で全機能にアクセス
 - **action + payload 形式**: GPT が理解しやすい構造
 - **50+ アクション**: 無限にコマンドを追加可能（APIパス増加なし）
 - **GPT Actions 最適化**: 30エンドポイント制限を回避
@@ -608,7 +608,7 @@ pnpm dev
 ┌─────────────────────────────────────────────────────────────┐
 │                 Brain Cabinet Command API                    │
 │                                                             │
-│     POST /api/command                                       │
+│     POST /api/v1                                       │
 │     { "action": "domain.operation", "payload": {...} }      │
 │                                                             │
 │  ┌────────────────────────────────────────────────────┐    │
@@ -917,7 +917,7 @@ brain-cabinet/
 
 ### API クイックリファレンス
 
-すべての操作は `POST /api/command` で実行：
+すべての操作は `POST /api/v1` で実行：
 
 ```json
 {
@@ -1297,7 +1297,7 @@ brain-cabinet/
 - **Workflow API**: 思考分析システム全体の一括再構築（Embedding → クラスタ → FTS → Drift → Influence → PTM）
 
 ### v3.0.0 (Phase 3 完了)
-- **統合 Command API**: 全操作を `POST /api/command` で実行
+- **統合 Command API**: 全操作を `POST /api/v1` で実行
 - **Dispatcher パターン**: ドメイン別ディスパッチャーで拡張性確保
 - **PTM Snapshot Engine**: 日次思考モデルスナップショット
 - **Drift分析**: Timeline, Growth Angle, Forecast, Warning, Insight

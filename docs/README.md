@@ -54,7 +54,7 @@ Brain Cabinet は、個人の思考ログ（ノート）を構造化し、GPT/AI
 
 ### 主な機能
 
-- **統合 Command API**: 単一エンドポイント `/api/command` ですべての操作を実行
+- **統合 Command API**: 単一エンドポイント `/api/v1` ですべての操作を実行
 - **三層検索**: キーワード（FTS5）/ セマンティック（Embedding）/ ハイブリッド
 - **思考パターン分析**: PTM（Personal Thinking Model）による Drift・Influence・Dynamics 追跡
 - **クラスタリング**: K-Means によるトピック自動分類
@@ -102,7 +102,7 @@ pnpm dev
 ### 統合エンドポイント
 
 ```
-POST /api/command
+POST /api/v1
 Content-Type: application/json
 
 {
@@ -342,14 +342,14 @@ describe("slugify", () => {
 
 | v2 | v3+ |
 |----|-----|
-| `GET /api/notes` | `POST /api/command { action: "note.list" }` |
-| `GET /api/notes/:id` | `POST /api/command { action: "note.get", payload: { id } }` |
-| `POST /api/notes` | `POST /api/command { action: "note.create", payload: { ... } }` |
-| `GET /api/search?q=...` | `POST /api/command { action: "search.query", payload: { query, mode: "hybrid" } }` |
+| `GET /api/notes` | `POST /api/v1 { action: "note.list" }` |
+| `GET /api/notes/:id` | `POST /api/v1 { action: "note.get", payload: { id } }` |
+| `POST /api/notes` | `POST /api/v1 { action: "note.create", payload: { ... } }` |
+| `GET /api/search?q=...` | `POST /api/v1 { action: "search.query", payload: { query, mode: "hybrid" } }` |
 
 ### 移行チェックリスト
 
-- [ ] API呼び出しを `/api/command` に変更
+- [ ] API呼び出しを `/api/v1` に変更
 - [ ] レスポンス処理を `ok` フラグベースに変更
 - [ ] エラーハンドリングを統一形式に対応
 

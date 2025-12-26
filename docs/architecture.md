@@ -395,7 +395,7 @@ decision
 
 ### 5.1 ディスパッチャー一覧
 
-単一エンドポイント `/api/command` を通じてすべての操作をルーティング：
+単一エンドポイント `/api/v1` を通じてすべての操作をルーティング：
 
 | ディスパッチャー | ファイル | アクション例 |
 |----------------|----------|-----------|
@@ -420,7 +420,7 @@ decision
 ### 5.2 コマンドディスパッチの流れ
 
 ```
-POST /api/command
+POST /api/v1
 {
   "action": "note.create",
   "payload": { "title": "...", "content": "..." }
@@ -489,7 +489,7 @@ POST /api/gpt/task             - タスク実行
 
 #### Command API（単一エンドポイント）
 ```
-POST /api/command
+POST /api/v1
 {
   "action": "domain.action",
   "payload": { ... }
@@ -614,7 +614,7 @@ submitReviewResult()
 ### 8.4 クラスタ再構築フロー
 
 ```
-POST /api/command { action: "cluster.rebuild" }
+POST /api/v1 { action: "cluster.rebuild" }
   ↓
 enqueueJob("CLUSTER_REBUILD", payload)
   ↓

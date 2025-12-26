@@ -1,14 +1,14 @@
 /**
  * Command API Client (v5.14)
  *
- * /api/command エンドポイント用の共通クライアント
+ * /api/v1 エンドポイント用の共通クライアント
  * パフォーマンスメトリクス収集機能付き
  */
 
 import { fetchWithAuth } from './client'
 import { recordMetric, setLastLatency } from '../stores/metricsStore'
 
-const API_BASE = '/api'
+const API_BASE = '/api/v1'
 
 type BcMeta = {
   serverLatency: number
@@ -33,7 +33,7 @@ export async function sendCommand<T>(
 ): Promise<T> {
   const startTime = performance.now()
 
-  const res = await fetchWithAuth(`${API_BASE}/command`, {
+  const res = await fetchWithAuth(API_BASE, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action, payload }),
