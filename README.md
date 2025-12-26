@@ -1,4 +1,4 @@
-# Brain Cabinet v5.14.0 (Performance Metrics Dashboard)
+# Brain Cabinet v5.14.1 (Performance Metrics Dashboard)
 
 **思考ベースの検索型知識システム — あなたの思考を理解し、成長を見守る外部脳**
 
@@ -954,6 +954,13 @@ brain-cabinet/
 ---
 
 ## バージョン履歴
+
+### v5.14.1
+- **全APIをCommand API経由に移行**: メトリクス収集対応
+  - notesApi, ptmApi, influenceApi, bookmarkApi, systemApi を Command API に移行
+  - `system.storage` コマンドを新規追加
+  - `note.list` の snippet → content 変換を実装
+  - 全API呼び出しがパフォーマンスメトリクスに記録されるように
 
 ### v5.14.0
 - **パフォーマンスメトリクス・ダッシュボード**: クライアントサイド完結型のモニタリング機能
