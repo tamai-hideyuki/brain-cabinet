@@ -1,10 +1,33 @@
-import type { NoteInfluence } from '../types/influence'
-import { fetchWithAuth } from './client'
+import type { NoteInfluence, InfluenceEdge } from '../types/influence'
+import { sendCommand } from './commandClient'
 
-const API_BASE = '/api'
+type NoteInfo = {
+  id: string
+  title: string
+  clusterId: number | null
+}
 
 export const fetchNoteInfluence = async (noteId: string): Promise<NoteInfluence> => {
-  const res = await fetchWithAuth(`${API_BASE}/influence/note/${noteId}?limit=10`)
-  if (!res.ok) throw new Error('Failed to fetch note influence')
-  return res.json()
+  // influence.influencers, influence.influenced, note.get を並行して取得
+  const [influencersResult, influencedResult, noteResult] = await Promise.all([
+    sendCommand<InfluenceEdge[]>('influence.influencers', { noteId, limit: 10 }),
+    sendCommand<InfluenceEdge[]>('influence.influenced', { noteId, limit: 10 }),
+    sendCommand<NoteInfo>('note.get', { id: noteId }).catch(() => null),
+  ])
+
+  // summary を計算
+  const totalIncomingInfluence = influencersResult.reduce((sum, e) => sum + e.weight, 0)
+  const totalOutgoingInfluence = influencedResult.reduce((sum, e) => sum + e.weight, 0)
+
+  return {
+    note: noteResult ? { id: noteResult.id, title: noteResult.title, clusterId: noteResult.clusterId } : null,
+    summary: {
+      incomingEdges: influencersResult.length,
+      outgoingEdges: influencedResult.length,
+      totalIncomingInfluence: Math.round(totalIncomingInfluence * 10000) / 10000,
+      totalOutgoingInfluence: Math.round(totalOutgoingInfluence * 10000) / 10000,
+    },
+    influencers: influencersResult,
+    influenced: influencedResult,
+  }
 }

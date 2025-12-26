@@ -1,4 +1,4 @@
-import { fetchWithAuth } from './client'
+import { sendCommand } from './commandClient'
 
 export type TableInfo = {
   name: string
@@ -12,10 +12,6 @@ export type StorageStats = {
   tables: TableInfo[]
 }
 
-const API_BASE = '/api'
-
 export const fetchStorageStats = async (): Promise<StorageStats> => {
-  const res = await fetchWithAuth(`${API_BASE}/system/storage`)
-  if (!res.ok) throw new Error('Failed to fetch storage stats')
-  return res.json()
+  return sendCommand<StorageStats>('system.storage')
 }

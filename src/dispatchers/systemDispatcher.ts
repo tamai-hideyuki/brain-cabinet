@@ -4,6 +4,7 @@
 
 import * as healthService from "../services/health";
 import * as embeddingService from "../services/embeddingService";
+import * as storageService from "../services/storageService";
 import { findAllNotes } from "../repositories/notesRepo";
 import { rebuildFTS } from "../repositories/ftsRepo";
 import {
@@ -25,6 +26,11 @@ export const systemDispatcher = {
   // debug.healthcheck（system.healthと同じ）
   async healthcheck() {
     return healthService.performHealthCheck();
+  },
+
+  // system.storage
+  async storage() {
+    return storageService.getStorageStats();
   },
 
   // system.embed

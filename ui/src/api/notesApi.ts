@@ -1,38 +1,58 @@
 import type { Note, NoteHistory, SearchMode, PromotionCandidate } from '../types/note'
-import { fetchWithAuth } from './client'
 import { sendCommand } from './commandClient'
 
-const API_BASE = '/api'
+// note.list の結果型（バックエンドはsnippetを返すため別型で受け取る）
+type NoteListItem = {
+  id: string
+  title: string
+  category: string | null
+  snippet: string
+  updatedAt: number
+  createdAt: number
+}
+
+type NoteListResult = {
+  notes: NoteListItem[]
+  total: number
+}
+
+// search.query の結果型
+type SearchQueryResult = {
+  results: Array<Note & { score: number }>
+  total: number
+}
 
 export const fetchNotes = async (): Promise<Note[]> => {
-  const res = await fetchWithAuth(`${API_BASE}/notes`)
-  if (!res.ok) throw new Error('Failed to fetch notes')
-  return res.json()
+  const result = await sendCommand<NoteListResult>('note.list', { limit: 100 })
+  // snippet を content に変換して Note 型に適合させる
+  return result.notes.map((n) => ({
+    id: n.id,
+    title: n.title,
+    content: n.snippet, // snippet → content
+    path: null,
+    tags: [],
+    category: n.category,
+    clusterId: null,
+    createdAt: n.createdAt,
+    updatedAt: n.updatedAt,
+  }))
 }
 
 export const fetchNote = async (id: string): Promise<Note> => {
-  const res = await fetchWithAuth(`${API_BASE}/notes/${id}`)
-  if (!res.ok) throw new Error('Failed to fetch note')
-  return res.json()
+  return sendCommand<Note>('note.get', { id })
 }
 
 export const fetchNoteHistory = async (id: string): Promise<NoteHistory[]> => {
-  const res = await fetchWithAuth(`${API_BASE}/notes/${id}/history`)
-  if (!res.ok) throw new Error('Failed to fetch note history')
-  return res.json()
+  const result = await sendCommand<{ histories: NoteHistory[] }>('note.history', { id })
+  return result.histories
 }
-
-type SearchResultItem = Note & { score: number }
 
 export const searchNotes = async (
   query: string,
   mode: SearchMode = 'keyword'
 ): Promise<Note[]> => {
-  const params = new URLSearchParams({ query, mode })
-  const res = await fetchWithAuth(`${API_BASE}/search?${params}`)
-  if (!res.ok) throw new Error('Failed to search notes')
-  const data: SearchResultItem[] = await res.json()
-  return data
+  const result = await sendCommand<SearchQueryResult>('search.query', { query, mode })
+  return result.results
 }
 
 // Promotion Candidates API

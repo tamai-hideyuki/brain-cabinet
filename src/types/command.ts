@@ -557,6 +557,11 @@ type SystemRebuildFtsCommand = {
   payload?: Record<string, never>;
 };
 
+type SystemStorageCommand = {
+  action: "system.storage";
+  payload?: Record<string, never>;
+};
+
 // ============================================
 // 統合型
 // ============================================
@@ -648,6 +653,7 @@ export type BrainCommand =
   | SystemHealthCommand
   | SystemEmbedCommand
   | SystemRebuildFtsCommand
+  | SystemStorageCommand
   | DebugHealthcheckCommand;
 
 // ============================================
