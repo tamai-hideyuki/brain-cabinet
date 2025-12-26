@@ -25,6 +25,7 @@ import { ragDispatcher } from "./ragDispatcher";
 import { decisionDispatcher } from "./decisionDispatcher";
 import { promotionDispatcher } from "./promotionDispatcher";
 import { reviewDispatcher } from "./reviewDispatcher";
+import { bookmarkDispatcher } from "./bookmarkDispatcher";
 
 // ============================================
 // ディスパッチャーレジストリ
@@ -64,6 +65,7 @@ register("rag", ragDispatcher);
 register("decision", decisionDispatcher);
 register("promotion", promotionDispatcher);
 register("review", reviewDispatcher);
+register("bookmark", bookmarkDispatcher);
 
 // ============================================
 // メインディスパッチャー
