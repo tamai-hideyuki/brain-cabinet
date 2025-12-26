@@ -51,6 +51,7 @@ const getStateVariant = (state: string): 'default' | 'decision' | 'learning' => 
 
 export const Dashboard = ({ onNoteClick, onReviewClick }: DashboardProps) => {
   const [notes, setNotes] = useState<Note[]>([])
+  const [totalNotes, setTotalNotes] = useState<number>(0)
   const [ptm, setPtm] = useState<PtmSummary | null>(null)
   const [candidates, setCandidates] = useState<PromotionCandidate[]>([])
   const [loading, setLoading] = useState(true)
@@ -59,12 +60,13 @@ export const Dashboard = ({ onNoteClick, onReviewClick }: DashboardProps) => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [notesData, ptmData, candidatesData] = await Promise.all([
+        const [notesResult, ptmData, candidatesData] = await Promise.all([
           fetchNotes(),
           fetchPtmSummary(),
           fetchPromotionCandidates(5),
         ])
-        setNotes(notesData)
+        setNotes(notesResult.notes)
+        setTotalNotes(notesResult.total)
         setPtm(ptmData)
         setCandidates(candidatesData)
       } catch (e) {
@@ -137,7 +139,7 @@ export const Dashboard = ({ onNoteClick, onReviewClick }: DashboardProps) => {
             </div>
             <div className="dashboard__ptm-item">
               <Text variant="caption">ノート総数</Text>
-              <Text variant="body">{notes.length}</Text>
+              <Text variant="body">{totalNotes}</Text>
             </div>
           </div>
           {ptm.coach && (

@@ -25,8 +25,8 @@ export const useNotes = () => {
     setLoading(true)
     setError(null)
     try {
-      const data = await fetchNotes()
-      setNotes(sortNotes(data))
+      const result = await fetchNotes()
+      setNotes(sortNotes(result.notes))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error')
     } finally {

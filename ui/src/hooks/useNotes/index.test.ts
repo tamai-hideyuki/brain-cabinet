@@ -31,6 +31,8 @@ const mockNotes: Note[] = [
   },
 ]
 
+const mockFetchNotesResult = { notes: mockNotes, total: mockNotes.length }
+
 describe('useNotes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -51,7 +53,7 @@ describe('useNotes', () => {
   })
 
   it('ノートを取得して更新日時順にソートする', async () => {
-    vi.mocked(notesApi.fetchNotes).mockResolvedValue(mockNotes)
+    vi.mocked(notesApi.fetchNotes).mockResolvedValue(mockFetchNotesResult)
 
     const { result } = renderHook(() => useNotes())
 
@@ -79,7 +81,7 @@ describe('useNotes', () => {
   })
 
   it('reloadでノートを再取得する', async () => {
-    vi.mocked(notesApi.fetchNotes).mockResolvedValue(mockNotes)
+    vi.mocked(notesApi.fetchNotes).mockResolvedValue(mockFetchNotesResult)
 
     const { result } = renderHook(() => useNotes())
 
@@ -97,7 +99,7 @@ describe('useNotes', () => {
   })
 
   it('setSearchで検索クエリを設定できる', async () => {
-    vi.mocked(notesApi.fetchNotes).mockResolvedValue(mockNotes)
+    vi.mocked(notesApi.fetchNotes).mockResolvedValue(mockFetchNotesResult)
 
     const { result } = renderHook(() => useNotes())
 
@@ -113,7 +115,7 @@ describe('useNotes', () => {
   })
 
   it('setSearchModeで検索モードを設定できる', async () => {
-    vi.mocked(notesApi.fetchNotes).mockResolvedValue(mockNotes)
+    vi.mocked(notesApi.fetchNotes).mockResolvedValue(mockFetchNotesResult)
 
     const { result } = renderHook(() => useNotes())
 
@@ -129,7 +131,7 @@ describe('useNotes', () => {
   })
 
   it('executeSearchでキーワード検索を実行する', async () => {
-    vi.mocked(notesApi.fetchNotes).mockResolvedValue(mockNotes)
+    vi.mocked(notesApi.fetchNotes).mockResolvedValue(mockFetchNotesResult)
     vi.mocked(notesApi.searchNotes).mockResolvedValue([mockNotes[0]])
 
     const { result } = renderHook(() => useNotes())
@@ -151,7 +153,7 @@ describe('useNotes', () => {
   })
 
   it('空の検索クエリでexecuteSearchを実行するとloadNotesが呼ばれる', async () => {
-    vi.mocked(notesApi.fetchNotes).mockResolvedValue(mockNotes)
+    vi.mocked(notesApi.fetchNotes).mockResolvedValue(mockFetchNotesResult)
 
     const { result } = renderHook(() => useNotes())
 
@@ -170,7 +172,7 @@ describe('useNotes', () => {
   })
 
   it('検索エラー時にerrorがセットされる', async () => {
-    vi.mocked(notesApi.fetchNotes).mockResolvedValue(mockNotes)
+    vi.mocked(notesApi.fetchNotes).mockResolvedValue(mockFetchNotesResult)
     vi.mocked(notesApi.searchNotes).mockRejectedValue(new Error('Search failed'))
 
     const { result } = renderHook(() => useNotes())
@@ -215,7 +217,7 @@ describe('useNotes', () => {
         updatedAt: 3000,
       },
     ]
-    vi.mocked(notesApi.fetchNotes).mockResolvedValue(notesWithSameUpdatedAt)
+    vi.mocked(notesApi.fetchNotes).mockResolvedValue({ notes: notesWithSameUpdatedAt, total: notesWithSameUpdatedAt.length })
 
     const { result } = renderHook(() => useNotes())
 

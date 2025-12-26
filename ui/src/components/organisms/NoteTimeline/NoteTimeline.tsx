@@ -81,8 +81,8 @@ export const NoteTimeline = ({ onNoteClick }: NoteTimelineProps) => {
   useEffect(() => {
     const loadNotes = async () => {
       try {
-        const data = await fetchNotes()
-        setNotes(data)
+        const result = await fetchNotes()
+        setNotes(result.notes)
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Unknown error')
       } finally {

@@ -19,10 +19,15 @@ type NoteListResult = {
 // search.query の結果型（配列が直接返される）
 type SearchQueryResult = Array<Note & { score: number }>
 
-export const fetchNotes = async (): Promise<Note[]> => {
+export type FetchNotesResult = {
+  notes: Note[]
+  total: number
+}
+
+export const fetchNotes = async (): Promise<FetchNotesResult> => {
   const result = await sendCommand<NoteListResult>('note.list', { limit: 100 })
   // snippet を content に変換して Note 型に適合させる
-  return result.notes.map((n) => ({
+  const notes = result.notes.map((n) => ({
     id: n.id,
     title: n.title,
     content: n.snippet, // snippet → content
@@ -33,6 +38,7 @@ export const fetchNotes = async (): Promise<Note[]> => {
     createdAt: n.createdAt,
     updatedAt: n.updatedAt,
   }))
+  return { notes, total: result.total }
 }
 
 export const fetchNote = async (id: string): Promise<Note> => {
