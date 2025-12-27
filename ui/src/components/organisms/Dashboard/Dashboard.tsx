@@ -5,6 +5,7 @@ import { Button } from '../../atoms/Button'
 import { Spinner } from '../../atoms/Spinner'
 import { fetchNotes, fetchPromotionCandidates } from '../../../api/notesApi'
 import { fetchPtmSummary } from '../../../api/ptmApi'
+import { fetchIsolatedNotes, type IsolatedNote } from '../../../api/isolationApi'
 import type { Note, PromotionCandidate } from '../../../types/note'
 import type { PtmSummary } from '../../../types/ptm'
 import './Dashboard.css'
@@ -54,21 +55,24 @@ export const Dashboard = ({ onNoteClick, onReviewClick }: DashboardProps) => {
   const [totalNotes, setTotalNotes] = useState<number>(0)
   const [ptm, setPtm] = useState<PtmSummary | null>(null)
   const [candidates, setCandidates] = useState<PromotionCandidate[]>([])
+  const [isolatedNotes, setIsolatedNotes] = useState<IsolatedNote[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [notesResult, ptmData, candidatesData] = await Promise.all([
+        const [notesResult, ptmData, candidatesData, isolatedData] = await Promise.all([
           fetchNotes(),
           fetchPtmSummary(),
           fetchPromotionCandidates(5),
+          fetchIsolatedNotes(0.7, 5).catch(() => []), // エラー時は空配列
         ])
         setNotes(notesResult.notes)
         setTotalNotes(notesResult.total)
         setPtm(ptmData)
         setCandidates(candidatesData)
+        setIsolatedNotes(isolatedData)
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Unknown error')
       } finally {
@@ -248,6 +252,37 @@ export const Dashboard = ({ onNoteClick, onReviewClick }: DashboardProps) => {
                 <Badge variant={candidate.suggestedType === 'decision' ? 'decision' : 'learning'}>
                   → {candidate.suggestedType}
                 </Badge>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 孤立ノート（未統合の思考） */}
+      {isolatedNotes.length > 0 && (
+        <div className="dashboard__section dashboard__isolated">
+          <div className="dashboard__section-header">
+            <Text variant="subtitle">未統合の思考</Text>
+            <Text variant="caption">{isolatedNotes.length}件</Text>
+          </div>
+          <div className="dashboard__note-list">
+            {isolatedNotes.slice(0, 3).map((note) => (
+              <button
+                key={note.noteId}
+                className="dashboard__note-item"
+                onClick={() => onNoteClick?.(note.noteId)}
+              >
+                <div className="dashboard__candidate-info">
+                  <Text variant="body" truncate>
+                    {note.title}
+                  </Text>
+                  <Text variant="caption">
+                    孤立度: {Math.round(note.isolationScore * 100)}%
+                  </Text>
+                </div>
+                {note.category && (
+                  <Badge variant="default">{note.category}</Badge>
+                )}
               </button>
             ))}
           </div>
