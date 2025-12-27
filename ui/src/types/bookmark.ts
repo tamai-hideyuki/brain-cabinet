@@ -33,6 +33,6 @@ export type UpdateBookmarkParams = {
 }
 
 export type MoveBookmarkParams = {
-  parentId: string | null
-  position?: number
+  newParentId: string | null
+  newPosition?: number
 }

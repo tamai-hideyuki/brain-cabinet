@@ -18,6 +18,7 @@ export const BookmarkPage = () => {
     createNode,
     updateNode,
     deleteNode,
+    moveNode,
     toggleExpand,
   } = useBookmarks()
 
@@ -87,6 +88,14 @@ export const BookmarkPage = () => {
     })
   }
 
+  const handleMoveNode = async (id: string, targetParentId: string | null) => {
+    try {
+      await moveNode(id, targetParentId)
+    } catch {
+      // エラーはuseBookmarksで処理される
+    }
+  }
+
   return (
     <MainLayout>
       <div className="bookmark-page">
@@ -143,6 +152,7 @@ export const BookmarkPage = () => {
             onAddNote={handleAddNote}
             onDelete={handleDelete}
             onRename={handleRename}
+            onMoveNode={handleMoveNode}
           />
         </div>
       </div>

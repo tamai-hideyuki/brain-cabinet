@@ -127,6 +127,26 @@
   color: #ef4444;
 }
 
+/* Drag and drop states */
+.bookmark-tree__item--dragging {
+  opacity: 0.5;
+  background-color: var(--color-bg-secondary);
+}
+
+.bookmark-tree__item--drag-over {
+  background-color: var(--color-primary-light, rgba(59, 130, 246, 0.15));
+  border: 2px dashed var(--color-primary, #3b82f6);
+  border-radius: 0.375rem;
+}
+
+.bookmark-tree__item[draggable="true"] {
+  cursor: grab;
+}
+
+.bookmark-tree__item[draggable="true"]:active {
+  cursor: grabbing;
+}
+
 .bookmark-tree__children {
   display: flex;
   flex-direction: column;

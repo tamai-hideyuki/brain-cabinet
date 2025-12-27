@@ -66,9 +66,9 @@ export const useBookmarks = () => {
   )
 
   const moveNode = useCallback(
-    async (id: string, parentId: string | null, position?: number) => {
+    async (id: string, newParentId: string | null, newPosition?: number) => {
       try {
-        await moveBookmarkNode(id, { parentId, position })
+        await moveBookmarkNode(id, { newParentId, newPosition })
         await loadTree()
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to move node')

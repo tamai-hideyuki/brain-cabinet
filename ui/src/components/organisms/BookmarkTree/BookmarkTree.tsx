@@ -14,6 +14,10 @@ type BookmarkTreeNodeProps = {
   onAddNote: (folderId: string, folderName: string) => void
   onDelete: (id: string) => void
   onRename: (id: string, name: string) => void
+  onMoveNode?: (id: string, targetParentId: string | null) => void
+  draggedNodeId: string | null
+  onDragStart: (id: string) => void
+  onDragEnd: () => void
 }
 
 const BookmarkTreeNode = ({
@@ -25,10 +29,53 @@ const BookmarkTreeNode = ({
   onAddNote,
   onDelete,
   onRename,
+  onMoveNode,
+  draggedNodeId,
+  onDragStart,
+  onDragEnd,
 }: BookmarkTreeNodeProps) => {
   const [isEditing, setIsEditing] = useState(false)
   const [editName, setEditName] = useState(node.name)
   const [showActions, setShowActions] = useState(false)
+  const [isDragOver, setIsDragOver] = useState(false)
+
+  const isDragging = draggedNodeId === node.id
+  const canDrop = node.type === 'folder' && draggedNodeId !== null && draggedNodeId !== node.id
+
+  const handleDragStart = (e: React.DragEvent) => {
+    e.stopPropagation()
+    e.dataTransfer.setData('text/plain', node.id)
+    e.dataTransfer.effectAllowed = 'move'
+    onDragStart(node.id)
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (canDrop) {
+      e.dataTransfer.dropEffect = 'move'
+      setIsDragOver(true)
+    }
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(false)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(false)
+    if (canDrop && onMoveNode && draggedNodeId) {
+      onMoveNode(draggedNodeId, node.id)
+    }
+  }
+
+  const handleDragEnd = () => {
+    onDragEnd()
+  }
 
   const handleToggle = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -88,11 +135,17 @@ const BookmarkTreeNode = ({
   return (
     <div className="bookmark-tree__node">
       <div
-        className={`bookmark-tree__item ${node.type === 'folder' ? 'bookmark-tree__item--folder' : ''}`}
+        className={`bookmark-tree__item ${node.type === 'folder' ? 'bookmark-tree__item--folder' : ''} ${isDragging ? 'bookmark-tree__item--dragging' : ''} ${isDragOver ? 'bookmark-tree__item--drag-over' : ''}`}
         style={{ paddingLeft: `${depth * 1.25}rem` }}
         onClick={handleClick}
         onMouseEnter={() => setShowActions(true)}
         onMouseLeave={() => setShowActions(false)}
+        draggable={!isEditing}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        onDragEnd={handleDragEnd}
       >
         {node.type === 'folder' && (
           <button
@@ -183,6 +236,10 @@ const BookmarkTreeNode = ({
               onAddNote={onAddNote}
               onDelete={onDelete}
               onRename={onRename}
+              onMoveNode={onMoveNode}
+              draggedNodeId={draggedNodeId}
+              onDragStart={onDragStart}
+              onDragEnd={onDragEnd}
             />
           ))}
         </div>
@@ -201,6 +258,7 @@ type BookmarkTreeProps = {
   onAddNote: (folderId: string, folderName: string) => void
   onDelete: (id: string) => void
   onRename: (id: string, name: string) => void
+  onMoveNode?: (id: string, targetParentId: string | null) => void
 }
 
 export const BookmarkTree = ({
@@ -213,7 +271,18 @@ export const BookmarkTree = ({
   onAddNote,
   onDelete,
   onRename,
+  onMoveNode,
 }: BookmarkTreeProps) => {
+  const [draggedNodeId, setDraggedNodeId] = useState<string | null>(null)
+
+  const handleDragStart = (id: string) => {
+    setDraggedNodeId(id)
+  }
+
+  const handleDragEnd = () => {
+    setDraggedNodeId(null)
+  }
+
   if (loading) {
     return (
       <div className="bookmark-tree__loading">
@@ -258,6 +327,10 @@ export const BookmarkTree = ({
           onAddNote={onAddNote}
           onDelete={onDelete}
           onRename={onRename}
+          onMoveNode={onMoveNode}
+          draggedNodeId={draggedNodeId}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
         />
       ))}
     </div>
