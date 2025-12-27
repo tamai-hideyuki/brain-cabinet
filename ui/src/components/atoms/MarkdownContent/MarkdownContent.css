@@ -177,6 +177,23 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* Image loading states */
+.markdown-content__image-loading,
+.markdown-content__image-error {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  background: var(--color-bg-muted);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  margin: 0.5rem 0;
+}
+
+.markdown-content__image-error {
+  color: var(--color-error, #ef4444);
+  background: rgba(239, 68, 68, 0.1);
+}
+
 /* Checkbox list (task list) */
 .markdown-content input[type="checkbox"] {
   margin-right: 0.5rem;
