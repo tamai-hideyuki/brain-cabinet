@@ -19,6 +19,13 @@
   gap: 1rem;
 }
 
+.note-detail__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
 .note-detail__id {
   font-family: monospace;
   font-size: 0.65rem;

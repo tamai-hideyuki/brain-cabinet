@@ -27,6 +27,8 @@ type NoteDetailProps = {
   influenceLoading: boolean
   onInfluenceNoteClick: (noteId: string) => void
   onEdit: () => void
+  onAddBookmark?: () => void
+  bookmarkAdding?: boolean
 }
 
 export const NoteDetail = ({
@@ -40,6 +42,8 @@ export const NoteDetail = ({
   influenceLoading,
   onInfluenceNoteClick,
   onEdit,
+  onAddBookmark,
+  bookmarkAdding,
 }: NoteDetailProps) => {
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null)
   const [historyLoaded, setHistoryLoaded] = useState(false)
@@ -95,9 +99,21 @@ export const NoteDetail = ({
       <header className="note-detail__header">
         <div className="note-detail__header-top">
           <Text variant="title">{note.title}</Text>
-          <Button variant="secondary" size="sm" onClick={onEdit}>
-            編集
-          </Button>
+          <div className="note-detail__actions">
+            {onAddBookmark && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onAddBookmark}
+                disabled={bookmarkAdding}
+              >
+                {bookmarkAdding ? '追加中...' : '+ ブックマーク'}
+              </Button>
+            )}
+            <Button variant="secondary" size="sm" onClick={onEdit}>
+              編集
+            </Button>
+          </div>
         </div>
         <div className="note-detail__id">
           <Text variant="caption">{note.id}</Text>

@@ -6,6 +6,7 @@ import { EditNoteModal } from '../../organisms/EditNoteModal'
 import { Button } from '../../atoms/Button'
 import { useNote } from '../../../hooks/useNote'
 import { useNoteInfluence } from '../../../hooks/useNoteInfluence'
+import { createBookmarkNode } from '../../../api/bookmarkApi'
 import './NoteDetailPage.css'
 
 export const NoteDetailPage = () => {
@@ -14,6 +15,7 @@ export const NoteDetailPage = () => {
   const { note, history, loading, historyLoading, error, loadHistory, reload } = useNote(id)
   const { influence, loading: influenceLoading } = useNoteInfluence(id ?? null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [bookmarkAdding, setBookmarkAdding] = useState(false)
 
   const handleBack = () => {
     navigate('/ui/notes')
@@ -35,6 +37,24 @@ export const NoteDetailPage = () => {
     reload()
   }
 
+  const handleAddBookmark = async () => {
+    if (!note) return
+    setBookmarkAdding(true)
+    try {
+      await createBookmarkNode({
+        type: 'note',
+        name: note.title,
+        noteId: note.id,
+      })
+      alert('ブックマークに追加しました')
+    } catch (e) {
+      alert('ブックマークの追加に失敗しました')
+      console.error(e)
+    } finally {
+      setBookmarkAdding(false)
+    }
+  }
+
   return (
     <MainLayout>
       <div className="note-detail-page">
@@ -54,6 +74,8 @@ export const NoteDetailPage = () => {
           influenceLoading={influenceLoading}
           onInfluenceNoteClick={handleNoteClick}
           onEdit={handleEdit}
+          onAddBookmark={handleAddBookmark}
+          bookmarkAdding={bookmarkAdding}
         />
       </div>
       {isEditModalOpen && note && (
