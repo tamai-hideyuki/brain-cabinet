@@ -5,12 +5,12 @@
  * （方式B: GPT Actions委譲 - LLM呼び出しはGPT側で行う）
  */
 
-import * as searchService from "../services/searchService";
-import { findNoteById } from "../repositories/notesRepo";
+import * as searchService from "../../services/searchService";
+import { findNoteById } from "../../repositories/notesRepo";
 import {
   validateQuery,
   validateLimit,
-} from "../utils/validation";
+} from "../../utils/validation";
 
 type RagContextPayload = {
   question?: string;

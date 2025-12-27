@@ -2,20 +2,20 @@
  * System/Debug ドメイン ディスパッチャー
  */
 
-import * as healthService from "../services/health";
-import * as embeddingService from "../services/embeddingService";
-import * as storageService from "../services/storageService";
-import { findAllNotes } from "../repositories/notesRepo";
-import { rebuildFTS } from "../repositories/ftsRepo";
+import * as healthService from "../../services/health";
+import * as embeddingService from "../../services/embeddingService";
+import * as storageService from "../../services/storageService";
+import { findAllNotes } from "../../repositories/notesRepo";
+import { rebuildFTS } from "../../repositories/ftsRepo";
 import {
   createJobStatusTable,
   checkJobStatusTableExists,
-} from "../repositories/jobStatusRepo";
+} from "../../repositories/jobStatusRepo";
 import {
   createWorkflowStatusTable,
   checkWorkflowStatusTableExists,
-} from "../repositories/workflowStatusRepo";
-import { enqueueJob } from "../services/jobs/job-queue";
+} from "../../repositories/workflowStatusRepo";
+import { enqueueJob } from "../../services/jobs/job-queue";
 
 export const systemDispatcher = {
   // system.health

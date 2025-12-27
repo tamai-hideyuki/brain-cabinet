@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // モック
-vi.mock("../services/analytics", () => ({
+vi.mock("../../services/analytics", () => ({
   getSummaryStats: vi.fn(),
   parseDateRange: vi.fn(),
   getSemanticDiffTimeline: vi.fn(),
@@ -14,8 +14,8 @@ vi.mock("../services/analytics", () => ({
   getTrendStats: vi.fn(),
 }));
 
-import { analyticsDispatcher } from "./analyticsDispatcher";
-import * as analyticsService from "../services/analytics";
+import { analyticsDispatcher } from "./index";
+import * as analyticsService from "../../services/analytics";
 
 describe("analyticsDispatcher", () => {
   beforeEach(() => {
@@ -26,7 +26,9 @@ describe("analyticsDispatcher", () => {
     it("getSummaryStats を呼び出す", async () => {
       const mockResult = {
         totalNotes: 100,
-        byType: { scratch: 50, learning: 30, decision: 20 },
+        notesLast30Days: 25,
+        changesLast30Days: 50,
+        avgSemanticDiffLast30Days: 0.15,
       };
       vi.mocked(analyticsService.getSummaryStats).mockResolvedValue(mockResult);
 
@@ -39,8 +41,8 @@ describe("analyticsDispatcher", () => {
 
   describe("timeline", () => {
     it("デフォルトで30dの範囲を使用する", async () => {
-      const mockDateRange = { start: new Date(), end: new Date() };
-      const mockResult = [{ date: "2024-01-01", diff: 0.5 }];
+      const mockDateRange = { start: 1704067200, end: 1706745600 };
+      const mockResult = [{ date: "2024-01-01", totalSemanticDiff: 0.5, changeCount: 3 }];
       vi.mocked(analyticsService.parseDateRange).mockReturnValue(mockDateRange);
       vi.mocked(analyticsService.getSemanticDiffTimeline).mockResolvedValue(mockResult);
 
@@ -51,8 +53,8 @@ describe("analyticsDispatcher", () => {
     });
 
     it("指定されたrangeを使用する", async () => {
-      const mockDateRange = { start: new Date(), end: new Date() };
-      const mockResult = [{ date: "2024-01-01", diff: 0.5 }];
+      const mockDateRange = { start: 1704067200, end: 1704672000 };
+      const mockResult = [{ date: "2024-01-01", totalSemanticDiff: 0.5, changeCount: 3 }];
       vi.mocked(analyticsService.parseDateRange).mockReturnValue(mockDateRange);
       vi.mocked(analyticsService.getSemanticDiffTimeline).mockResolvedValue(mockResult);
 
@@ -62,10 +64,10 @@ describe("analyticsDispatcher", () => {
     });
 
     it("結果を返す", async () => {
-      const mockDateRange = { start: new Date(), end: new Date() };
+      const mockDateRange = { start: 1704067200, end: 1706745600 };
       const mockResult = [
-        { date: "2024-01-01", diff: 0.5 },
-        { date: "2024-01-02", diff: 0.6 },
+        { date: "2024-01-01", totalSemanticDiff: 0.5, changeCount: 3 },
+        { date: "2024-01-02", totalSemanticDiff: 0.6, changeCount: 2 },
       ];
       vi.mocked(analyticsService.parseDateRange).mockReturnValue(mockDateRange);
       vi.mocked(analyticsService.getSemanticDiffTimeline).mockResolvedValue(mockResult);
@@ -78,8 +80,10 @@ describe("analyticsDispatcher", () => {
 
   describe("journey", () => {
     it("デフォルトで30dの範囲を使用する", async () => {
-      const mockDateRange = { start: new Date(), end: new Date() };
-      const mockResult = { clusters: [], transitions: [] };
+      const mockDateRange = { start: 1704067200, end: 1706745600 };
+      const mockResult = [
+        { date: "2024-01-01", clusterId: 1, noteId: "note-1", title: "Note 1" },
+      ];
       vi.mocked(analyticsService.parseDateRange).mockReturnValue(mockDateRange);
       vi.mocked(analyticsService.getClusterJourney).mockResolvedValue(mockResult);
 
@@ -90,8 +94,10 @@ describe("analyticsDispatcher", () => {
     });
 
     it("指定されたrangeを使用する", async () => {
-      const mockDateRange = { start: new Date(), end: new Date() };
-      const mockResult = { clusters: [], transitions: [] };
+      const mockDateRange = { start: 1704067200, end: 1711929600 };
+      const mockResult = [
+        { date: "2024-01-01", clusterId: 1, noteId: "note-1", title: "Note 1" },
+      ];
       vi.mocked(analyticsService.parseDateRange).mockReturnValue(mockDateRange);
       vi.mocked(analyticsService.getClusterJourney).mockResolvedValue(mockResult);
 
@@ -104,7 +110,7 @@ describe("analyticsDispatcher", () => {
   describe("heatmap", () => {
     it("デフォルトで現在の年を使用する", async () => {
       const currentYear = new Date().getFullYear();
-      const mockResult = { year: currentYear, data: [] };
+      const mockResult = [{ date: `${currentYear}-01-01`, count: 3, level: 2 }];
       vi.mocked(analyticsService.getDailyActivity).mockResolvedValue(mockResult);
 
       await analyticsDispatcher.heatmap(undefined);
@@ -113,7 +119,7 @@ describe("analyticsDispatcher", () => {
     });
 
     it("指定された年を使用する", async () => {
-      const mockResult = { year: 2023, data: [] };
+      const mockResult = [{ date: "2023-01-01", count: 3, level: 2 }];
       vi.mocked(analyticsService.getDailyActivity).mockResolvedValue(mockResult);
 
       await analyticsDispatcher.heatmap({ year: 2023 });
@@ -122,10 +128,10 @@ describe("analyticsDispatcher", () => {
     });
 
     it("結果を返す", async () => {
-      const mockResult = {
-        year: 2024,
-        data: [{ date: "2024-01-01", count: 5, level: 2 }],
-      };
+      const mockResult = [
+        { date: "2024-01-01", count: 5, level: 2 },
+        { date: "2024-01-02", count: 0, level: 0 },
+      ];
       vi.mocked(analyticsService.getDailyActivity).mockResolvedValue(mockResult);
 
       const result = await analyticsDispatcher.heatmap({ year: 2024 });
@@ -136,8 +142,8 @@ describe("analyticsDispatcher", () => {
 
   describe("trends", () => {
     it("デフォルトでday単位と30d範囲を使用する", async () => {
-      const mockDateRange = { start: new Date(), end: new Date() };
-      const mockResult = { unit: "day" as const, data: [] };
+      const mockDateRange = { start: 1704067200, end: 1706745600 };
+      const mockResult = [{ period: "2024-W01", clusterId: 1, count: 5 }];
       vi.mocked(analyticsService.parseDateRange).mockReturnValue(mockDateRange);
       vi.mocked(analyticsService.getTrendStats).mockResolvedValue(mockResult);
 
@@ -148,8 +154,8 @@ describe("analyticsDispatcher", () => {
     });
 
     it("指定された単位と範囲を使用する", async () => {
-      const mockDateRange = { start: new Date(), end: new Date() };
-      const mockResult = { unit: "week" as const, data: [] };
+      const mockDateRange = { start: 1704067200, end: 1711929600 };
+      const mockResult = [{ period: "2024-W01", clusterId: 1, count: 5 }];
       vi.mocked(analyticsService.parseDateRange).mockReturnValue(mockDateRange);
       vi.mocked(analyticsService.getTrendStats).mockResolvedValue(mockResult);
 
@@ -160,8 +166,8 @@ describe("analyticsDispatcher", () => {
     });
 
     it("month単位で呼び出せる", async () => {
-      const mockDateRange = { start: new Date(), end: new Date() };
-      const mockResult = { unit: "month" as const, data: [] };
+      const mockDateRange = { start: 1704067200, end: 1706745600 };
+      const mockResult = [{ period: "2024-01", clusterId: 1, count: 5 }];
       vi.mocked(analyticsService.parseDateRange).mockReturnValue(mockDateRange);
       vi.mocked(analyticsService.getTrendStats).mockResolvedValue(mockResult);
 

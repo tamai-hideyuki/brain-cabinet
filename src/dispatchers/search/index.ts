@@ -2,9 +2,9 @@
  * Search ドメイン ディスパッチャー
  */
 
-import * as searchService from "../services/searchService";
-import { CATEGORIES, type Category } from "../db/schema";
-import { findAllNotes } from "../repositories/notesRepo";
+import * as searchService from "../../services/searchService";
+import { CATEGORIES, type Category } from "../../db/schema";
+import { findAllNotes } from "../../repositories/notesRepo";
 import {
   validateQuery,
   validateLimitAllowAll,
@@ -13,7 +13,7 @@ import {
   validateStringLength,
   requireString,
   LIMITS,
-} from "../utils/validation";
+} from "../../utils/validation";
 
 const SEARCH_MODES = ["keyword", "semantic", "hybrid"] as const;
 type SearchMode = (typeof SEARCH_MODES)[number];

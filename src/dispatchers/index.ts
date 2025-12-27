@@ -8,25 +8,25 @@ import type { BrainCommand, CommandResponse, BcMeta } from "../types/command";
 import { logger } from "../utils/logger";
 
 // ドメイン別ディスパッチャー
-import { noteDispatcher } from "./noteDispatcher";
-import { searchDispatcher } from "./searchDispatcher";
-import { clusterDispatcher } from "./clusterDispatcher";
-import { driftDispatcher } from "./driftDispatcher";
-import { ptmDispatcher } from "./ptmDispatcher";
-import { influenceDispatcher } from "./influenceDispatcher";
-import { clusterDynamicsDispatcher } from "./clusterDynamicsDispatcher";
-import { insightDispatcher } from "./insightDispatcher";
-import { analyticsDispatcher } from "./analyticsDispatcher";
-import { gptDispatcher } from "./gptDispatcher";
-import { systemDispatcher } from "./systemDispatcher";
-import { jobDispatcher } from "./jobDispatcher";
-import { workflowDispatcher } from "./workflowDispatcher";
-import { ragDispatcher } from "./ragDispatcher";
-import { decisionDispatcher } from "./decisionDispatcher";
-import { promotionDispatcher } from "./promotionDispatcher";
-import { reviewDispatcher } from "./reviewDispatcher";
-import { bookmarkDispatcher } from "./bookmarkDispatcher";
-import { isolationDispatcher } from "./isolationDispatcher";
+import { noteDispatcher } from "./note";
+import { searchDispatcher } from "./search";
+import { clusterDispatcher } from "./cluster";
+import { driftDispatcher } from "./drift";
+import { ptmDispatcher } from "./ptm";
+import { influenceDispatcher } from "./influence";
+import { clusterDynamicsDispatcher } from "./clusterDynamics";
+import { insightDispatcher } from "./insight";
+import { analyticsDispatcher } from "./analytics";
+import { gptDispatcher } from "./gpt";
+import { systemDispatcher } from "./system";
+import { jobDispatcher } from "./job";
+import { workflowDispatcher } from "./workflow";
+import { ragDispatcher } from "./rag";
+import { decisionDispatcher } from "./decision";
+import { promotionDispatcher } from "./promotion";
+import { reviewDispatcher } from "./review";
+import { bookmarkDispatcher } from "./bookmark";
+import { isolationDispatcher } from "./isolation";
 
 // ============================================
 // ディスパッチャーレジストリ

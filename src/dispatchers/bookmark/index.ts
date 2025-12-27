@@ -4,8 +4,8 @@
  * ブックマーク関連のコマンドを処理するディスパッチャー
  */
 
-import * as bookmarkService from "../services/bookmark";
-import type { BookmarkNodeType } from "../db/schema";
+import * as bookmarkService from "../../services/bookmark";
+import type { BookmarkNodeType } from "../../db/schema";
 
 export const bookmarkDispatcher = {
   /**

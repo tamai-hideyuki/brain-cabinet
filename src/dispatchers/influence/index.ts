@@ -2,8 +2,8 @@
  * Influence ドメイン ディスパッチャー
  */
 
-import * as influenceService from "../services/influence/influenceService";
-import type { ExtractPayload } from "../types/command";
+import * as influenceService from "../../services/influence/influenceService";
+import type { ExtractPayload } from "../../types/command";
 
 type InfluenceInfluencersPayload = ExtractPayload<"influence.influencers">;
 type InfluenceInfluencedPayload = ExtractPayload<"influence.influenced">;

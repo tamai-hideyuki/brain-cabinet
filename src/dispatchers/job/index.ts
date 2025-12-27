@@ -14,14 +14,14 @@ import {
   getJobStats,
   cleanupOldJobs,
   type JobRecord,
-} from "../repositories/jobStatusRepo";
-import { JOB_STATUSES, JOB_TYPES } from "../db/schema";
+} from "../../repositories/jobStatusRepo";
+import { JOB_STATUSES, JOB_TYPES } from "../../db/schema";
 import {
   validateId,
   validateLimit,
   validateEnum,
   validateNumberRange,
-} from "../utils/validation";
+} from "../../utils/validation";
 
 export const jobDispatcher = {
   /**

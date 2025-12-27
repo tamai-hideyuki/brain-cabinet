@@ -2,7 +2,7 @@
  * Cluster Dynamics ドメイン ディスパッチャー
  */
 
-import * as clusterDynamicsService from "../services/cluster/clusterDynamicsService";
+import * as clusterDynamicsService from "../../services/cluster/clusterDynamicsService";
 
 export const clusterDynamicsDispatcher = {
   async summary(payload: unknown) {

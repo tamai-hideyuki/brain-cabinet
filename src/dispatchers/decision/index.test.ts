@@ -5,22 +5,22 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // モック
-vi.mock("../services/decision", () => ({
+vi.mock("../../services/decision", () => ({
   searchDecisions: vi.fn(),
   getDecisionContext: vi.fn(),
   getPromotionCandidates: vi.fn(),
   compareDecisions: vi.fn(),
 }));
 
-vi.mock("../services/counterevidence", () => ({
+vi.mock("../../services/counterevidence", () => ({
   addCounterevidence: vi.fn(),
   getCounterevidences: vi.fn(),
   deleteCounterevidence: vi.fn(),
 }));
 
-import { decisionDispatcher } from "./decisionDispatcher";
-import * as decisionService from "../services/decision";
-import * as counterevidence from "../services/counterevidence";
+import { decisionDispatcher } from "./index";
+import * as decisionService from "../../services/decision";
+import * as counterevidence from "../../services/counterevidence";
 
 describe("decisionDispatcher", () => {
   beforeEach(() => {

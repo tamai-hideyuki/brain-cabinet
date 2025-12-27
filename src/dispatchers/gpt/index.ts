@@ -2,12 +2,12 @@
  * GPT ドメイン ディスパッチャー
  */
 
-import * as gptService from "../services/gptService";
-import { getGptContext } from "../services/gptService/context/gptContext";
-import * as searchService from "../services/searchService";
-import type { SearchResult } from "../services/searchService";
-import { AppError, ErrorCodes } from "../utils/errors";
-import type { Category } from "../db/schema";
+import * as gptService from "../../services/gptService";
+import { getGptContext } from "../../services/gptService/context/gptContext";
+import * as searchService from "../../services/searchService";
+import type { SearchResult } from "../../services/searchService";
+import { AppError, ErrorCodes } from "../../utils/errors";
+import type { Category } from "../../db/schema";
 
 type GptSearchPayload = {
   query?: string;

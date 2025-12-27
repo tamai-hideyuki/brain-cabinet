@@ -6,17 +6,17 @@ import {
   findAllClusters,
   findClusterById,
   findNotesByClusterId,
-} from "../repositories/clusterRepo";
-import { getEmbedding } from "../repositories/embeddingRepo";
-import { cosineSimilarity } from "../services/embeddingService";
-import * as identityService from "../services/cluster/identity";
-import { enqueueJob } from "../services/jobs/job-queue";
+} from "../../repositories/clusterRepo";
+import { getEmbedding } from "../../repositories/embeddingRepo";
+import { cosineSimilarity } from "../../services/embeddingService";
+import * as identityService from "../../services/cluster/identity";
+import { enqueueJob } from "../../services/jobs/job-queue";
 import {
   requireField,
   validateK,
   validateLimit,
   validateOptionalEnum,
-} from "../utils/validation";
+} from "../../utils/validation";
 
 const MAP_FORMATS = ["full", "gpt"] as const;
 

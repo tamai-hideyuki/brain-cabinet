@@ -5,19 +5,19 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // モック
-vi.mock("../services/searchService", () => ({
+vi.mock("../../services/searchService", () => ({
   searchNotes: vi.fn(),
   searchNotesSemantic: vi.fn(),
 }));
 
-vi.mock("../repositories/notesRepo", () => ({
+vi.mock("../../repositories/notesRepo", () => ({
   findAllNotes: vi.fn(),
 }));
 
-import { searchDispatcher } from "./searchDispatcher";
-import * as searchService from "../services/searchService";
-import { findAllNotes } from "../repositories/notesRepo";
-import { CATEGORIES } from "../db/schema";
+import { searchDispatcher } from "./index";
+import * as searchService from "../../services/searchService";
+import { findAllNotes } from "../../repositories/notesRepo";
+import { CATEGORIES } from "../../db/schema";
 
 describe("searchDispatcher", () => {
   beforeEach(() => {

@@ -9,12 +9,12 @@ import {
   getDecisionContext,
   getPromotionCandidates,
   compareDecisions,
-} from "../services/decision";
+} from "../../services/decision";
 import {
   addCounterevidence,
   getCounterevidences,
   deleteCounterevidence,
-} from "../services/counterevidence";
+} from "../../services/counterevidence";
 import {
   INTENTS,
   COUNTEREVIDENCE_TYPES,
@@ -22,14 +22,14 @@ import {
   type Intent,
   type CounterevidencelType,
   type CounterevidencelSeverity,
-} from "../db/schema";
+} from "../../db/schema";
 import {
   validateQuery,
   validateLimitAllowAll,
   validateOptionalEnum,
   requireString,
   LIMITS,
-} from "../utils/validation";
+} from "../../utils/validation";
 
 type DecisionSearchPayload = {
   query?: string;

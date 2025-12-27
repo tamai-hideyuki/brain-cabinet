@@ -2,9 +2,9 @@
  * Note ドメイン ディスパッチャー
  */
 
-import * as notesService from "../services/notesService";
-import * as historyService from "../services/historyService";
-import * as noteImagesService from "../services/noteImages";
+import * as notesService from "../../services/notesService";
+import * as historyService from "../../services/historyService";
+import * as noteImagesService from "../../services/noteImages";
 import {
   validateTitle,
   validateContent,
@@ -13,8 +13,8 @@ import {
   validateOffset,
   validateCategory,
   validateIdArray,
-} from "../utils/validation";
-import type { Note } from "../types/note";
+} from "../../utils/validation";
+import type { Note } from "../../types/note";
 
 export const noteDispatcher = {
   async create(payload: unknown) {

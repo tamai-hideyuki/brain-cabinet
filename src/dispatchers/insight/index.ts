@@ -2,24 +2,24 @@
  * Insight ドメイン ディスパッチャー
  */
 
-import * as ptmEngine from "../services/ptm/engine";
-import { generateAllEmbeddings } from "../services/embeddingService";
-import { rebuildFTS } from "../repositories/ftsRepo";
-import { findAllNotes } from "../repositories/notesRepo";
-import { inferAndSave } from "../services/inference";
-import { rebuildDriftEvents } from "../services/drift/rebuildDriftEvents";
-import { rebuildInfluenceGraph } from "../services/influence/influenceService";
-import { captureClusterDynamics } from "../services/cluster/clusterDynamicsService";
-import { capturePtmSnapshot } from "../services/ptm/snapshot";
-import { enqueueJob } from "../services/jobs/job-queue";
-import { logger } from "../utils/logger";
+import * as ptmEngine from "../../services/ptm/engine";
+import { generateAllEmbeddings } from "../../services/embeddingService";
+import { rebuildFTS } from "../../repositories/ftsRepo";
+import { findAllNotes } from "../../repositories/notesRepo";
+import { inferAndSave } from "../../services/inference";
+import { rebuildDriftEvents } from "../../services/drift/rebuildDriftEvents";
+import { rebuildInfluenceGraph } from "../../services/influence/influenceService";
+import { captureClusterDynamics } from "../../services/cluster/clusterDynamicsService";
+import { capturePtmSnapshot } from "../../services/ptm/snapshot";
+import { enqueueJob } from "../../services/jobs/job-queue";
+import { logger } from "../../utils/logger";
 import {
   startWorkflow,
   updateWorkflowProgress,
   setClusterJobId,
   completeWorkflow,
   failWorkflow,
-} from "../repositories/workflowStatusRepo";
+} from "../../repositories/workflowStatusRepo";
 
 export type WorkflowReconstructResult = {
   status: "completed" | "partial" | "failed";

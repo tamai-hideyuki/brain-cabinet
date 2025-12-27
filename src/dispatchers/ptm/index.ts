@@ -2,11 +2,11 @@
  * PTM (Personal Thinking Model) ドメイン ディスパッチャー
  */
 
-import * as ptmEngine from "../services/ptm/engine";
-import * as ptmSnapshot from "../services/ptm/snapshot";
-import * as ptmCore from "../services/ptm/core";
-import * as ptmInfluence from "../services/ptm/influence";
-import * as ptmDynamics from "../services/ptm/dynamics";
+import * as ptmEngine from "../../services/ptm/engine";
+import * as ptmSnapshot from "../../services/ptm/snapshot";
+import * as ptmCore from "../../services/ptm/core";
+import * as ptmInfluence from "../../services/ptm/influence";
+import * as ptmDynamics from "../../services/ptm/dynamics";
 
 export const ptmDispatcher = {
   async today() {

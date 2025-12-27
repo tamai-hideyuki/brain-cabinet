@@ -4,7 +4,7 @@
  * 孤立ノート検出関連のコマンドを処理するディスパッチャー
  */
 
-import * as isolationService from "../services/isolation";
+import * as isolationService from "../../services/isolation";
 
 export const isolationDispatcher = {
   /**

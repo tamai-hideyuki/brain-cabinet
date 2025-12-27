@@ -8,9 +8,9 @@ import {
   getPendingPromotions,
   dismissPromotion,
   acceptPromotion,
-} from "../services/promotion";
-import { validateLimitAllowAll, LIMITS } from "../utils/validation";
-import { AppError, ErrorCodes } from "../utils/errors";
+} from "../../services/promotion";
+import { validateLimitAllowAll, LIMITS } from "../../utils/validation";
+import { AppError, ErrorCodes } from "../../utils/errors";
 
 type PendingPayload = {
   limit?: number;

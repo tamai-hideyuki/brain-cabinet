@@ -7,11 +7,11 @@
 import {
   getWorkflowStatusResult,
   type WorkflowStatusResult,
-} from "../repositories/workflowStatusRepo";
+} from "../../repositories/workflowStatusRepo";
 import {
   insightDispatcher,
   type WorkflowReconstructResult,
-} from "./insightDispatcher";
+} from "../insight";
 
 export const workflowDispatcher = {
   /**

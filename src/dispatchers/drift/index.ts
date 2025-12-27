@@ -2,9 +2,9 @@
  * Drift ドメイン ディスパッチャー
  */
 
-import * as driftCore from "../services/drift/driftCore";
-import * as driftService from "../services/drift/driftService";
-import { detectAllDriftEvents } from "../services/drift/detectDriftEvents";
+import * as driftCore from "../../services/drift/driftCore";
+import * as driftService from "../../services/drift/driftService";
+import { detectAllDriftEvents } from "../../services/drift/detectDriftEvents";
 
 type RangeDaysPayload = { rangeDays?: number };
 type DriftEventsPayload = {
