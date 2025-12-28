@@ -169,7 +169,9 @@ const BookmarkTreeNode = ({
             onClick={(e) => e.stopPropagation()}
           />
         ) : (
-          <span className="bookmark-tree__name">{node.name}</span>
+          <span className="bookmark-tree__name">
+            {node.type === 'note' && node.note?.title ? node.note.title : node.name}
+          </span>
         )}
         {getCategoryBadge()}
         {showActions && !isEditing && (
