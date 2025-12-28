@@ -24,8 +24,9 @@ export type FetchNotesResult = {
   total: number
 }
 
-export const fetchNotes = async (): Promise<FetchNotesResult> => {
-  const result = await sendCommand<NoteListResult>('note.list', { limit: 100 })
+export const fetchNotes = async (limit: number = 100): Promise<FetchNotesResult> => {
+  // limit: 0 で全件取得
+  const result = await sendCommand<NoteListResult>('note.list', { limit })
   // snippet を content に変換して Note 型に適合させる
   const notes = result.notes.map((n) => ({
     id: n.id,

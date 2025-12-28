@@ -21,22 +21,27 @@ type DayGroup = {
 
 const formatDate = (timestamp: number): string => {
   const date = new Date(timestamp * 1000)
-  return date.toISOString().split('T')[0]
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
 const formatDateLabel = (dateStr: string): string => {
-  const date = new Date(dateStr)
   const today = new Date()
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+
   const yesterday = new Date(today)
   yesterday.setDate(yesterday.getDate() - 1)
+  const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`
 
-  if (dateStr === today.toISOString().split('T')[0]) {
+  if (dateStr === todayStr) {
     return '今日'
   }
-  if (dateStr === yesterday.toISOString().split('T')[0]) {
+  if (dateStr === yesterdayStr) {
     return '昨日'
   }
 
+  // dateStr は YYYY-MM-DD 形式なのでパースして表示
+  const [year, month, day] = dateStr.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
   return date.toLocaleDateString('ja-JP', {
     year: 'numeric',
     month: 'short',
@@ -49,6 +54,11 @@ const getCategoryBadgeVariant = (category: string | null): 'decision' | 'learnin
   if (category === '判断' || category === 'decision') return 'decision'
   if (category === '学習' || category === 'learning') return 'learning'
   return 'default'
+}
+
+// Date オブジェクトをローカルタイムゾーンで YYYY-MM-DD に変換
+const toLocalDateStr = (date: Date): string => {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
 // カレンダー用のヘルパー
@@ -72,17 +82,29 @@ export const NoteTimeline = ({ onNoteClick }: NoteTimelineProps) => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<ViewMode>('timeline')
+  const [allNotesLoaded, setAllNotesLoaded] = useState(false)
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date()
     return { year: now.getFullYear(), month: now.getMonth() }
   })
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
 
+  // タイムラインモード: 最新100件を取得
+  // カレンダーモード: 全件取得
   useEffect(() => {
     const loadNotes = async () => {
       try {
-        const result = await fetchNotes()
-        setNotes(result.notes)
+        setLoading(true)
+        if (viewMode === 'calendar' && !allNotesLoaded) {
+          // カレンダーモードでは全件取得（limit: 0）
+          const result = await fetchNotes(0)
+          setNotes(result.notes)
+          setAllNotesLoaded(true)
+        } else if (viewMode === 'timeline' && notes.length === 0) {
+          // タイムラインモードでは最新100件
+          const result = await fetchNotes(100)
+          setNotes(result.notes)
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Unknown error')
       } finally {
@@ -90,7 +112,7 @@ export const NoteTimeline = ({ onNoteClick }: NoteTimelineProps) => {
       }
     }
     loadNotes()
-  }, [])
+  }, [viewMode, allNotesLoaded, notes.length])
 
   // 日付でグループ化（タイムライン用）
   const groupedByDate = useMemo((): DayGroup[] => {
@@ -253,9 +275,9 @@ export const NoteTimeline = ({ onNoteClick }: NoteTimelineProps) => {
               <div key={`pad-${i}`} className="note-timeline__calendar-day--empty" />
             ))}
             {days.map((day) => {
-              const dateStr = day.toISOString().split('T')[0]
+              const dateStr = toLocalDateStr(day)
               const count = noteCountByDate.get(dateStr) || 0
-              const isToday = dateStr === new Date().toISOString().split('T')[0]
+              const isToday = dateStr === toLocalDateStr(new Date())
 
               return (
                 <button
@@ -283,7 +305,10 @@ export const NoteTimeline = ({ onNoteClick }: NoteTimelineProps) => {
           {selectedDate && selectedDateNotes.length > 0 && (
             <div className="note-timeline__calendar-selected">
               <div className="note-timeline__calendar-selected-header">
-                <Text variant="subtitle">{formatDateLabel(selectedDate)}</Text>
+                <div className="note-timeline__calendar-selected-title">
+                  <Text variant="subtitle">{formatDateLabel(selectedDate)}</Text>
+                  <Text variant="caption">{selectedDateNotes.length}件のノート</Text>
+                </div>
                 <Button variant="secondary" size="sm" onClick={() => setSelectedDate(null)}>
                   閉じる
                 </Button>
@@ -292,7 +317,7 @@ export const NoteTimeline = ({ onNoteClick }: NoteTimelineProps) => {
                 {selectedDateNotes.map((note) => (
                   <button
                     key={note.id}
-                    className="note-timeline__note"
+                    className="note-timeline__note note-timeline__note--row"
                     onClick={() => onNoteClick?.(note.id)}
                   >
                     <Text variant="body" truncate>

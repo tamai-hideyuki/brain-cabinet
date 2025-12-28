@@ -105,6 +105,22 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+/* 横一列レイアウト（カレンダー選択時のノート一覧用） */
+.note-timeline__note--row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: auto;
+  padding: 0.625rem 0.875rem;
+}
+
+.note-timeline__note--row > span {
+  flex: 1;
+  min-width: 0;
 }
 
 /* Calendar View */
@@ -227,6 +243,12 @@
   margin-bottom: 0.75rem;
   padding-bottom: 0.75rem;
   border-bottom: 1px solid var(--color-border);
+}
+
+.note-timeline__calendar-selected-title {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
 }
 
 .note-timeline__calendar-selected-notes {
