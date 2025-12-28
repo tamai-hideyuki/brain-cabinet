@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { fetchWithAuth } from '../../../api/client'
+import { useAuth } from '@clerk/clerk-react'
 
 type AuthImageProps = {
   src: string
@@ -12,6 +12,7 @@ type AuthImageProps = {
  * note-image:// プロトコルをサポート
  */
 export const AuthImage = ({ src, alt, className }: AuthImageProps) => {
+  const { getToken } = useAuth()
   const [imageSrc, setImageSrc] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -41,8 +42,15 @@ export const AuthImage = ({ src, alt, className }: AuthImageProps) => {
           return
         }
 
+        // Clerkから直接トークンを取得
+        const token = await getToken()
+        const headers: HeadersInit = {}
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`
+        }
+
         // 認証付きで画像を取得
-        const response = await fetchWithAuth(apiUrl)
+        const response = await fetch(apiUrl, { headers })
         if (!response.ok) {
           throw new Error('Failed to load image')
         }
@@ -71,7 +79,7 @@ export const AuthImage = ({ src, alt, className }: AuthImageProps) => {
         URL.revokeObjectURL(objectUrl)
       }
     }
-  }, [src])
+  }, [src, getToken])
 
   if (loading) {
     return <span className="markdown-content__image-loading">画像読み込み中...</span>

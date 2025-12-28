@@ -1,0 +1,1 @@
+export { IsolationPage } from './IsolationPage'

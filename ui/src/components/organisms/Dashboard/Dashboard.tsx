@@ -99,14 +99,15 @@ export const Dashboard = ({ onNoteClick, onReviewClick }: DashboardProps) => {
     )
   }
 
-  // 今日の日付
+  // 今日の日付（ローカルタイムゾーン）
   const today = new Date()
-  const todayStr = today.toISOString().split('T')[0]
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
 
-  // 今日更新されたノート
+  // 今日更新されたノート（ローカルタイムゾーンで比較）
   const todayNotes = notes.filter((note) => {
-    const noteDate = new Date(note.updatedAt * 1000).toISOString().split('T')[0]
-    return noteDate === todayStr
+    const noteDate = new Date(note.updatedAt * 1000)
+    const noteDateStr = `${noteDate.getFullYear()}-${String(noteDate.getMonth() + 1).padStart(2, '0')}-${String(noteDate.getDate()).padStart(2, '0')}`
+    return noteDateStr === todayStr
   })
 
   // 最近更新されたノート（上位5件）
