@@ -21,6 +21,7 @@ export const EditNoteModal = ({ note, onClose, onUpdated }: EditNoteModalProps) 
   const [error, setError] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     setTitle(note.title)
@@ -112,6 +113,21 @@ export const EditNoteModal = ({ note, onClose, onUpdated }: EditNoteModalProps) 
     }
   }, [handleImageUpload])
 
+  // ファイル選択ハンドラ
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (files && files.length > 0) {
+      handleImageUpload(files)
+    }
+    // 同じファイルを再選択できるようにリセット
+    e.target.value = ''
+  }, [handleImageUpload])
+
+  // 画像選択ボタンクリック
+  const handleImageButtonClick = useCallback(() => {
+    fileInputRef.current?.click()
+  }, [])
+
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -195,10 +211,34 @@ export const EditNoteModal = ({ note, onClose, onUpdated }: EditNoteModalProps) 
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
-            <label htmlFor="edit-note-content" className="edit-note-modal__label">
-              内容
-              {uploading && <Spinner size="sm" />}
-            </label>
+            <div className="edit-note-modal__label-row">
+              <label htmlFor="edit-note-content" className="edit-note-modal__label">
+                内容
+                {uploading && <Spinner size="sm" />}
+              </label>
+              <button
+                type="button"
+                className="edit-note-modal__image-button"
+                onClick={handleImageButtonClick}
+                disabled={saving || uploading}
+                aria-label="画像を追加"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" />
+                  <polyline points="21 15 16 10 5 21" />
+                </svg>
+                <span className="edit-note-modal__image-button-text">画像</span>
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleFileSelect}
+                className="edit-note-modal__file-input"
+              />
+            </div>
             <textarea
               ref={textareaRef}
               id="edit-note-content"

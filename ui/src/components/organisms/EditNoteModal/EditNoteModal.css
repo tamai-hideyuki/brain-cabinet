@@ -137,6 +137,47 @@
   gap: 0.5rem;
 }
 
+.edit-note-modal__label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.edit-note-modal__file-input {
+  display: none;
+}
+
+.edit-note-modal__image-button {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.625rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text-subtle);
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.edit-note-modal__image-button:hover {
+  background: var(--color-bg);
+  color: var(--color-text);
+  border-color: var(--color-primary);
+}
+
+.edit-note-modal__image-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.edit-note-modal__image-button svg {
+  flex-shrink: 0;
+}
+
 .edit-note-modal__field--content {
   position: relative;
 }
