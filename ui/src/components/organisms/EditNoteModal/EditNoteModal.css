@@ -205,6 +205,7 @@
   gap: 0.75rem;
   justify-content: flex-end;
   padding-top: 0.5rem;
+  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
 }
 
 /* Tablet and up */
