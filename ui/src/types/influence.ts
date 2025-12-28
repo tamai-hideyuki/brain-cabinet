@@ -36,4 +36,15 @@ export type NoteInfluence = {
   summary: InfluenceSummary
   influencers: InfluenceEdge[]
   influenced: InfluenceEdge[]
+  similarNotes?: SimilarNote[]
+}
+
+export type SimilarNote = {
+  noteId: string
+  similarity: number
+  note: {
+    id: string
+    title: string
+    clusterId: number | null
+  } | null
 }

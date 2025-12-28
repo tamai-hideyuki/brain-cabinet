@@ -7,6 +7,7 @@ import { Button } from '../../atoms/Button'
 import { useNote } from '../../../hooks/useNote'
 import { useNoteInfluence } from '../../../hooks/useNoteInfluence'
 import { createBookmarkNode } from '../../../api/bookmarkApi'
+import { updateNote } from '../../../api/notesApi'
 import './NoteDetailPage.css'
 
 export const NoteDetailPage = () => {
@@ -16,6 +17,7 @@ export const NoteDetailPage = () => {
   const { influence, loading: influenceLoading } = useNoteInfluence(id ?? null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [bookmarkAdding, setBookmarkAdding] = useState(false)
+  const [addingLinkNoteId, setAddingLinkNoteId] = useState<string | null>(null)
 
   const handleBack = () => {
     navigate('/ui/notes')
@@ -55,6 +57,22 @@ export const NoteDetailPage = () => {
     }
   }
 
+  const handleAddLink = async (targetNoteId: string, _targetNoteTitle: string) => {
+    if (!note) return
+    setAddingLinkNoteId(targetNoteId)
+    try {
+      const linkText = `\n\n[[${targetNoteId}]]`
+      const newContent = note.content + linkText
+      await updateNote(note.id, note.title, newContent)
+      reload()
+    } catch (e) {
+      alert('リンクの追加に失敗しました')
+      console.error(e)
+    } finally {
+      setAddingLinkNoteId(null)
+    }
+  }
+
   return (
     <MainLayout>
       <div className="note-detail-page">
@@ -76,6 +94,8 @@ export const NoteDetailPage = () => {
           onEdit={handleEdit}
           onAddBookmark={handleAddBookmark}
           bookmarkAdding={bookmarkAdding}
+          onAddLink={handleAddLink}
+          addingLinkNoteId={addingLinkNoteId}
         />
       </div>
       {isEditModalOpen && note && (

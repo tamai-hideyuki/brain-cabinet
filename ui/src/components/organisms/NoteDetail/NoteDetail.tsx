@@ -29,6 +29,8 @@ type NoteDetailProps = {
   onEdit: () => void
   onAddBookmark?: () => void
   bookmarkAdding?: boolean
+  onAddLink?: (noteId: string, noteTitle: string) => void
+  addingLinkNoteId?: string | null
 }
 
 export const NoteDetail = ({
@@ -44,6 +46,8 @@ export const NoteDetail = ({
   onEdit,
   onAddBookmark,
   bookmarkAdding,
+  onAddLink,
+  addingLinkNoteId,
 }: NoteDetailProps) => {
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null)
   const [historyLoaded, setHistoryLoaded] = useState(false)
@@ -173,6 +177,8 @@ export const NoteDetail = ({
         influence={influence}
         loading={influenceLoading}
         onNoteClick={onInfluenceNoteClick}
+        onAddLink={onAddLink}
+        addingLinkNoteId={addingLinkNoteId}
       />
     </article>
   )

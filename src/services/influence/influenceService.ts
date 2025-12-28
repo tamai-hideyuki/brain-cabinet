@@ -47,6 +47,11 @@ export type InfluenceEdge = {
   createdAt?: number;
 };
 
+export type InfluenceEdgeWithNoteInfo = InfluenceEdge & {
+  sourceNote?: { id: string; title: string; clusterId: number | null } | null;
+  targetNote?: { id: string; title: string; clusterId: number | null } | null;
+};
+
 /**
  * 時間減衰適用済みの影響エッジ (v5.7)
  */
@@ -144,7 +149,7 @@ export async function removeInfluenceEdges(noteId: string): Promise<void> {
 export async function getInfluencersOf(
   noteId: string,
   limit: number = 10
-): Promise<InfluenceEdge[]> {
+): Promise<InfluenceEdgeWithNoteInfo[]> {
   const rows = await db.all<{
     source_note_id: string;
     target_note_id: string;
@@ -152,11 +157,22 @@ export async function getInfluencersOf(
     cosine_sim: number;
     drift_score: number;
     created_at: number;
+    source_title: string | null;
+    source_cluster_id: number | null;
   }>(sql`
-    SELECT source_note_id, target_note_id, weight, cosine_sim, drift_score, created_at
-    FROM note_influence_edges
-    WHERE target_note_id = ${noteId}
-    ORDER BY weight DESC
+    SELECT
+      e.source_note_id,
+      e.target_note_id,
+      e.weight,
+      e.cosine_sim,
+      e.drift_score,
+      e.created_at,
+      n.title as source_title,
+      n.cluster_id as source_cluster_id
+    FROM note_influence_edges e
+    LEFT JOIN notes n ON e.source_note_id = n.id
+    WHERE e.target_note_id = ${noteId}
+    ORDER BY e.weight DESC
     LIMIT ${limit}
   `);
 
@@ -167,6 +183,9 @@ export async function getInfluencersOf(
     cosineSim: r.cosine_sim,
     driftScore: r.drift_score,
     createdAt: r.created_at,
+    sourceNote: r.source_title
+      ? { id: r.source_note_id, title: r.source_title, clusterId: r.source_cluster_id }
+      : null,
   }));
 }
 
@@ -226,7 +245,7 @@ export async function getInfluencersOfWithDecay(
 export async function getInfluencedBy(
   noteId: string,
   limit: number = 10
-): Promise<InfluenceEdge[]> {
+): Promise<InfluenceEdgeWithNoteInfo[]> {
   const rows = await db.all<{
     source_note_id: string;
     target_note_id: string;
@@ -234,11 +253,22 @@ export async function getInfluencedBy(
     cosine_sim: number;
     drift_score: number;
     created_at: number;
+    target_title: string | null;
+    target_cluster_id: number | null;
   }>(sql`
-    SELECT source_note_id, target_note_id, weight, cosine_sim, drift_score, created_at
-    FROM note_influence_edges
-    WHERE source_note_id = ${noteId}
-    ORDER BY weight DESC
+    SELECT
+      e.source_note_id,
+      e.target_note_id,
+      e.weight,
+      e.cosine_sim,
+      e.drift_score,
+      e.created_at,
+      n.title as target_title,
+      n.cluster_id as target_cluster_id
+    FROM note_influence_edges e
+    LEFT JOIN notes n ON e.target_note_id = n.id
+    WHERE e.source_note_id = ${noteId}
+    ORDER BY e.weight DESC
     LIMIT ${limit}
   `);
 
@@ -249,6 +279,9 @@ export async function getInfluencedBy(
     cosineSim: r.cosine_sim,
     driftScore: r.drift_score,
     createdAt: r.created_at,
+    targetNote: r.target_title
+      ? { id: r.target_note_id, title: r.target_title, clusterId: r.target_cluster_id }
+      : null,
   }));
 }
 
