@@ -136,6 +136,8 @@
   gap: 0.75rem;
   justify-content: flex-end;
   padding-top: 0.5rem;
+  /* モバイル時のStatusBar用のスペースを確保 */
+  padding-bottom: calc(32px + env(safe-area-inset-bottom));
 }
 
 /* Tablet and up */
@@ -164,5 +166,9 @@
 
   .create-note-modal__form {
     padding: 1.25rem;
+  }
+
+  .create-note-modal__actions {
+    padding-bottom: 0;
   }
 }

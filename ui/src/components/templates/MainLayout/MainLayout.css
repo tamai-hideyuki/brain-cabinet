@@ -10,8 +10,8 @@
 .main-layout__content {
   flex: 1;
   padding: 0.75rem;
-  /* StatusBar用のスペースを確保（28px + safe-area） */
-  padding-bottom: calc(28px + max(0.75rem, env(safe-area-inset-bottom)));
+  /* StatusBar用のスペースを確保（モバイル: 32px + safe-area） */
+  padding-bottom: calc(32px + max(0.75rem, env(safe-area-inset-bottom)));
   max-width: 1200px;
   width: 100%;
   margin: 0 auto;
@@ -21,7 +21,7 @@
 @media (min-width: 640px) {
   .main-layout__content {
     padding: 1.5rem;
-    /* StatusBar用のスペースを確保（28px + safe-area） */
+    /* StatusBar用のスペースを確保（デスクトップ: 28px + safe-area） */
     padding-bottom: calc(28px + max(1.5rem, env(safe-area-inset-bottom)));
   }
 }
