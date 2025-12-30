@@ -13,7 +13,19 @@ import { Button } from '../../atoms/Button'
 import './NotesPage.css'
 
 export const NotesPage = () => {
-  const { notes, loading, error, search, setSearch, executeSearch, reload } = useNotes()
+  const {
+    notes,
+    loading,
+    error,
+    search,
+    setSearch,
+    executeSearch,
+    reload,
+    currentPage,
+    totalPages,
+    totalNotes,
+    goToPage,
+  } = useNotes()
   const { candidates: promotionCandidates } = usePromotionCandidates()
   const navigate = useNavigate()
   const [isFilterOpen, setIsFilterOpen] = useState(false)
@@ -59,7 +71,12 @@ export const NotesPage = () => {
           <div className="notes-page__title-row">
             <Text variant="title">ノート一覧</Text>
             <Text variant="caption">
-              {activeFilterCount > 0 ? `${filteredNotes.length} / ${notes.length}` : notes.length} 件
+              {activeFilterCount > 0
+                ? `${filteredNotes.length} / ${notes.length}`
+                : totalPages > 1
+                  ? `${(currentPage - 1) * 30 + 1}-${Math.min(currentPage * 30, totalNotes)} / ${totalNotes}`
+                  : totalNotes}{' '}
+              件
             </Text>
           </div>
           <div className="notes-page__actions">
@@ -97,6 +114,46 @@ export const NotesPage = () => {
           onNoteClick={handleNoteClick}
           promotionCandidates={promotionCandidates}
         />
+        {/* ページネーション（2ページ以上ある場合のみ表示） */}
+        {totalPages > 1 && !search && (
+          <div className="notes-page__pagination">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => goToPage(1)}
+              disabled={currentPage === 1}
+            >
+              ⏮ 最初
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              ← 前へ
+            </Button>
+            <Text variant="body">
+              {currentPage} / {totalPages} ページ
+            </Text>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+            >
+              次へ →
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => goToPage(totalPages)}
+              disabled={currentPage === totalPages}
+            >
+              最後 ⏭
+            </Button>
+          </div>
+        )}
       </div>
       <FilterDrawer
         isOpen={isFilterOpen}

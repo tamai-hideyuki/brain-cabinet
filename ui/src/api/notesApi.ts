@@ -22,11 +22,19 @@ type SearchQueryResult = Array<Note & { score: number }>
 export type FetchNotesResult = {
   notes: Note[]
   total: number
+  limit?: number
+  offset?: number
 }
 
-export const fetchNotes = async (limit: number = 100): Promise<FetchNotesResult> => {
+export type FetchNotesOptions = {
+  limit?: number
+  offset?: number
+}
+
+export const fetchNotes = async (options: FetchNotesOptions = {}): Promise<FetchNotesResult> => {
+  const { limit = 30, offset = 0 } = options
   // limit: 0 で全件取得
-  const result = await sendCommand<NoteListResult>('note.list', { limit })
+  const result = await sendCommand<NoteListResult>('note.list', { limit, offset })
   // snippet を content に変換して Note 型に適合させる
   const notes = result.notes.map((n) => ({
     id: n.id,
@@ -39,7 +47,7 @@ export const fetchNotes = async (limit: number = 100): Promise<FetchNotesResult>
     createdAt: n.createdAt,
     updatedAt: n.updatedAt,
   }))
-  return { notes, total: result.total }
+  return { notes, total: result.total, limit, offset }
 }
 
 export const fetchNote = async (id: string): Promise<Note> => {

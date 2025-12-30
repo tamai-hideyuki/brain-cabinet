@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import type { Note, SearchMode } from '../../types/note'
 import { fetchNotes, searchNotes } from '../../api/notesApi'
+
+const PAGE_SIZE = 30
 
 // ノートを更新日時優先、作成日時が新しい順にソート
 const sortNotes = (notes: Note[]): Note[] => {
@@ -21,22 +23,31 @@ export const useNotes = () => {
   const [search, setSearch] = useState('')
   const [searchMode, setSearchMode] = useState<SearchMode>('keyword')
 
-  const loadNotes = async () => {
+  // ページネーション用state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalNotes, setTotalNotes] = useState(0)
+
+  const totalPages = Math.ceil(totalNotes / PAGE_SIZE)
+
+  const loadNotes = useCallback(async (page: number = currentPage) => {
     setLoading(true)
     setError(null)
     try {
-      const result = await fetchNotes()
+      const offset = (page - 1) * PAGE_SIZE
+      const result = await fetchNotes({ limit: PAGE_SIZE, offset })
       setNotes(sortNotes(result.notes))
+      setTotalNotes(result.total)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error')
     } finally {
       setLoading(false)
     }
-  }
+  }, [currentPage])
 
   const executeSearch = async () => {
     if (!search.trim()) {
-      loadNotes()
+      setCurrentPage(1)
+      loadNotes(1)
       return
     }
     setLoading(true)
@@ -44,6 +55,8 @@ export const useNotes = () => {
     try {
       const data = await searchNotes(search, searchMode)
       setNotes(sortNotes(data))
+      setTotalNotes(data.length)
+      setCurrentPage(1)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error')
     } finally {
@@ -51,8 +64,14 @@ export const useNotes = () => {
     }
   }
 
+  const goToPage = (page: number) => {
+    if (page < 1 || page > totalPages) return
+    setCurrentPage(page)
+    loadNotes(page)
+  }
+
   useEffect(() => {
-    loadNotes()
+    loadNotes(1)
   }, [])
 
   return {
@@ -64,6 +83,11 @@ export const useNotes = () => {
     searchMode,
     setSearchMode,
     executeSearch,
-    reload: loadNotes,
+    reload: () => loadNotes(currentPage),
+    // ページネーション
+    currentPage,
+    totalPages,
+    totalNotes,
+    goToPage,
   }
 }

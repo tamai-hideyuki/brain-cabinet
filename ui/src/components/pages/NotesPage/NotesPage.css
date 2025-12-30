@@ -27,6 +27,18 @@
   width: 100%;
 }
 
+/* Pagination */
+.notes-page__pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1rem 0;
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px) + 60px);
+  border-top: 1px solid var(--color-border);
+  margin-top: 1rem;
+}
+
 /* モバイル用の検索バー最適化 */
 @media (max-width: 639px) {
   .notes-page__search input {

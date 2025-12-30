@@ -259,6 +259,20 @@
   overflow-y: auto;
 }
 
+/* Pagination */
+.note-timeline__pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem 1rem;
+  padding: 1rem;
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px) + 60px); /* StatusBar分の余白 */
+  border-top: 1px solid var(--color-border);
+  margin-top: 1rem;
+  background: var(--color-bg);
+}
+
 /* Mobile - カレンダーグリッドの最適化 */
 @media (max-width: 639px) {
   .note-timeline__header {

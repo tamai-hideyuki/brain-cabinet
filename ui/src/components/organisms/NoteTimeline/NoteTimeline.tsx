@@ -9,6 +9,8 @@ import './NoteTimeline.css'
 
 type ViewMode = 'timeline' | 'calendar'
 
+const PAGE_SIZE = 30
+
 type NoteTimelineProps = {
   onNoteClick?: (noteId: string) => void
 }
@@ -89,7 +91,13 @@ export const NoteTimeline = ({ onNoteClick }: NoteTimelineProps) => {
   })
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
 
-  // タイムラインモード: 最新100件を取得
+  // ページネーション用state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalNotes, setTotalNotes] = useState(0)
+
+  const totalPages = Math.ceil(totalNotes / PAGE_SIZE)
+
+  // タイムラインモード: ページネーション対応
   // カレンダーモード: 全件取得
   useEffect(() => {
     const loadNotes = async () => {
@@ -97,13 +105,16 @@ export const NoteTimeline = ({ onNoteClick }: NoteTimelineProps) => {
         setLoading(true)
         if (viewMode === 'calendar' && !allNotesLoaded) {
           // カレンダーモードでは全件取得（limit: 0）
-          const result = await fetchNotes(0)
+          const result = await fetchNotes({ limit: 0 })
           setNotes(result.notes)
+          setTotalNotes(result.total)
           setAllNotesLoaded(true)
-        } else if (viewMode === 'timeline' && notes.length === 0) {
-          // タイムラインモードでは最新100件
-          const result = await fetchNotes(100)
+        } else if (viewMode === 'timeline') {
+          // タイムラインモードでは30件ずつページネーション
+          const offset = (currentPage - 1) * PAGE_SIZE
+          const result = await fetchNotes({ limit: PAGE_SIZE, offset })
           setNotes(result.notes)
+          setTotalNotes(result.total)
         }
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Unknown error')
@@ -112,7 +123,7 @@ export const NoteTimeline = ({ onNoteClick }: NoteTimelineProps) => {
       }
     }
     loadNotes()
-  }, [viewMode, allNotesLoaded, notes.length])
+  }, [viewMode, allNotesLoaded, currentPage])
 
   // 日付でグループ化（タイムライン用）
   const groupedByDate = useMemo((): DayGroup[] => {
@@ -209,10 +220,15 @@ export const NoteTimeline = ({ onNoteClick }: NoteTimelineProps) => {
             カレンダー
           </Button>
         </div>
-        <Text variant="caption">{notes.length} ノート</Text>
+        <Text variant="caption">
+          {viewMode === 'timeline' && totalNotes > PAGE_SIZE
+            ? `${(currentPage - 1) * PAGE_SIZE + 1}-${Math.min(currentPage * PAGE_SIZE, totalNotes)} / ${totalNotes} ノート`
+            : `${notes.length} ノート`}
+        </Text>
       </div>
 
       {viewMode === 'timeline' ? (
+        <>
         <div className="note-timeline__list">
           {groupedByDate.map((group) => (
             <div key={group.date} className="note-timeline__day">
@@ -250,6 +266,48 @@ export const NoteTimeline = ({ onNoteClick }: NoteTimelineProps) => {
             </div>
           ))}
         </div>
+
+        {/* ページネーション（2ページ以上ある場合のみ表示） */}
+        {totalPages > 1 && (
+          <div className="note-timeline__pagination">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setCurrentPage(1)}
+              disabled={currentPage === 1}
+            >
+              ⏮ 最初
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+            >
+              ← 前へ
+            </Button>
+            <Text variant="body">
+              {currentPage} / {totalPages} ページ
+            </Text>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+            >
+              次へ →
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setCurrentPage(totalPages)}
+              disabled={currentPage === totalPages}
+            >
+              最後 ⏭
+            </Button>
+          </div>
+        )}
+        </>
       ) : (
         <div className="note-timeline__calendar">
           <div className="note-timeline__calendar-nav">
