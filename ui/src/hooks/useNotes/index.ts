@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import type { Note, SearchMode } from '../../types/note'
 import { fetchNotes, searchNotes } from '../../api/notesApi'
 
@@ -17,19 +18,19 @@ const sortNotes = (notes: Note[]): Note[] => {
 }
 
 export const useNotes = () => {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [notes, setNotes] = useState<Note[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [searchMode, setSearchMode] = useState<SearchMode>('keyword')
-
-  // ページネーション用state
-  const [currentPage, setCurrentPage] = useState(1)
   const [totalNotes, setTotalNotes] = useState(0)
 
+  // URLからページ番号を取得（デフォルト1）
+  const currentPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
   const totalPages = Math.ceil(totalNotes / PAGE_SIZE)
 
-  const loadNotes = useCallback(async (page: number = currentPage) => {
+  const loadNotes = useCallback(async (page: number) => {
     setLoading(true)
     setError(null)
     try {
@@ -42,11 +43,11 @@ export const useNotes = () => {
     } finally {
       setLoading(false)
     }
-  }, [currentPage])
+  }, [])
 
   const executeSearch = async () => {
     if (!search.trim()) {
-      setCurrentPage(1)
+      setSearchParams({})
       loadNotes(1)
       return
     }
@@ -56,7 +57,7 @@ export const useNotes = () => {
       const data = await searchNotes(search, searchMode)
       setNotes(sortNotes(data))
       setTotalNotes(data.length)
-      setCurrentPage(1)
+      setSearchParams({})
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error')
     } finally {
@@ -66,13 +67,19 @@ export const useNotes = () => {
 
   const goToPage = (page: number) => {
     if (page < 1 || page > totalPages) return
-    setCurrentPage(page)
+    // URLパラメータを更新（page=1の場合はパラメータを削除）
+    if (page === 1) {
+      setSearchParams({})
+    } else {
+      setSearchParams({ page: String(page) })
+    }
     loadNotes(page)
   }
 
+  // 初回ロード時とURLのpage変更時にデータを取得
   useEffect(() => {
-    loadNotes(1)
-  }, [])
+    loadNotes(currentPage)
+  }, [currentPage, loadNotes])
 
   return {
     notes,
