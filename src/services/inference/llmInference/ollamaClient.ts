@@ -40,6 +40,14 @@ function autoRepairJson(output: string): string {
   repaired = repaired.replace(/^```json?\n?/i, "");
   repaired = repaired.replace(/\n?```$/i, "");
 
+  // JSONオブジェクトを抽出（LLMが説明文を付けた場合に対応）
+  // 最初の { から最後の } までを抽出
+  const firstBrace = repaired.indexOf("{");
+  const lastBrace = repaired.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    repaired = repaired.slice(firstBrace, lastBrace + 1);
+  }
+
   // 改行をスペースに置換（JSON内の不正改行対策）
   repaired = repaired.replace(/\n/g, " ");
 
