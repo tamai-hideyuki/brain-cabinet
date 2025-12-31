@@ -41,11 +41,10 @@ function autoRepairJson(output: string): string {
   repaired = repaired.replace(/\n?```$/i, "");
 
   // JSONオブジェクトを抽出（LLMが説明文を付けた場合に対応）
-  // 最初の { から最後の } までを抽出
+  // 最初の { から開始
   const firstBrace = repaired.indexOf("{");
-  const lastBrace = repaired.lastIndexOf("}");
-  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-    repaired = repaired.slice(firstBrace, lastBrace + 1);
+  if (firstBrace !== -1) {
+    repaired = repaired.slice(firstBrace);
   }
 
   // 改行をスペースに置換（JSON内の不正改行対策）
@@ -58,6 +57,101 @@ function autoRepairJson(output: string): string {
   repaired = repaired.replace(/,\s*}/g, "}");
   repaired = repaired.replace(/,\s*]/g, "]");
 
+  // 括弧のバランスを修復
+  repaired = repairBrackets(repaired);
+
+  return repaired;
+}
+
+/**
+ * 括弧のバランスを修復する
+ * 開いている括弧を閉じる、または不完全な末尾を削除
+ */
+function repairBrackets(json: string): string {
+  let repaired = json;
+
+  // 開いている括弧をカウント
+  let braceCount = 0;
+  let bracketCount = 0;
+  let inString = false;
+  let escapeNext = false;
+
+  for (const char of repaired) {
+    if (escapeNext) {
+      escapeNext = false;
+      continue;
+    }
+    if (char === "\\") {
+      escapeNext = true;
+      continue;
+    }
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+
+    if (char === "{") braceCount++;
+    if (char === "}") braceCount--;
+    if (char === "[") bracketCount++;
+    if (char === "]") bracketCount--;
+  }
+
+  // 文字列が閉じていない場合
+  if (inString) {
+    repaired += '"';
+    // 再度カウント
+    return repairBrackets(repaired);
+  }
+
+  // 括弧が閉じていない場合、末尾の不完全な要素を削除して括弧を追加
+  if (braceCount > 0 || bracketCount > 0) {
+    // 末尾の不完全な要素を削除（複数パターン対応）
+    // 1. 不完全な文字列値: "key": "incomplete...
+    repaired = repaired.replace(/,\s*"[^"]*"\s*:\s*"[^"]*$/, "");
+    // 2. 不完全なキー: "incomplete...
+    repaired = repaired.replace(/,\s*"[^"]*$/, "");
+    // 3. 不完全なオブジェクト: { ...
+    repaired = repaired.replace(/,\s*\{[^}]*$/, "");
+    // 4. 末尾のカンマ
+    repaired = repaired.replace(/,\s*$/, "");
+
+    // 再度カウントして正確な括弧数を計算
+    braceCount = 0;
+    bracketCount = 0;
+    inString = false;
+    escapeNext = false;
+
+    for (const char of repaired) {
+      if (escapeNext) {
+        escapeNext = false;
+        continue;
+      }
+      if (char === "\\") {
+        escapeNext = true;
+        continue;
+      }
+      if (char === '"') {
+        inString = !inString;
+        continue;
+      }
+      if (inString) continue;
+
+      if (char === "{") braceCount++;
+      if (char === "}") braceCount--;
+      if (char === "[") bracketCount++;
+      if (char === "]") bracketCount--;
+    }
+
+    // 閉じ括弧を追加
+    for (let i = 0; i < bracketCount; i++) {
+      repaired += "]";
+    }
+    for (let i = 0; i < braceCount; i++) {
+      repaired += "}";
+    }
+  }
+
   return repaired;
 }
 
@@ -65,16 +159,30 @@ function autoRepairJson(output: string): string {
  * JSON パースを試行し、失敗時は修復して再試行
  */
 function tryParseWithRepair(output: string, maxRetries = 2): object {
-  let current = output;
+  // 最初から修復を適用（LLMが余計な説明文を付けることが多い）
+  let current = autoRepairJson(output);
 
   for (let i = 0; i < maxRetries; i++) {
     try {
       return JSON.parse(current);
-    } catch {
-      logger.debug({ attempt: i + 1, output: current.slice(0, 100) }, "JSON parse failed, attempting repair");
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      logger.warn({
+        attempt: i + 1,
+        maxRetries,
+        originalOutput: output.slice(0, 500),
+        repairedOutput: current.slice(0, 500),
+        parseError: errorMessage,
+      }, "JSON parse failed, attempting further repair");
       current = autoRepairJson(current);
     }
   }
+
+  // 最終的に失敗した場合、詳細なエラー情報をログに残す
+  logger.error({
+    originalOutput: output,
+    finalRepairedOutput: current,
+  }, "JSON parse failed after all repair attempts");
 
   throw new Error(`JSON parse failed after ${maxRetries} repair attempts`);
 }
@@ -173,7 +281,7 @@ export async function inferWithOllama(
     options: {
       temperature,
       seed,
-      num_predict: 500, // 出力トークン上限
+      num_predict: 1000, // 出力トークン上限（500では切れるケースがあったため増加）
     },
   });
 
