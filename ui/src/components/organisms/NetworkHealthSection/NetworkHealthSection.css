@@ -1,0 +1,209 @@
+.network-health {
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.network-health--loading,
+.network-health--error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 120px;
+}
+
+.network-health--error {
+  color: var(--color-error);
+}
+
+.network-health__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.network-health__empty {
+  padding: 1rem;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+/* ゲージエリア */
+.network-health__gauges {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+}
+
+.network-health__gauge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.network-health__gauge-circle {
+  position: relative;
+  width: 80px;
+  height: 80px;
+}
+
+.network-health__gauge-circle svg {
+  width: 100%;
+  height: 100%;
+}
+
+.network-health__gauge-progress {
+  transition: stroke-dashoffset 0.5s ease;
+}
+
+.network-health__gauge-value {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  text-align: center;
+}
+
+.network-health__gauge-label {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+}
+
+.network-health__status-label {
+  font-size: 0.75rem;
+}
+
+/* 統計エリア */
+.network-health__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem;
+  background: var(--color-bg);
+  border-radius: 6px;
+}
+
+.network-health__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+  text-align: center;
+}
+
+.network-health__stat-value {
+  font-size: 1rem;
+}
+
+.network-health__stat-value--success {
+  color: var(--color-success);
+}
+
+.network-health__stat-value--warning {
+  color: var(--color-warning);
+}
+
+.network-health__stat-value--error {
+  color: var(--color-error);
+}
+
+.network-health__message {
+  font-size: 0.75rem;
+}
+
+/* ヘルスインジケーター */
+.network-health__indicator {
+  padding: 0.5rem;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.network-health__alert {
+  color: var(--color-warning);
+}
+
+.network-health__success {
+  color: var(--color-success);
+}
+
+/* タブレット・大型スマホ */
+@media (max-width: 640px) {
+  .network-health {
+    padding: 0.875rem;
+  }
+
+  .network-health__gauges {
+    gap: 1.5rem;
+  }
+}
+
+/* iPhone Plus / Max */
+@media (max-width: 480px) {
+  .network-health__gauges {
+    gap: 1rem;
+  }
+
+  .network-health__gauge-circle {
+    width: 70px;
+    height: 70px;
+  }
+
+  .network-health__stats {
+    gap: 0.375rem;
+    padding: 0.375rem;
+  }
+}
+
+/* iPhone SE / 小型スマホ */
+@media (max-width: 375px) {
+  .network-health {
+    padding: 0.75rem;
+  }
+
+  .network-health__gauges {
+    gap: 0.75rem;
+  }
+
+  .network-health__gauge-circle {
+    width: 60px;
+    height: 60px;
+  }
+
+  .network-health__stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .network-health__stat:last-child {
+    grid-column: span 2;
+  }
+}
+
+/* 横向きiPhone対応 */
+@media (max-height: 450px) and (orientation: landscape) {
+  .network-health__gauges {
+    gap: 2rem;
+  }
+
+  .network-health__gauge-circle {
+    width: 60px;
+    height: 60px;
+  }
+
+  .network-health__stats {
+    margin-bottom: 0.5rem;
+    padding: 0.375rem;
+  }
+}

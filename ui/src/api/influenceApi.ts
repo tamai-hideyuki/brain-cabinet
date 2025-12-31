@@ -1,5 +1,44 @@
 import type { NoteInfluence, InfluenceEdge, SimilarNote } from '../types/influence'
 import { sendCommand } from './commandClient'
+import { fetchWithAuth } from './client'
+
+const API_BASE = import.meta.env.VITE_API_URL || ''
+
+/**
+ * 影響サマリーのノート情報
+ */
+export type InfluenceSummaryNote = {
+  noteId: string
+  title: string
+  clusterId: number | null
+  edgeCount: number
+  totalInfluence: number
+}
+
+/**
+ * 影響サマリー レスポンス
+ */
+export type InfluenceSummary = {
+  overview: {
+    totalEdges: number
+    avgWeight: number
+    maxWeight: number
+  }
+  topInfluenced: InfluenceSummaryNote[]
+  topInfluencers: InfluenceSummaryNote[]
+  insight: string
+}
+
+/**
+ * 影響グラフのサマリーを取得
+ */
+export const fetchInfluenceSummary = async (): Promise<InfluenceSummary> => {
+  const res = await fetchWithAuth(`${API_BASE}/api/influence/summary`)
+  if (!res.ok) {
+    throw new Error(`Failed to fetch influence summary: ${res.status}`)
+  }
+  return res.json()
+}
 
 type NoteInfo = {
   id: string

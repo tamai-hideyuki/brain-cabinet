@@ -1,0 +1,213 @@
+.cluster-insight {
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.cluster-insight__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.cluster-insight__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.cluster-insight__card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 0.875rem;
+  transition: border-color 0.15s;
+}
+
+.cluster-insight__card:hover {
+  border-color: var(--color-primary);
+}
+
+.cluster-insight__card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.cluster-insight__role {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cluster-insight__role-icon {
+  font-size: 1.125rem;
+}
+
+.cluster-insight__trend {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--color-text-muted);
+}
+
+.cluster-insight__trend-icon {
+  font-size: 0.875rem;
+}
+
+.cluster-insight__keywords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-bottom: 0.75rem;
+}
+
+.cluster-insight__keyword {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  border-radius: 12px;
+}
+
+.cluster-insight__metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.cluster-insight__metric {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.cluster-insight__cohesion {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cluster-insight__cohesion-bar {
+  height: 6px;
+  border-radius: 3px;
+  min-width: 20px;
+  max-width: 50px;
+  transition: width 0.3s ease;
+}
+
+.cluster-insight__description {
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+}
+
+/* タブレット・大型スマホ */
+@media (max-width: 640px) {
+  .cluster-insight {
+    padding: 0.875rem;
+  }
+
+  .cluster-insight__card {
+    padding: 0.75rem;
+  }
+}
+
+/* iPhone Plus / Max (414px〜428px) */
+@media (max-width: 480px) {
+  .cluster-insight__metrics {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.375rem;
+  }
+
+  .cluster-insight__metric {
+    min-width: 0;
+  }
+
+  .cluster-insight__cohesion-bar {
+    max-width: 40px;
+  }
+
+  .cluster-insight__keyword {
+    font-size: 0.6875rem;
+    padding: 0.125rem 0.375rem;
+  }
+}
+
+/* iPhone SE / 小型スマホ (320px〜375px) */
+@media (max-width: 375px) {
+  .cluster-insight {
+    padding: 0.75rem;
+  }
+
+  .cluster-insight__card {
+    padding: 0.625rem;
+  }
+
+  .cluster-insight__card-header {
+    flex-wrap: wrap;
+    gap: 0.375rem;
+  }
+
+  .cluster-insight__role-icon {
+    font-size: 1rem;
+  }
+
+  .cluster-insight__metrics {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+
+  .cluster-insight__metric:last-child {
+    grid-column: span 2;
+  }
+
+  .cluster-insight__cohesion {
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+
+  .cluster-insight__cohesion-bar {
+    width: 100%;
+    max-width: none;
+  }
+
+  .cluster-insight__keywords {
+    gap: 0.25rem;
+  }
+
+  .cluster-insight__keyword {
+    font-size: 0.625rem;
+    padding: 0.0625rem 0.3125rem;
+  }
+
+  .cluster-insight__description {
+    font-size: 0.75rem;
+  }
+}
+
+/* 横向きiPhone対応 */
+@media (max-height: 450px) and (orientation: landscape) {
+  .cluster-insight__list {
+    gap: 0.5rem;
+  }
+
+  .cluster-insight__card {
+    padding: 0.5rem 0.75rem;
+  }
+
+  .cluster-insight__keywords {
+    margin-bottom: 0.5rem;
+  }
+
+  .cluster-insight__description {
+    padding-top: 0.375rem;
+  }
+}

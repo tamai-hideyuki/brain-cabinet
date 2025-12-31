@@ -1,0 +1,233 @@
+.activity-calendar {
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.activity-calendar--loading,
+.activity-calendar--error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 120px;
+}
+
+.activity-calendar--error {
+  color: var(--color-error);
+}
+
+.activity-calendar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.activity-calendar__empty {
+  padding: 1rem;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+/* サマリー */
+.activity-calendar__summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  background: var(--color-bg);
+  border-radius: 6px;
+}
+
+.activity-calendar__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+  text-align: center;
+}
+
+.activity-calendar__stat-value {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+/* グリッドコンテナ */
+.activity-calendar__grid-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+/* 月ラベル */
+.activity-calendar__month-labels {
+  display: grid;
+  grid-auto-columns: 14px;
+  grid-auto-flow: column;
+  gap: 2px;
+  margin-left: 24px;
+  margin-bottom: 0.25rem;
+  min-height: 16px;
+}
+
+.activity-calendar__month-label {
+  font-size: 0.625rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/* 曜日ラベル */
+.activity-calendar__day-labels {
+  display: none;
+}
+
+/* ヒートマップグリッド */
+.activity-calendar__grid {
+  display: flex;
+  gap: 2px;
+}
+
+.activity-calendar__week {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* セル */
+.activity-calendar__cell {
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  transition: transform 0.1s;
+}
+
+.activity-calendar__cell:hover {
+  transform: scale(1.2);
+}
+
+.activity-calendar__cell--level-empty {
+  background: transparent;
+}
+
+.activity-calendar__cell--level-0 {
+  background: var(--color-border);
+}
+
+.activity-calendar__cell--level-1 {
+  background: color-mix(in srgb, var(--color-primary) 25%, var(--color-bg));
+}
+
+.activity-calendar__cell--level-2 {
+  background: color-mix(in srgb, var(--color-primary) 50%, var(--color-bg));
+}
+
+.activity-calendar__cell--level-3 {
+  background: color-mix(in srgb, var(--color-primary) 75%, var(--color-bg));
+}
+
+.activity-calendar__cell--level-4 {
+  background: var(--color-primary);
+}
+
+/* 凡例 */
+.activity-calendar__legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.375rem;
+  margin-top: 0.5rem;
+}
+
+.activity-calendar__legend-cells {
+  display: flex;
+  gap: 2px;
+}
+
+.activity-calendar__legend .activity-calendar__cell {
+  width: 10px;
+  height: 10px;
+}
+
+.activity-calendar__legend .activity-calendar__cell:hover {
+  transform: none;
+}
+
+/* タブレット・大型スマホ */
+@media (max-width: 640px) {
+  .activity-calendar {
+    padding: 0.875rem;
+  }
+
+  .activity-calendar__cell {
+    width: 12px;
+    height: 12px;
+  }
+
+  .activity-calendar__month-labels {
+    grid-auto-columns: 12px;
+  }
+}
+
+/* iPhone Plus / Max */
+@media (max-width: 480px) {
+  .activity-calendar__summary {
+    gap: 0.375rem;
+    padding: 0.375rem;
+  }
+
+  .activity-calendar__stat-value {
+    font-size: 1.125rem;
+  }
+
+  .activity-calendar__cell {
+    width: 10px;
+    height: 10px;
+  }
+
+  .activity-calendar__month-labels {
+    grid-auto-columns: 10px;
+    margin-left: 0;
+  }
+}
+
+/* iPhone SE / 小型スマホ */
+@media (max-width: 375px) {
+  .activity-calendar {
+    padding: 0.75rem;
+  }
+
+  .activity-calendar__cell {
+    width: 8px;
+    height: 8px;
+  }
+
+  .activity-calendar__month-labels {
+    grid-auto-columns: 8px;
+  }
+
+  .activity-calendar__legend .activity-calendar__cell {
+    width: 8px;
+    height: 8px;
+  }
+}
+
+/* 横向きiPhone対応 */
+@media (max-height: 450px) and (orientation: landscape) {
+  .activity-calendar__summary {
+    margin-bottom: 0.5rem;
+    padding: 0.375rem;
+  }
+
+  .activity-calendar__cell {
+    width: 10px;
+    height: 10px;
+  }
+}

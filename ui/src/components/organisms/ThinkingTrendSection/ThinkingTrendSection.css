@@ -1,0 +1,233 @@
+.thinking-trend {
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.thinking-trend--loading,
+.thinking-trend--error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 120px;
+}
+
+.thinking-trend--error {
+  color: var(--color-error);
+}
+
+.thinking-trend__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.thinking-trend__empty {
+  padding: 1rem;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+/* サマリー統計 */
+.thinking-trend__summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: var(--color-bg);
+  border-radius: 6px;
+}
+
+.thinking-trend__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+/* チャート */
+.thinking-trend__chart {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.thinking-trend__chart-bars {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  height: 100px;
+  padding: 0.5rem 0;
+  gap: 0.25rem;
+}
+
+.thinking-trend__bar-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.thinking-trend__bar-group--today {
+  background: var(--color-primary-light);
+  border-radius: 4px;
+  padding: 0.25rem;
+  margin: -0.25rem;
+}
+
+.thinking-trend__bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 80px;
+  width: 100%;
+  justify-content: center;
+}
+
+.thinking-trend__bar {
+  width: 8px;
+  min-height: 4px;
+  border-radius: 2px 2px 0 0;
+  transition: height 0.3s ease;
+}
+
+.thinking-trend__bar--diff {
+  background: var(--color-primary);
+}
+
+.thinking-trend__bar--notes {
+  background: var(--color-success);
+  opacity: 0.7;
+}
+
+.thinking-trend__bar-label {
+  margin-top: 0.25rem;
+  text-align: center;
+}
+
+.thinking-trend__bar-label .text {
+  font-size: 0.625rem;
+}
+
+/* 凡例 */
+.thinking-trend__legend {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.thinking-trend__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.thinking-trend__legend-color {
+  width: 12px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.thinking-trend__legend-color--diff {
+  background: var(--color-primary);
+}
+
+.thinking-trend__legend-color--notes {
+  background: var(--color-success);
+  opacity: 0.7;
+}
+
+/* タブレット・大型スマホ */
+@media (max-width: 640px) {
+  .thinking-trend {
+    padding: 0.875rem;
+  }
+
+  .thinking-trend__summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .thinking-trend__stat:last-child {
+    grid-column: span 2;
+  }
+}
+
+/* iPhone Plus / Max */
+@media (max-width: 480px) {
+  .thinking-trend__chart-bars {
+    height: 80px;
+  }
+
+  .thinking-trend__bars {
+    height: 60px;
+  }
+
+  .thinking-trend__bar {
+    width: 6px;
+  }
+}
+
+/* iPhone SE / 小型スマホ */
+@media (max-width: 375px) {
+  .thinking-trend {
+    padding: 0.75rem;
+  }
+
+  .thinking-trend__summary {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .thinking-trend__stat:last-child {
+    grid-column: span 1;
+  }
+
+  .thinking-trend__chart-bars {
+    height: 70px;
+  }
+
+  .thinking-trend__bars {
+    height: 50px;
+  }
+
+  .thinking-trend__bar {
+    width: 5px;
+  }
+
+  .thinking-trend__bar-label .text {
+    font-size: 0.5625rem;
+  }
+
+  .thinking-trend__legend {
+    gap: 0.5rem;
+  }
+
+  .thinking-trend__legend-color {
+    width: 10px;
+    height: 6px;
+  }
+}
+
+/* 横向きiPhone対応 */
+@media (max-height: 450px) and (orientation: landscape) {
+  .thinking-trend__chart-bars {
+    height: 60px;
+  }
+
+  .thinking-trend__bars {
+    height: 45px;
+  }
+
+  .thinking-trend__summary {
+    margin-bottom: 0.5rem;
+    padding: 0.5rem;
+  }
+}

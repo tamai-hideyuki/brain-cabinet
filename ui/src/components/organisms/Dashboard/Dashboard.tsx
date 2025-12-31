@@ -9,6 +9,11 @@ import { fetchIsolatedNotes, type IsolatedNote } from '../../../api/isolationApi
 import type { Note, PromotionCandidate } from '../../../types/note'
 import type { PtmSummary } from '../../../types/ptm'
 import { WeeklySummarySection } from '../WeeklySummarySection'
+import { ClusterInsightSection } from '../ClusterInsightSection'
+import { ThinkingTrendSection } from '../ThinkingTrendSection'
+import { InfluenceMapSection } from '../InfluenceMapSection'
+import { NetworkHealthSection } from '../NetworkHealthSection'
+import { ActivityCalendarSection } from '../ActivityCalendarSection'
 import './Dashboard.css'
 
 type DashboardProps = {
@@ -161,6 +166,23 @@ export const Dashboard = ({ onNoteClick, onReviewClick }: DashboardProps) => {
           )}
         </div>
       )}
+
+      {/* クラスタインサイト */}
+      {ptm && ptm.topClusters && ptm.topClusters.length > 0 && (
+        <ClusterInsightSection clusters={ptm.topClusters} />
+      )}
+
+      {/* 思考トレンド */}
+      <ThinkingTrendSection range="7d" />
+
+      {/* 影響マップ */}
+      <InfluenceMapSection onNoteClick={onNoteClick} />
+
+      {/* ネットワーク健全性 */}
+      <NetworkHealthSection />
+
+      {/* 活動カレンダー */}
+      <ActivityCalendarSection range="30d" />
 
       {/* LLM推論サマリー */}
       <WeeklySummarySection onNoteClick={onNoteClick} />

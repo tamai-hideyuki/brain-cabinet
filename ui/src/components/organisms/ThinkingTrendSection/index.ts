@@ -1,0 +1,1 @@
+export { ThinkingTrendSection } from './ThinkingTrendSection'

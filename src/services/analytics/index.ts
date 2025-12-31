@@ -77,11 +77,14 @@ export const parseDateRange = (range: string): DateRange => {
 };
 
 /**
- * Unix timestamp を YYYY-MM-DD 形式に変換
+ * Unix timestamp を YYYY-MM-DD 形式に変換（ローカルタイムゾーン）
  */
 export const timestampToDate = (timestamp: number): string => {
   const date = new Date(timestamp * 1000);
-  return date.toISOString().split("T")[0];
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 };
 
 /**
@@ -123,10 +126,11 @@ export const calculateHeatmapLevel = (count: number, maxCount: number): number =
 
 /**
  * Semantic Diff Timeline を取得
- * 日ごとの意味的変化量の推移
+ * 日ごとの意味的変化量の推移（ノート作成・更新も含む）
  */
 export const getSemanticDiffTimeline = async (range: DateRange): Promise<TimelinePoint[]> => {
-  const results = await db
+  // noteHistoryから変更履歴を取得
+  const historyResults = await db
     .select({
       createdAt: noteHistory.createdAt,
       semanticDiff: noteHistory.semanticDiff,
@@ -137,10 +141,22 @@ export const getSemanticDiffTimeline = async (range: DateRange): Promise<Timelin
     )
     .orderBy(noteHistory.createdAt);
 
+  // notesから作成・更新を取得
+  const noteResults = await db
+    .select({
+      createdAt: notes.createdAt,
+      updatedAt: notes.updatedAt,
+    })
+    .from(notes)
+    .where(
+      sql`${notes.createdAt} >= ${range.start} OR ${notes.updatedAt} >= ${range.start}`
+    );
+
   // 日付ごとに集計
   const dailyMap = new Map<string, { total: number; count: number }>();
 
-  for (const row of results) {
+  // noteHistory（変更履歴）を集計
+  for (const row of historyResults) {
     const date = timestampToDate(row.createdAt);
     const diff = row.semanticDiff ? parseFloat(row.semanticDiff) : 0;
 
@@ -149,6 +165,28 @@ export const getSemanticDiffTimeline = async (range: DateRange): Promise<Timelin
       total: existing.total + diff,
       count: existing.count + 1,
     });
+  }
+
+  // notes（作成）を集計
+  for (const row of noteResults) {
+    const createdDate = timestampToDate(row.createdAt);
+    if (row.createdAt >= range.start && row.createdAt <= range.end) {
+      const existing = dailyMap.get(createdDate) ?? { total: 0, count: 0 };
+      dailyMap.set(createdDate, {
+        total: existing.total,
+        count: existing.count + 1,
+      });
+    }
+
+    // 更新日が作成日と異なる場合のみカウント
+    if (row.updatedAt !== row.createdAt && row.updatedAt >= range.start && row.updatedAt <= range.end) {
+      const updatedDate = timestampToDate(row.updatedAt);
+      const existing = dailyMap.get(updatedDate) ?? { total: 0, count: 0 };
+      dailyMap.set(updatedDate, {
+        total: existing.total,
+        count: existing.count + 1,
+      });
+    }
   }
 
   // 配列に変換してソート
