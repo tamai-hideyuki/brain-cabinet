@@ -8,6 +8,7 @@ import { fetchPtmSummary } from '../../../api/ptmApi'
 import { fetchIsolatedNotes, type IsolatedNote } from '../../../api/isolationApi'
 import type { Note, PromotionCandidate } from '../../../types/note'
 import type { PtmSummary } from '../../../types/ptm'
+import { WeeklySummarySection } from '../WeeklySummarySection'
 import './Dashboard.css'
 
 type DashboardProps = {
@@ -160,6 +161,9 @@ export const Dashboard = ({ onNoteClick, onReviewClick }: DashboardProps) => {
           )}
         </div>
       )}
+
+      {/* LLM推論サマリー */}
+      <WeeklySummarySection onNoteClick={onNoteClick} />
 
       {/* 今日の活動 */}
       <div className="dashboard__section">

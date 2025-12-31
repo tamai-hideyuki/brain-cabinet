@@ -1,52 +1,33 @@
-# Brain Cabinet v5.14.1 (Performance Metrics Dashboard)
+# Brain Cabinet v6.0.0 (LLM Inference)
 
 **思考ベースの検索型知識システム — あなたの思考を理解し、成長を見守る外部脳**
 
 > Brain Cabinet は単なるメモ帳ではありません。
 > ノートの**文脈を理解**し、質問に応じて**必要な部分だけを抽出・再構成**する仕組みです。
 >
-> **v5.5 の新機能: モバイルレスポンシブ強化**
+> **v6.0 の新機能: ローカルLLM推論（Ollama + Qwen2.5:3b）**
+> - **ローカルLLM推論** — Ollama + Qwen2.5:3b でノートを高精度分類（APIコストゼロ）
+> - **閾値ベース自動反映** — confidence ≥ 0.85 は自動反映、0.7-0.85 は週次通知、< 0.7 は保留
+> - **週次サマリー** — ダッシュボードでLLM推論の統計と保留中アイテムを一覧表示
+> - **例外介入制** — 基本は自動反映、問題があれば後から修正
+> - **堅牢性設計** — コンテキスト長制御、JSON修復、フォールバック、バッチスロットリング
+>
+> **v5.5 の機能: モバイルレスポンシブ強化**
 > - **ハンバーガーメニュー** — モバイルでスライドインナビゲーション
 > - **iPhoneセーフエリア対応** — ノッチ・ホームバーを考慮した表示
 > - **タッチ最適化** — 44px/48pxのタッチターゲット確保
-> - **100dvh対応** — iOS Safari のアドレスバーを考慮した高さ計算
-> - **カレンダー最適化** — モバイルでも見やすいグリッドサイズ
-> - **ノート一覧最適化** — モバイルでコンパクトなリスト表示、デスクトップでグリッド表示
 >
 > **v5.4 の機能: ノート画像埋め込み**
 > - **画像埋め込み** — ノートに画像を直接埋め込み、BLOBとして保存
 > - **ドラッグ&ドロップ** — 編集モーダルに画像をドロップして即座にアップロード
-> - **クリップボード貼り付け** — スクリーンショットをそのまま貼り付け可能
-> - **GPT経由アップロード** — Base64画像をコマンドAPIでアップロード
-> - **Markdown表示** — `note-image://` プロトコルで画像を自動表示
->
-> **v5.3 の機能: メモ間リンク**
-> - **`[[uuid]]` 記法** — メモ本文にUUIDを書くだけでハイパーリンク化
-> - **ワンクリック遷移** — リンクをクリックで該当メモに即座にジャンプ
-> - **削除済みメモ対応** — リンク先が存在しない場合は「ノートが見つかりませんでした」を表示
 >
 > **v5.2 の機能: ブックマーク機能**
 > - **階層構造ブックマーク** — フォルダ/ノート参照/外部リンクをツリー構造で管理
-> - **人間主導の整理** — AIの自動分類とは別に、人間が意図的に構造化
-> - **ノート横断ショートカット** — 同じノートを複数フォルダから参照可能
 >
 > **v5.1 の機能: ビジュアライゼーション強化**
-> - **ネットワークグラフ** — vis-network でノート間の影響関係を可視化、物理シミュレーションで配置
+> - **ネットワークグラフ** — vis-network でノート間の影響関係を可視化
 > - **タイムライン表示** — 時系列でノートの更新履歴を表示、カレンダービュー切り替え可能
 > - **ダッシュボード** — PTM状態、今日の活動、レビュー待ち、昇格候補を1画面に集約
-> - **フィルターパネル** — ドロワーでタグ/カテゴリ絞り込み、AND/OR切り替え、使用頻度順ソート
->
-> **v5.0 の機能: フル機能 Web UI**
-> - **Decision ハイライト表示** — 判断/学習ノートを視覚的に区別、バッジ表示で即座に識別
-> - **PTM Snapshot ダッシュボード** — ヘッダーに思考状態インジケーター、Coach アドバイス確認
-> - **Influence Graph 表示** — ノート詳細で影響関係を可視化、クラスタ情報も表示
-> - **Review Queue 統合** — SM-2スケジュール表示、Active Recall質問回答、品質評価送信
-> - **scratch 昇格通知** — 昇格候補バッジ表示、Human Decides原則で人間が最終判断
->
-> **v4.5 の機能: Spaced Review + Active Recall**
-> - **SM-2アルゴリズム**による間隔反復で最適なタイミングでレビュー
-> - **Active Recall**でノートから自動生成された質問に答えて定着強化
-> - learning/decision ノートを自動でレビュースケジュールに追加
 >
 > **v4 の革新: Decision-First アーキテクチャ**
 > - ノートは自動的に**タイプ分類**（decision/learning/scratch/emotion/log）
@@ -428,6 +409,19 @@ POST /api/v1
 | アクション | 説明 | payload |
 |-----------|------|---------|
 | `rag.context` | 質問に関連するノートのコンテキスト取得 | `{question, limit?}` |
+
+#### LLM Inference ドメイン（v6 新規）
+| アクション | 説明 | payload |
+|-----------|------|---------|
+| `llmInference.getCandidates` | 推論候補ノートを取得 | `{limit?, maxConcurrent?}` |
+| `llmInference.estimateCost` | コスト見積もり | - |
+| `llmInference.execute` | 推論実行 | `{limit?, maxConcurrent?}` |
+| `llmInference.getPending` | 保留中アイテムを取得 | `{limit?, offset?}` |
+| `llmInference.approve` | 承認 | `{resultId}` |
+| `llmInference.reject` | 却下 | `{resultId}` |
+| `llmInference.override` | タイプを上書き | `{resultId, overrideType, reason?}` |
+| `llmInference.weeklySummary` | 週次サマリー | - |
+| `llmInference.health` | Ollamaヘルスチェック | - |
 
 #### Workflow ドメイン
 | アクション | 説明 | payload |
@@ -891,10 +885,39 @@ brain-cabinet/
 - [x] **ドリフト方向追跡（v5.10）** - 思考の進化方向を可視化
 - [x] **因果推論（v5.11）** - ノート間の因果関係を分析
 
-### Phase 6（予定）
-- [ ] LLM 推論統合（GPT-4 によるタイプ分類）
+### Phase 6（v6.0 完了）
+- [x] **ローカルLLM推論（Ollama + Qwen2.5:3b）** - APIコストゼロでノートを高精度分類
+  - Ollama REST API（http://localhost:11434/api/generate）
+  - Qwen2.5:3b モデル（~3GB、日本語対応）
+  - temperature: 0.3（一貫性重視）、seed: 42（再現性）
+- [x] **閾値ベース自動反映（例外介入制）**
+  - confidence ≥ 0.85: 自動反映（通知なし）
+  - confidence 0.7-0.85: 自動反映（週次サマリーに表示）
+  - confidence < 0.7: 保留（ユーザー判断）
+- [x] **週次サマリーUI** - ダッシュボードにLLM推論セクション追加
+  - 統計表示（自動反映/保留中/確認済み）
+  - Ollamaステータス表示（準備完了/停止中）
+  - LLM推論モーダル（候補確認→実行→結果表示）
+  - 保留確認モーダル（承認/却下/タイプ変更）
+- [x] **堅牢性設計**
+  - コンテキスト長制御（4000文字以上は要約後推論）
+  - JSON自動修復（最大2回リトライ）
+  - Ollamaフォールバック（停止時はルールベースに切替）
+  - バッチスロットリング（maxConcurrent = 2）
+- [x] **LLM Inference API** - Command API に9アクション追加
+  - `llmInference.getCandidates`: 推論候補を取得
+  - `llmInference.estimateCost`: コスト見積もり
+  - `llmInference.execute`: 推論実行
+  - `llmInference.getPending`: 保留中を取得
+  - `llmInference.approve/reject/override`: 承認/却下/上書き
+  - `llmInference.weeklySummary`: 週次サマリー
+  - `llmInference.health`: Ollamaヘルスチェック
+- [x] **`llm_inference_results` テーブル** - AI推論結果の永続化（note_historyと分離）
+
+### Phase 7（予定）
 - [ ] 要約生成・保存
 - [ ] Webhook / 自動インポート
+- [ ] マルチモデル対応（GPT-4, Claude等）
 
 ---
 
@@ -954,6 +977,45 @@ brain-cabinet/
 ---
 
 ## バージョン履歴
+
+### v6.0.0
+- **ローカルLLM推論（Ollama + Qwen2.5:3b）**: APIコストゼロでノートを高精度分類
+  - **Ollama連携**: http://localhost:11434/api/generate でローカルLLM呼び出し
+  - **Qwen2.5:3b**: 日本語対応、~3GBメモリ、業務中でも軽快に動作
+  - **推論パラメータ**: temperature 0.3（一貫性重視）、seed 42（再現性）
+- **閾値ベース自動反映（例外介入制）**:
+  - confidence ≥ 0.85: 自動反映（通知なし）
+  - confidence 0.7-0.85: 自動反映（週次サマリーに表示）
+  - confidence < 0.7: 保留（ユーザー判断）
+- **週次サマリーUI**: ダッシュボードにLLM推論セクション追加
+  - `WeeklySummarySection`: 統計、Ollamaステータス、アクションボタン
+  - `LlmInferenceModal`: 候補確認→推論実行→結果表示
+  - `PendingReviewModal`: 保留中アイテムの承認/却下/タイプ変更
+- **堅牢性設計**:
+  - コンテキスト長制御: 4000文字以上は要約後推論、`contextTruncated` フラグ記録
+  - JSON自動修復: `tryParseWithRepair()` で最大2回リトライ
+  - フォールバック: Ollama停止時はルールベース推論に切替、`fallbackUsed` フラグ記録
+  - バッチスロットリング: `maxConcurrent = 2` でCPU/GPU占有を防止
+- **LLM Inference API**: Command API に9アクション追加
+  - `llmInference.getCandidates`: 推論候補ノートを取得
+  - `llmInference.estimateCost`: コスト見積もり（対象数、推定時間）
+  - `llmInference.execute`: 推論実行（バッチ処理）
+  - `llmInference.getPending`: 保留中アイテムを取得
+  - `llmInference.approve`: 承認（note_inferencesに反映）
+  - `llmInference.reject`: 却下
+  - `llmInference.override`: タイプを上書き
+  - `llmInference.weeklySummary`: 週次サマリー統計
+  - `llmInference.health`: Ollamaヘルスチェック
+- **`llm_inference_results` テーブル**: AI推論結果の永続化
+  - `note_history` と分離してAIイベントを管理
+  - メタ情報: model, promptTokens, completionTokens, contextTruncated, fallbackUsed, inferenceVersion, seed
+  - ステータス: auto_applied, auto_applied_notified, pending, approved, rejected, overridden
+- **Ollamaセットアップ**:
+  ```bash
+  brew install ollama
+  ollama pull qwen2.5:3b
+  ollama serve
+  ```
 
 ### v5.14.1
 - **全APIをCommand API経由に移行**: メトリクス収集対応
@@ -1323,4 +1385,4 @@ brain-cabinet/
 
 ---
 
-**Brain Cabinet v5.5 (Mobile Responsive)** — Your External Brain with Mobile-First Design, Image Embedding, Note-to-Note Linking, Hierarchical Bookmarks, Interactive Graph, Timeline, Dashboard, and Smart Filtering for Decision-First Architecture
+**Brain Cabinet v6.0 (LLM Inference)** — Your External Brain with Local LLM Classification, Decision-First Architecture, Mobile-First Design, and Smart Analytics

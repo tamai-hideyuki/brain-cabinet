@@ -1,0 +1,122 @@
+/**
+ * 週次LLM推論サマリーセクション スタイル
+ */
+
+.weekly-summary {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.weekly-summary--loading,
+.weekly-summary--error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  min-height: 100px;
+}
+
+.weekly-summary__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.weekly-summary__title {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.weekly-summary__stats {
+  display: flex;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-md) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.weekly-summary__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.weekly-summary__stat-number {
+  font-size: var(--font-size-xl, 1.5rem);
+  font-weight: var(--font-weight-bold, 600);
+  color: var(--color-text-primary);
+}
+
+.weekly-summary__recent,
+.weekly-summary__pending {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.weekly-summary__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.weekly-summary__item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background-color 0.15s;
+  text-align: left;
+  width: 100%;
+}
+
+.weekly-summary__item:hover {
+  background: var(--color-surface-hover);
+}
+
+.weekly-summary__pending-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.weekly-summary__pending-suggestion {
+  display: flex;
+  gap: var(--spacing-sm);
+  color: var(--color-text-secondary);
+}
+
+.weekly-summary__empty {
+  padding: var(--spacing-lg);
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.weekly-summary__actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  padding-top: var(--spacing-sm);
+}
+
+.weekly-summary__warning {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
+  border-radius: var(--radius-md);
+  color: var(--color-warning-text);
+}

@@ -567,3 +567,53 @@ export const analysisCache = sqliteTable("analysis_cache", {
   createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
   expiresAt: integer("expires_at").notNull(),                     // 有効期限（Unix秒）
 });
+
+// ============================================================
+// v6 LLM推論機能（Ollama + Qwen2.5:3b）
+// ============================================================
+
+// LLM推論ステータス定義
+export const LLM_INFERENCE_STATUSES = [
+  "auto_applied",           // 自動反映済み（confidence >= 0.85）
+  "auto_applied_notified",  // 自動反映（週次通知、0.7-0.85）
+  "pending",                // 保留中（confidence < 0.7）
+  "approved",               // ユーザー承認済み
+  "rejected",               // ユーザー却下
+  "overridden",             // ユーザー上書き
+] as const;
+export type LlmInferenceStatus = (typeof LLM_INFERENCE_STATUSES)[number];
+
+// LLM推論結果テーブル（AIイベント履歴はnote_historyと分離）
+export const llmInferenceResults = sqliteTable("llm_inference_results", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  noteId: text("note_id").notNull(),                              // 対象ノートID
+
+  // 推論結果
+  type: text("type").notNull(),                                   // NoteType
+  intent: text("intent").notNull(),                               // Intent
+  confidence: real("confidence").notNull(),                       // 確信度 0.0〜1.0
+  confidenceDetail: text("confidence_detail"),                    // JSON: { structural, semantic, reasoning }
+  decayProfile: text("decay_profile"),                            // DecayProfile
+  reasoning: text("reasoning"),                                   // LLMの推論理由（自然言語）
+
+  // メタデータ
+  model: text("model").notNull(),                                 // "qwen2.5:3b" など
+  promptTokens: integer("prompt_tokens"),                         // 入力トークン数
+  completionTokens: integer("completion_tokens"),                 // 出力トークン数
+
+  // 堅牢性メタ情報
+  contextTruncated: integer("context_truncated").notNull().default(0),  // 1=要約後推論
+  fallbackUsed: integer("fallback_used").notNull().default(0),          // 1=ルールベースにフォールバック
+  inferenceVersion: text("inference_version"),                    // "2025.01" 形式
+  seed: integer("seed"),                                          // 再現性用シード値
+
+  // ステータス管理
+  status: text("status").notNull().default("pending"),            // LlmInferenceStatus
+
+  // ユーザー介入
+  userOverrideType: text("user_override_type"),                   // ユーザーが指定したタイプ
+  userOverrideReason: text("user_override_reason"),               // ユーザーの理由
+  resolvedAt: integer("resolved_at"),                             // 承認/却下/上書き日時
+
+  createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
+});

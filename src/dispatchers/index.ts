@@ -27,6 +27,7 @@ import { promotionDispatcher } from "./promotion";
 import { reviewDispatcher } from "./review";
 import { bookmarkDispatcher } from "./bookmark";
 import { isolationDispatcher } from "./isolation";
+import { llmInferenceDispatcher } from "./llmInference";
 
 // ============================================
 // ディスパッチャーレジストリ
@@ -68,6 +69,7 @@ register("promotion", promotionDispatcher);
 register("review", reviewDispatcher);
 register("bookmark", bookmarkDispatcher);
 register("isolation", isolationDispatcher);
+register("llmInference", llmInferenceDispatcher);
 
 // ============================================
 // メインディスパッチャー
