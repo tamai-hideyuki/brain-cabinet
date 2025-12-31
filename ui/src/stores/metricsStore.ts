@@ -1,8 +1,9 @@
 /**
- * Performance Metrics Store (v5.14)
+ * Performance Metrics Store (v5.15)
  *
  * クライアントサイドでAPIレスポンスのパフォーマンスメトリクスを収集・管理
  * IndexedDBに直近1000件のレコードを保存
+ * 累計リクエスト数は別ストアで永続化（クリアまで保持）
  */
 
 // メトリクスレコード型
@@ -34,8 +35,9 @@ export type MetricsSummary = {
 }
 
 const DB_NAME = 'brain-cabinet-metrics'
-const DB_VERSION = 1
+const DB_VERSION = 2
 const STORE_NAME = 'metrics'
+const META_STORE_NAME = 'meta'
 const MAX_RECORDS = 1000
 
 let db: IDBDatabase | null = null
@@ -72,10 +74,53 @@ const initDB = (): Promise<IDBDatabase> => {
         store.createIndex('timestamp', 'timestamp', { unique: false })
         store.createIndex('action', 'action', { unique: false })
       }
+
+      // メタ情報ストア（累計カウント用）
+      if (!database.objectStoreNames.contains(META_STORE_NAME)) {
+        database.createObjectStore(META_STORE_NAME, { keyPath: 'key' })
+      }
     }
   })
 
   return dbInitPromise
+}
+
+/**
+ * 累計リクエスト数をインクリメント
+ */
+const incrementTotalCount = async (database: IDBDatabase): Promise<void> => {
+  return new Promise((resolve) => {
+    const transaction = database.transaction(META_STORE_NAME, 'readwrite')
+    const store = transaction.objectStore(META_STORE_NAME)
+    const getRequest = store.get('totalRequests')
+
+    getRequest.onsuccess = () => {
+      const current = getRequest.result?.value ?? 0
+      store.put({ key: 'totalRequests', value: current + 1 })
+      resolve()
+    }
+
+    getRequest.onerror = () => resolve()
+  })
+}
+
+/**
+ * 累計リクエスト数を取得
+ */
+export const getTotalRequestCount = async (): Promise<number> => {
+  try {
+    const database = await initDB()
+    return new Promise((resolve) => {
+      const transaction = database.transaction(META_STORE_NAME, 'readonly')
+      const store = transaction.objectStore(META_STORE_NAME)
+      const request = store.get('totalRequests')
+
+      request.onsuccess = () => resolve(request.result?.value ?? 0)
+      request.onerror = () => resolve(0)
+    })
+  } catch {
+    return 0
+  }
 }
 
 /**
@@ -104,6 +149,9 @@ export const recordMetric = async (
     }
 
     store.add(record)
+
+    // 累計カウントをインクリメント
+    await incrementTotalCount(database)
 
     // 古いレコードを削除して1000件に制限
     const countRequest = store.count()
@@ -187,12 +235,15 @@ export const getAllMetrics = async (): Promise<MetricRecord[]> => {
  * メトリクスの集計サマリーを取得
  */
 export const getMetricsSummary = async (): Promise<MetricsSummary> => {
-  const records = await getAllMetrics()
-  const recentRecords = await getRecentMetrics(10)
+  const [records, recentRecords, totalRequests] = await Promise.all([
+    getAllMetrics(),
+    getRecentMetrics(10),
+    getTotalRequestCount(),
+  ])
 
   if (records.length === 0) {
     return {
-      totalRequests: 0,
+      totalRequests,
       avgServerLatency: 0,
       avgNetworkLatency: 0,
       avgTotalLatency: 0,
@@ -230,7 +281,7 @@ export const getMetricsSummary = async (): Promise<MetricsSummary> => {
   }
 
   return {
-    totalRequests: records.length,
+    totalRequests,
     avgServerLatency: totalServerLatency / records.length,
     avgNetworkLatency: totalNetworkLatency / records.length,
     avgTotalLatency: totalLatency / records.length,
@@ -242,14 +293,14 @@ export const getMetricsSummary = async (): Promise<MetricsSummary> => {
 }
 
 /**
- * メトリクスをクリア
+ * メトリクスをクリア（累計カウントもリセット）
  */
 export const clearMetrics = async (): Promise<void> => {
   try {
     const database = await initDB()
-    const transaction = database.transaction(STORE_NAME, 'readwrite')
-    const store = transaction.objectStore(STORE_NAME)
-    store.clear()
+    const transaction = database.transaction([STORE_NAME, META_STORE_NAME], 'readwrite')
+    transaction.objectStore(STORE_NAME).clear()
+    transaction.objectStore(META_STORE_NAME).delete('totalRequests')
   } catch (error) {
     console.error('Failed to clear metrics:', error)
   }

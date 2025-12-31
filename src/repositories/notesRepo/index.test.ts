@@ -174,14 +174,14 @@ describe("notesRepo", () => {
       const mockSet = vi.fn().mockReturnValue({ where: mockWhere });
       vi.mocked(db.update).mockReturnValue({ set: mockSet } as any);
 
-      const result = await updateNotesCategoryInDB(["note-1", "note-2"], "tech");
+      const result = await updateNotesCategoryInDB(["note-1", "note-2"], "技術");
 
       expect(result).toEqual({ updated: 2 });
       expect(db.update).toHaveBeenCalled();
     });
 
     it("空配列を渡すと更新をスキップ", async () => {
-      const result = await updateNotesCategoryInDB([], "tech");
+      const result = await updateNotesCategoryInDB([], "技術");
 
       expect(result).toEqual({ updated: 0 });
       expect(db.update).not.toHaveBeenCalled();

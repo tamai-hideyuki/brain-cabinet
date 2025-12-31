@@ -80,7 +80,7 @@ describe("relationRepo", () => {
       await createRelation({
         sourceNoteId: "source-1",
         targetNoteId: "target-1",
-        relationType: "related",
+        relationType: "derived",
         score: 0.9,
       });
 
@@ -107,7 +107,7 @@ describe("relationRepo", () => {
         {
           sourceNoteId: "source-1",
           targetNoteId: "target-2",
-          relationType: "related" as const,
+          relationType: "derived" as const,
           score: 0.75,
         },
       ];
@@ -233,7 +233,7 @@ describe("relationRepo", () => {
           id: "rel-2",
           sourceNoteId: "note-3",
           targetNoteId: "note-1",
-          relationType: "related",
+          relationType: "derived",
           score: "0.75",
         },
       ];

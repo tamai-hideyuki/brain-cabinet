@@ -2,9 +2,11 @@
  * LLM推論用プロンプト
  *
  * ノート分類のためのシステムプロンプトとユーザープロンプトを生成
+ * Few-shot学習用の例を動的に組み込む
  */
 
 import { CONTEXT_HARD_LIMIT } from "./types";
+import { getFewShotPromptSection } from "./fewShotExamples";
 
 // ============================================================
 // システムプロンプト
@@ -68,7 +70,7 @@ const SYSTEM_PROMPT = `あなたはノート分類の専門家です。ユーザ
 // ============================================================
 
 /**
- * 推論用プロンプトを生成
+ * 推論用プロンプトを生成（同期版 - Few-shotなし）
  */
 export function getInferencePrompt(content: string, title: string): string {
   // コンテキスト長制限
@@ -87,6 +89,36 @@ ${processedContent}
 
 ## 指示
 上記のノートを分析し、JSON形式で分類結果を出力してください。`;
+
+  return `${SYSTEM_PROMPT}\n\n${userPrompt}`;
+}
+
+/**
+ * 推論用プロンプトを生成（非同期版 - Few-shot付き）
+ *
+ * ユーザーが承認した過去の分類例をプロンプトに含めることで、
+ * ユーザー固有の分類傾向を学習した推論を行う
+ */
+export async function getInferencePromptWithFewShot(content: string, title: string): Promise<string> {
+  // コンテキスト長制限
+  const truncated = content.length > CONTEXT_HARD_LIMIT;
+  const processedContent = truncated
+    ? content.slice(0, CONTEXT_HARD_LIMIT) + "\n\n[... 以下省略 ...]"
+    : content;
+
+  // Few-shot例を取得
+  const fewShotSection = await getFewShotPromptSection();
+
+  const userPrompt = `${fewShotSection}## ノート情報
+
+### タイトル
+${title}
+
+### 本文
+${processedContent}
+
+## 指示
+上記のノートを分析し、JSON形式で分類結果を出力してください。${fewShotSection ? "参考例があれば、そのユーザーの分類傾向も考慮してください。" : ""}`;
 
   return `${SYSTEM_PROMPT}\n\n${userPrompt}`;
 }

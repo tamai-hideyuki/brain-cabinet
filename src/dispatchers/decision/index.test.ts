@@ -171,7 +171,11 @@ describe("decisionDispatcher", () => {
     });
 
     it("compareDecisionsを呼び出す", async () => {
-      vi.mocked(decisionService.compareDecisions).mockResolvedValue([]);
+      vi.mocked(decisionService.compareDecisions).mockResolvedValue({
+        query: "test",
+        decisions: [],
+        count: 0,
+      });
 
       await decisionDispatcher.compare({ query: "test" });
 
@@ -183,7 +187,11 @@ describe("decisionDispatcher", () => {
     });
 
     it("intentを渡す", async () => {
-      vi.mocked(decisionService.compareDecisions).mockResolvedValue([]);
+      vi.mocked(decisionService.compareDecisions).mockResolvedValue({
+        query: "test",
+        decisions: [],
+        count: 0,
+      });
 
       await decisionDispatcher.compare({ query: "test", intent: "design" });
 
@@ -195,7 +203,11 @@ describe("decisionDispatcher", () => {
     });
 
     it("limit=0でデフォルトの5を使用", async () => {
-      vi.mocked(decisionService.compareDecisions).mockResolvedValue([]);
+      vi.mocked(decisionService.compareDecisions).mockResolvedValue({
+        query: "test",
+        decisions: [],
+        count: 0,
+      });
 
       await decisionDispatcher.compare({ query: "test", limit: 0 });
 

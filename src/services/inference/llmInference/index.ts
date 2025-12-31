@@ -39,6 +39,7 @@ import {
   type PendingItem,
   type RecentAutoAppliedItem,
 } from "./types";
+import { clearFewShotCache } from "./fewShotExamples";
 
 // ============================================================
 // ステータス判定
@@ -452,6 +453,9 @@ export async function approveResult(resultId: number): Promise<{ success: boolea
       reasoning,
     });
   }
+
+  // Few-shotキャッシュをクリア（新しい承認例を次回推論に反映するため）
+  clearFewShotCache();
 
   return { success: true, message: "承認しました" };
 }

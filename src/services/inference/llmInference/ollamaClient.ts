@@ -11,7 +11,7 @@ import type {
   LlmInferenceConfidenceDetail,
 } from "./types";
 import { DEFAULT_SEED, INFERENCE_VERSION } from "./types";
-import { getInferencePrompt } from "./prompts";
+import { getInferencePromptWithFewShot } from "./prompts";
 import type { NoteType, Intent, DecayProfile } from "../../../db/schema";
 
 // ============================================================
@@ -134,6 +134,9 @@ export type InferWithLlmResult = {
 
 /**
  * Ollama を使ってノートを分類する
+ *
+ * Few-shot学習: ユーザーが承認した過去の分類例をプロンプトに含めることで、
+ * ユーザー固有の分類傾向を学習した推論を行う
  */
 export async function inferWithOllama(
   noteContent: string,
@@ -144,14 +147,16 @@ export async function inferWithOllama(
   const seed = options.seed ?? DEFAULT_SEED;
   const temperature = options.temperature ?? 0.3;
 
-  const prompt = getInferencePrompt(noteContent, noteTitle);
+  // Few-shot例を含むプロンプトを生成（非同期）
+  const prompt = await getInferencePromptWithFewShot(noteContent, noteTitle);
 
   logger.debug({
     model,
     seed,
     contentLength: noteContent.length,
     titleLength: noteTitle.length,
-  }, "Calling Ollama for inference");
+    promptLength: prompt.length,
+  }, "Calling Ollama for inference with few-shot examples");
 
   const response = await callOllama({
     model,

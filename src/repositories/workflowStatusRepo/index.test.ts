@@ -134,7 +134,7 @@ describe("workflowStatusRepo", () => {
       const mockValues = vi.fn().mockResolvedValue({ lastInsertRowid: BigInt(42) });
       vi.mocked(db.insert).mockReturnValue({ values: mockValues } as any);
 
-      const result = await startWorkflow("full_rebuild");
+      const result = await startWorkflow("reconstruct");
 
       expect(result).toBe(42);
       expect(db.insert).toHaveBeenCalled();

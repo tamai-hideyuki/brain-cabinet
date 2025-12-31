@@ -73,7 +73,7 @@ describe("getContextForGPT", () => {
   });
 
   it("ノートが見つからない場合はエラーを投げる", async () => {
-    vi.mocked(findNoteById).mockResolvedValue(null);
+    vi.mocked(findNoteById).mockResolvedValue(null as any);
 
     await expect(getContextForGPT("not-found")).rejects.toThrow("Note not found");
   });
