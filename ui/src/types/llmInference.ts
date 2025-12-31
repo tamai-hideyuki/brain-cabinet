@@ -15,7 +15,6 @@ export type LlmInferenceStatus =
   | 'auto_applied_notified'  // 自動反映（週次通知、0.7-0.85）
   | 'pending'                // 保留中（confidence < 0.7）
   | 'approved'               // ユーザー承認済み
-  | 'rejected'               // ユーザー却下
   | 'overridden'             // ユーザー上書き
 
 // ============================================================
@@ -81,7 +80,6 @@ export type WeeklySummaryStats = {
   autoAppliedMid: number      // confidence 0.7-0.85
   pendingCount: number        // confidence < 0.7
   approvedCount: number
-  rejectedCount: number
   overriddenCount: number
 }
 

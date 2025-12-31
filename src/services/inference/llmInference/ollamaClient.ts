@@ -199,6 +199,7 @@ type OllamaGenerateRequest = {
     temperature?: number;
     seed?: number;
     num_predict?: number;
+    num_ctx?: number;
   };
 };
 
@@ -282,6 +283,7 @@ export async function inferWithOllama(
       temperature,
       seed,
       num_predict: 1000, // 出力トークン上限（500では切れるケースがあったため増加）
+      num_ctx: 8192, // コンテキストサイズ（デフォルト4096では長いプロンプトが切り詰められる）
     },
   });
 

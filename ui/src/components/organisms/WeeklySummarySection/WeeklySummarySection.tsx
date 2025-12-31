@@ -84,8 +84,8 @@ export const WeeklySummarySection = ({ onNoteClick }: WeeklySummarySectionProps)
   // Ollamaが利用可能かどうか
   const ollamaReady = health?.available && health?.modelLoaded
 
-  // 精度率（承認 / (承認+却下+上書き)）
-  const totalReviewed = stats.approvedCount + stats.rejectedCount + stats.overriddenCount
+  // 精度率（承認 / (承認+上書き)）
+  const totalReviewed = stats.approvedCount + stats.overriddenCount
   const accuracyRate = totalReviewed > 0
     ? Math.round((stats.approvedCount / totalReviewed) * 100)
     : null
@@ -133,12 +133,6 @@ export const WeeklySummarySection = ({ onNoteClick }: WeeklySummarySectionProps)
                 </div>
               )}
             </div>
-            {stats.rejectedCount > 0 && (
-              <div className="weekly-summary__stat-card weekly-summary__stat-card--warning">
-                <span className="weekly-summary__stat-number">{stats.rejectedCount}</span>
-                <Text variant="caption">却下</Text>
-              </div>
-            )}
           </div>
 
           {/* タイプ別分布 */}

@@ -40,7 +40,7 @@ export const PendingReviewModal = ({ onClose, onNoteClick, mode = 'pending' }: P
   const autoAppliedHook = useAutoAppliedNotifiedResults(mode === 'auto_applied_notified')
 
   // モードに応じてフックを切り替え
-  const { loading, error, approve, reject, override } = mode === 'pending' ? pendingHook : autoAppliedHook
+  const { loading, error, approve, override } = mode === 'pending' ? pendingHook : autoAppliedHook
   const data = mode === 'pending' ? pendingHook.pending : autoAppliedHook.items
 
   const [processingId, setProcessingId] = useState<number | null>(null)
@@ -51,22 +51,13 @@ export const PendingReviewModal = ({ onClose, onNoteClick, mode = 'pending' }: P
   const title = mode === 'pending' ? '保留中の分類を確認' : '確認推奨の分類を確認'
   const emptyMessage = mode === 'pending' ? '保留中の分類はありません' : '確認推奨の分類はありません'
   const infoMessage = mode === 'pending'
-    ? 'AIによる分類提案です。確認して承認・却下・修正してください。'
+    ? 'AIによる分類提案です。確認して承認または修正してください。'
     : 'AIが自動分類しました（信頼度70-84%）。分類が正しければ承認、間違っていれば修正してください。'
 
   const handleApprove = async (item: PendingItem) => {
     setProcessingId(item.id)
     try {
       await approve(item.id)
-    } finally {
-      setProcessingId(null)
-    }
-  }
-
-  const handleReject = async (item: PendingItem) => {
-    setProcessingId(item.id)
-    try {
-      await reject(item.id)
     } finally {
       setProcessingId(null)
     }
@@ -234,14 +225,6 @@ export const PendingReviewModal = ({ onClose, onNoteClick, mode = 'pending' }: P
                     disabled={processingId === item.id}
                   >
                     {processingId === item.id ? '処理中...' : '承認'}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => handleReject(item)}
-                    disabled={processingId === item.id}
-                  >
-                    却下
                   </Button>
                   <Button
                     variant="secondary"

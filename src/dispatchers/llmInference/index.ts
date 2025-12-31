@@ -9,7 +9,6 @@ import {
   getPendingResults,
   getAutoAppliedNotifiedResults,
   approveResult,
-  rejectResult,
   overrideResult,
   getWeeklySummary,
   getLlmInferenceCandidates,
@@ -41,10 +40,6 @@ type GetPendingPayload = {
 };
 
 type ApprovePayload = {
-  resultId: number;
-};
-
-type RejectPayload = {
   resultId: number;
 };
 
@@ -146,17 +141,6 @@ async function approve(payload: unknown) {
 }
 
 /**
- * 保留を却下
- */
-async function reject(payload: unknown) {
-  const p = payload as RejectPayload;
-  if (!p?.resultId) {
-    return { success: false, message: "resultId is required" };
-  }
-  return await rejectResult(p.resultId);
-}
-
-/**
  * 保留を上書き
  */
 async function override(payload: unknown) {
@@ -195,7 +179,6 @@ export const llmInferenceDispatcher: Record<
   getPending,
   getAutoAppliedNotified,
   approve,
-  reject,
   override,
   weeklySummary,
   health,

@@ -90,14 +90,6 @@ export async function approve(
   })
 }
 
-export async function reject(
-  resultId: number
-): Promise<LlmInferenceActionResult> {
-  return sendCommand<LlmInferenceActionResult>('llmInference.reject', {
-    resultId,
-  })
-}
-
 export type OverrideParams = {
   resultId: number
   type: NoteType

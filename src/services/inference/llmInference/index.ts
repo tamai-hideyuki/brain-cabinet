@@ -460,54 +460,6 @@ export async function approveResult(resultId: number): Promise<{ success: boolea
   return { success: true, message: "承認しました" };
 }
 
-/**
- * 推論結果を却下（pending または auto_applied_notified に対応）
- * auto_applied_notified の場合は noteInferences から分類を削除
- */
-export async function rejectResult(resultId: number): Promise<{ success: boolean; message: string }> {
-  const result = await db
-    .select()
-    .from(llmInferenceResults)
-    .where(eq(llmInferenceResults.id, resultId))
-    .limit(1);
-
-  if (result.length === 0) {
-    return { success: false, message: "結果が見つかりません" };
-  }
-
-  const { noteId, status } = result[0];
-
-  // pending または auto_applied_notified のみ却下可能
-  if (status !== "pending" && status !== "auto_applied_notified") {
-    return { success: false, message: "このステータスは却下できません" };
-  }
-
-  // auto_applied_notified の場合、noteInferences の最新エントリを削除
-  if (status === "auto_applied_notified") {
-    const latestInference = await db
-      .select({ id: noteInferences.id })
-      .from(noteInferences)
-      .where(eq(noteInferences.noteId, noteId))
-      .orderBy(desc(noteInferences.createdAt))
-      .limit(1);
-
-    if (latestInference.length > 0) {
-      await db
-        .delete(noteInferences)
-        .where(eq(noteInferences.id, latestInference[0].id));
-    }
-  }
-
-  await db
-    .update(llmInferenceResults)
-    .set({
-      status: "rejected",
-      resolvedAt: Math.floor(Date.now() / 1000),
-    })
-    .where(eq(llmInferenceResults.id, resultId));
-
-  return { success: true, message: "却下しました" };
-}
 
 /**
  * 推論結果を上書き（pending または auto_applied_notified に対応）
@@ -613,7 +565,6 @@ export async function getWeeklySummary(): Promise<WeeklySummary> {
     autoAppliedMid: allResults.filter((r) => r.status === "auto_applied_notified").length,
     pendingCount: allResults.filter((r) => r.status === "pending").length,
     approvedCount: allResults.filter((r) => r.status === "approved").length,
-    rejectedCount: allResults.filter((r) => r.status === "rejected").length,
     overriddenCount: allResults.filter((r) => r.status === "overridden").length,
   };
 

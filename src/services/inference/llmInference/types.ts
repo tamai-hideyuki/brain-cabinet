@@ -115,7 +115,6 @@ export type WeeklySummaryStats = {
   autoAppliedMid: number;     // confidence 0.7-0.85
   pendingCount: number;       // confidence < 0.7
   approvedCount: number;
-  rejectedCount: number;
   overriddenCount: number;
 };
 

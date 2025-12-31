@@ -172,17 +172,6 @@ export const usePendingResults = (autoLoad = true) => {
     [load]
   )
 
-  const reject = useCallback(
-    async (resultId: number): Promise<LlmInferenceActionResult> => {
-      const result = await api.reject(resultId)
-      if (result.success) {
-        await load() // リロード
-      }
-      return result
-    },
-    [load]
-  )
-
   const override = useCallback(
     async (
       resultId: number,
@@ -198,7 +187,7 @@ export const usePendingResults = (autoLoad = true) => {
     [load]
   )
 
-  return { pending, loading, error, reload: load, approve, reject, override }
+  return { pending, loading, error, reload: load, approve, override }
 }
 
 // ============================================================
@@ -240,17 +229,6 @@ export const useAutoAppliedNotifiedResults = (autoLoad = true) => {
     [load]
   )
 
-  const reject = useCallback(
-    async (resultId: number): Promise<LlmInferenceActionResult> => {
-      const result = await api.reject(resultId)
-      if (result.success) {
-        await load() // リロード
-      }
-      return result
-    },
-    [load]
-  )
-
   const override = useCallback(
     async (
       resultId: number,
@@ -266,7 +244,7 @@ export const useAutoAppliedNotifiedResults = (autoLoad = true) => {
     [load]
   )
 
-  return { items, loading, error, reload: load, approve, reject, override }
+  return { items, loading, error, reload: load, approve, override }
 }
 
 // ============================================================

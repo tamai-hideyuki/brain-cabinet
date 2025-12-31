@@ -38,7 +38,6 @@ const mockWeeklySummary: WeeklySummary = {
     autoAppliedMid: 3,
     pendingCount: 2,
     approvedCount: 1,
-    rejectedCount: 0,
     overriddenCount: 1,
   },
   recentAutoApplied: [
@@ -444,26 +443,6 @@ describe('usePendingResults', () => {
     })
 
     expect(api.approve).toHaveBeenCalledWith(1)
-    expect(api.getPending).toHaveBeenCalledTimes(2)
-  })
-
-  it('rejectが成功すると自動リロードする', async () => {
-    vi.mocked(api.getPending).mockResolvedValue(mockPendingResult)
-    vi.mocked(api.reject).mockResolvedValue({ success: true, message: '却下しました' })
-
-    const { result } = renderHook(() => usePendingResults(true))
-
-    await waitFor(() => {
-      expect(result.current.loading).toBe(false)
-    })
-
-    expect(api.getPending).toHaveBeenCalledTimes(1)
-
-    await act(async () => {
-      await result.current.reject(1)
-    })
-
-    expect(api.reject).toHaveBeenCalledWith(1)
     expect(api.getPending).toHaveBeenCalledTimes(2)
   })
 
