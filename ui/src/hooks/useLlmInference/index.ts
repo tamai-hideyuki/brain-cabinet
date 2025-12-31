@@ -202,6 +202,74 @@ export const usePendingResults = (autoLoad = true) => {
 }
 
 // ============================================================
+// 確認推奨（auto_applied_notified）管理
+// ============================================================
+
+export const useAutoAppliedNotifiedResults = (autoLoad = true) => {
+  const [items, setItems] = useState<GetPendingResult | null>(null)
+  const [loading, setLoading] = useState(autoLoad)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = useCallback(async (params?: api.GetPendingParams) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const result = await api.getAutoAppliedNotified(params)
+      setItems(result)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unknown error')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (autoLoad) {
+      load()
+    }
+  }, [autoLoad, load])
+
+  const approve = useCallback(
+    async (resultId: number): Promise<LlmInferenceActionResult> => {
+      const result = await api.approve(resultId)
+      if (result.success) {
+        await load() // リロード
+      }
+      return result
+    },
+    [load]
+  )
+
+  const reject = useCallback(
+    async (resultId: number): Promise<LlmInferenceActionResult> => {
+      const result = await api.reject(resultId)
+      if (result.success) {
+        await load() // リロード
+      }
+      return result
+    },
+    [load]
+  )
+
+  const override = useCallback(
+    async (
+      resultId: number,
+      type: NoteType,
+      reason?: string
+    ): Promise<LlmInferenceActionResult> => {
+      const result = await api.override({ resultId, type, reason })
+      if (result.success) {
+        await load() // リロード
+      }
+      return result
+    },
+    [load]
+  )
+
+  return { items, loading, error, reload: load, approve, reject, override }
+}
+
+// ============================================================
 // コスト見積もり
 // ============================================================
 

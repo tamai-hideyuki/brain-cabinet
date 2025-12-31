@@ -18,12 +18,14 @@ type WeeklySummarySectionProps = {
   onNoteClick?: (noteId: string) => void
 }
 
+type ReviewModalMode = 'pending' | 'auto_applied_notified' | null
+
 export const WeeklySummarySection = ({ onNoteClick }: WeeklySummarySectionProps) => {
   const { summary, loading, error, reload } = useWeeklySummary()
   const { health } = useOllamaHealth()
   const { executing, execute } = useLlmExecute()
   const [showInferenceModal, setShowInferenceModal] = useState(false)
-  const [showPendingModal, setShowPendingModal] = useState(false)
+  const [reviewModalMode, setReviewModalMode] = useState<ReviewModalMode>(null)
 
   // 未使用だがExecuteモーダル経由でなく直接実行したい場合に使用可能
   void execute
@@ -151,11 +153,20 @@ export const WeeklySummarySection = ({ onNoteClick }: WeeklySummarySectionProps)
         >
           {executing ? '推論中...' : 'LLM推論を実行'}
         </Button>
+        {stats.autoAppliedMid > 0 && (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setReviewModalMode('auto_applied_notified')}
+          >
+            確認推奨を確認 ({stats.autoAppliedMid})
+          </Button>
+        )}
         {stats.pendingCount > 0 && (
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => setShowPendingModal(true)}
+            onClick={() => setReviewModalMode('pending')}
           >
             保留中を確認 ({stats.pendingCount})
           </Button>
@@ -179,10 +190,11 @@ export const WeeklySummarySection = ({ onNoteClick }: WeeklySummarySectionProps)
           }}
         />
       )}
-      {showPendingModal && (
+      {reviewModalMode && (
         <PendingReviewModal
+          mode={reviewModalMode}
           onClose={() => {
-            setShowPendingModal(false)
+            setReviewModalMode(null)
             reload()
           }}
           onNoteClick={onNoteClick}

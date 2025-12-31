@@ -340,11 +340,77 @@ export async function getPendingResults(
 }
 
 // ============================================================
+// 確認推奨（auto_applied_notified）一覧
+// ============================================================
+
+export type GetAutoAppliedNotifiedOptions = {
+  limit?: number;
+  offset?: number;
+};
+
+/**
+ * 確認推奨（auto_applied_notified）の推論結果を取得
+ */
+export async function getAutoAppliedNotifiedResults(
+  options: GetAutoAppliedNotifiedOptions = {}
+): Promise<{ count: number; items: PendingItem[] }> {
+  const limit = options.limit ?? 20;
+  const offset = options.offset ?? 0;
+
+  // 件数取得
+  const countResult = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(llmInferenceResults)
+    .where(eq(llmInferenceResults.status, "auto_applied_notified"));
+  const count = countResult[0]?.count ?? 0;
+
+  // データ取得
+  const rows = await db
+    .select({
+      id: llmInferenceResults.id,
+      noteId: llmInferenceResults.noteId,
+      type: llmInferenceResults.type,
+      confidence: llmInferenceResults.confidence,
+      reasoning: llmInferenceResults.reasoning,
+      createdAt: llmInferenceResults.createdAt,
+    })
+    .from(llmInferenceResults)
+    .where(eq(llmInferenceResults.status, "auto_applied_notified"))
+    .orderBy(desc(llmInferenceResults.createdAt))
+    .limit(limit)
+    .offset(offset);
+
+  // ノート情報を付加
+  const items: PendingItem[] = [];
+  for (const row of rows) {
+    const noteData = await db
+      .select({ title: notes.title })
+      .from(notes)
+      .where(eq(notes.id, row.noteId))
+      .limit(1);
+
+    // 確認推奨はすでにnoteInferencesに反映済みなので、現在のタイプ = 提案タイプ
+    items.push({
+      id: row.id,
+      noteId: row.noteId,
+      title: noteData[0]?.title ?? "Unknown",
+      currentType: row.type as NoteType,  // 反映済みなのでLLM推論結果がcurrentType
+      suggestedType: row.type as NoteType,
+      confidence: row.confidence,
+      reasoning: row.reasoning ?? "",
+      createdAt: row.createdAt,
+    });
+  }
+
+  return { count, items };
+}
+
+// ============================================================
 // ユーザーアクション
 // ============================================================
 
 /**
- * 保留中の推論を承認
+ * 推論結果を承認（pending または auto_applied_notified に対応）
  */
 export async function approveResult(resultId: number): Promise<{ success: boolean; message: string }> {
   const result = await db
@@ -357,7 +423,12 @@ export async function approveResult(resultId: number): Promise<{ success: boolea
     return { success: false, message: "結果が見つかりません" };
   }
 
-  const { noteId, type, intent, confidence, confidenceDetail, decayProfile, reasoning, model } = result[0];
+  const { noteId, type, intent, confidence, confidenceDetail, decayProfile, reasoning, model, status } = result[0];
+
+  // pending または auto_applied_notified のみ承認可能
+  if (status !== "pending" && status !== "auto_applied_notified") {
+    return { success: false, message: "このステータスは承認できません" };
+  }
 
   // ステータス更新
   await db
@@ -368,23 +439,26 @@ export async function approveResult(resultId: number): Promise<{ success: boolea
     })
     .where(eq(llmInferenceResults.id, resultId));
 
-  // noteInferencesに反映
-  await db.insert(noteInferences).values({
-    noteId,
-    type,
-    intent,
-    confidence,
-    confidenceDetail,
-    decayProfile,
-    model: `llm-${model}`,
-    reasoning,
-  });
+  // auto_applied_notified は既にnoteInferencesに反映済みなのでスキップ
+  if (status === "pending") {
+    await db.insert(noteInferences).values({
+      noteId,
+      type,
+      intent,
+      confidence,
+      confidenceDetail,
+      decayProfile,
+      model: `llm-${model}`,
+      reasoning,
+    });
+  }
 
   return { success: true, message: "承認しました" };
 }
 
 /**
- * 保留中の推論を却下
+ * 推論結果を却下（pending または auto_applied_notified に対応）
+ * auto_applied_notified の場合は noteInferences から分類を削除
  */
 export async function rejectResult(resultId: number): Promise<{ success: boolean; message: string }> {
   const result = await db
@@ -395,6 +469,29 @@ export async function rejectResult(resultId: number): Promise<{ success: boolean
 
   if (result.length === 0) {
     return { success: false, message: "結果が見つかりません" };
+  }
+
+  const { noteId, status } = result[0];
+
+  // pending または auto_applied_notified のみ却下可能
+  if (status !== "pending" && status !== "auto_applied_notified") {
+    return { success: false, message: "このステータスは却下できません" };
+  }
+
+  // auto_applied_notified の場合、noteInferences の最新エントリを削除
+  if (status === "auto_applied_notified") {
+    const latestInference = await db
+      .select({ id: noteInferences.id })
+      .from(noteInferences)
+      .where(eq(noteInferences.noteId, noteId))
+      .orderBy(desc(noteInferences.createdAt))
+      .limit(1);
+
+    if (latestInference.length > 0) {
+      await db
+        .delete(noteInferences)
+        .where(eq(noteInferences.id, latestInference[0].id));
+    }
   }
 
   await db
@@ -409,7 +506,8 @@ export async function rejectResult(resultId: number): Promise<{ success: boolean
 }
 
 /**
- * 保留中の推論を上書き
+ * 推論結果を上書き（pending または auto_applied_notified に対応）
+ * auto_applied_notified の場合は noteInferences を更新
  */
 export async function overrideResult(
   resultId: number,
@@ -426,7 +524,12 @@ export async function overrideResult(
     return { success: false, message: "結果が見つかりません" };
   }
 
-  const { noteId, intent, decayProfile, model } = result[0];
+  const { noteId, intent, decayProfile, status } = result[0];
+
+  // pending または auto_applied_notified のみ上書き可能
+  if (status !== "pending" && status !== "auto_applied_notified") {
+    return { success: false, message: "このステータスは上書きできません" };
+  }
 
   // ステータス更新
   await db
@@ -438,6 +541,22 @@ export async function overrideResult(
       resolvedAt: Math.floor(Date.now() / 1000),
     })
     .where(eq(llmInferenceResults.id, resultId));
+
+  // auto_applied_notified の場合、既存のnoteInferencesを削除してから新規追加
+  if (status === "auto_applied_notified") {
+    const latestInference = await db
+      .select({ id: noteInferences.id })
+      .from(noteInferences)
+      .where(eq(noteInferences.noteId, noteId))
+      .orderBy(desc(noteInferences.createdAt))
+      .limit(1);
+
+    if (latestInference.length > 0) {
+      await db
+        .delete(noteInferences)
+        .where(eq(noteInferences.id, latestInference[0].id));
+    }
+  }
 
   // noteInferencesにユーザー指定タイプで反映
   await db.insert(noteInferences).values({

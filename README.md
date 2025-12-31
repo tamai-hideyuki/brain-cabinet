@@ -417,9 +417,10 @@ POST /api/v1
 | `llmInference.estimateCost` | コスト見積もり | - |
 | `llmInference.execute` | 推論実行 | `{limit?, maxConcurrent?}` |
 | `llmInference.getPending` | 保留中アイテムを取得 | `{limit?, offset?}` |
-| `llmInference.approve` | 承認 | `{resultId}` |
-| `llmInference.reject` | 却下 | `{resultId}` |
-| `llmInference.override` | タイプを上書き | `{resultId, overrideType, reason?}` |
+| `llmInference.getAutoAppliedNotified` | 確認推奨アイテムを取得 | `{limit?, offset?}` |
+| `llmInference.approve` | 承認（pending/確認推奨） | `{resultId}` |
+| `llmInference.reject` | 却下（pending/確認推奨） | `{resultId}` |
+| `llmInference.override` | タイプを上書き（pending/確認推奨） | `{resultId, overrideType, reason?}` |
 | `llmInference.weeklySummary` | 週次サマリー | - |
 | `llmInference.health` | Ollamaヘルスチェック | - |
 
@@ -899,6 +900,7 @@ brain-cabinet/
   - Ollamaステータス表示（準備完了/停止中）
   - LLM推論モーダル（候補確認→実行→結果表示）
   - 保留確認モーダル（承認/却下/タイプ変更）
+  - **確認推奨モーダル** - 中信頼度（70-84%）の自動分類を確認・修正
 - [x] **堅牢性設計**
   - コンテキスト長制御（4000文字以上は要約後推論）
   - JSON自動修復（最大2回リトライ）
@@ -990,20 +992,22 @@ brain-cabinet/
 - **週次サマリーUI**: ダッシュボードにLLM推論セクション追加
   - `WeeklySummarySection`: 統計、Ollamaステータス、アクションボタン
   - `LlmInferenceModal`: 候補確認→推論実行→結果表示
-  - `PendingReviewModal`: 保留中アイテムの承認/却下/タイプ変更
+  - `PendingReviewModal`: 保留中/確認推奨アイテムの承認/却下/タイプ変更
+  - **確認推奨モード**: 中信頼度（70-84%）の自動分類も確認・修正可能
 - **堅牢性設計**:
   - コンテキスト長制御: 4000文字以上は要約後推論、`contextTruncated` フラグ記録
   - JSON自動修復: `tryParseWithRepair()` で最大2回リトライ
   - フォールバック: Ollama停止時はルールベース推論に切替、`fallbackUsed` フラグ記録
   - バッチスロットリング: `maxConcurrent = 2` でCPU/GPU占有を防止
-- **LLM Inference API**: Command API に9アクション追加
+- **LLM Inference API**: Command API に10アクション追加
   - `llmInference.getCandidates`: 推論候補ノートを取得
   - `llmInference.estimateCost`: コスト見積もり（対象数、推定時間）
   - `llmInference.execute`: 推論実行（バッチ処理）
   - `llmInference.getPending`: 保留中アイテムを取得
-  - `llmInference.approve`: 承認（note_inferencesに反映）
-  - `llmInference.reject`: 却下
-  - `llmInference.override`: タイプを上書き
+  - `llmInference.getAutoAppliedNotified`: 確認推奨アイテムを取得
+  - `llmInference.approve`: 承認（pending/確認推奨に対応）
+  - `llmInference.reject`: 却下（確認推奨の場合は自動分類を削除）
+  - `llmInference.override`: タイプを上書き（確認推奨の場合は分類を修正）
   - `llmInference.weeklySummary`: 週次サマリー統計
   - `llmInference.health`: Ollamaヘルスチェック
 - **`llm_inference_results` テーブル**: AI推論結果の永続化

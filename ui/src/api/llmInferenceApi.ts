@@ -76,6 +76,12 @@ export async function getPending(
   return sendCommand<GetPendingResult>('llmInference.getPending', params)
 }
 
+export async function getAutoAppliedNotified(
+  params?: GetPendingParams
+): Promise<GetPendingResult> {
+  return sendCommand<GetPendingResult>('llmInference.getAutoAppliedNotified', params)
+}
+
 export async function approve(
   resultId: number
 ): Promise<LlmInferenceActionResult> {

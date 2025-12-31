@@ -1,7 +1,7 @@
 /**
- * 保留中レビューモーダル
+ * 保留中 / 確認推奨 レビューモーダル
  *
- * LLM推論の保留中結果を確認・承認・却下する
+ * LLM推論の保留中・確認推奨結果を確認・承認・却下・修正する
  */
 
 import { useState } from 'react'
@@ -9,14 +9,17 @@ import { Text } from '../../atoms/Text'
 import { Button } from '../../atoms/Button'
 import { Badge } from '../../atoms/Badge'
 import { Spinner } from '../../atoms/Spinner'
-import { usePendingResults } from '../../../hooks/useLlmInference'
+import { usePendingResults, useAutoAppliedNotifiedResults } from '../../../hooks/useLlmInference'
 import type { NoteType } from '../../../types/note'
 import type { PendingItem } from '../../../types/llmInference'
 import './PendingReviewModal.css'
 
+type ReviewMode = 'pending' | 'auto_applied_notified'
+
 type PendingReviewModalProps = {
   onClose: () => void
   onNoteClick?: (noteId: string) => void
+  mode?: ReviewMode  // デフォルトは 'pending'
 }
 
 const NOTE_TYPES: NoteType[] = ['decision', 'learning', 'scratch', 'emotion', 'log']
@@ -32,11 +35,24 @@ const getTypeLabel = (type: NoteType): string => {
   return labels[type] || type
 }
 
-export const PendingReviewModal = ({ onClose, onNoteClick }: PendingReviewModalProps) => {
-  const { pending, loading, error, approve, reject, override } = usePendingResults()
+export const PendingReviewModal = ({ onClose, onNoteClick, mode = 'pending' }: PendingReviewModalProps) => {
+  const pendingHook = usePendingResults(mode === 'pending')
+  const autoAppliedHook = useAutoAppliedNotifiedResults(mode === 'auto_applied_notified')
+
+  // モードに応じてフックを切り替え
+  const { loading, error, approve, reject, override } = mode === 'pending' ? pendingHook : autoAppliedHook
+  const data = mode === 'pending' ? pendingHook.pending : autoAppliedHook.items
+
   const [processingId, setProcessingId] = useState<number | null>(null)
   const [selectedItem, setSelectedItem] = useState<PendingItem | null>(null)
   const [overrideType, setOverrideType] = useState<NoteType | null>(null)
+
+  // モードに応じたタイトルとメッセージ
+  const title = mode === 'pending' ? '保留中の分類を確認' : '確認推奨の分類を確認'
+  const emptyMessage = mode === 'pending' ? '保留中の分類はありません' : '確認推奨の分類はありません'
+  const infoMessage = mode === 'pending'
+    ? 'AIによる分類提案です。確認して承認・却下・修正してください。'
+    : 'AIが自動分類しました（信頼度70-84%）。分類が正しければ承認、間違っていれば修正してください。'
 
   const handleApprove = async (item: PendingItem) => {
     setProcessingId(item.id)
@@ -78,7 +94,7 @@ export const PendingReviewModal = ({ onClose, onNoteClick }: PendingReviewModalP
     <div className="pending-modal__backdrop" onClick={handleBackdropClick}>
       <div className="pending-modal">
         <header className="pending-modal__header">
-          <Text variant="subtitle">保留中の分類を確認</Text>
+          <Text variant="subtitle">{title}</Text>
           <button
             className="pending-modal__close"
             onClick={onClose}
@@ -100,9 +116,9 @@ export const PendingReviewModal = ({ onClose, onNoteClick }: PendingReviewModalP
           <div className="pending-modal__error">
             <Text variant="caption">{error}</Text>
           </div>
-        ) : !pending || pending.count === 0 ? (
+        ) : !data || data.count === 0 ? (
           <div className="pending-modal__empty">
-            <Text variant="body">保留中の分類はありません</Text>
+            <Text variant="body">{emptyMessage}</Text>
           </div>
         ) : selectedItem ? (
           // 上書きタイプ選択画面
@@ -166,15 +182,15 @@ export const PendingReviewModal = ({ onClose, onNoteClick }: PendingReviewModalP
             </div>
           </div>
         ) : (
-          // 保留一覧
+          // 一覧
           <div className="pending-modal__list">
             <div className="pending-modal__info">
               <Text variant="caption">
-                AIによる分類提案です。確認して承認・却下・修正してください。
+                {infoMessage}
               </Text>
             </div>
 
-            {pending.items.map((item) => (
+            {data.items.map((item: PendingItem) => (
               <div key={item.id} className="pending-modal__item">
                 <button
                   className="pending-modal__item-title"
@@ -239,10 +255,10 @@ export const PendingReviewModal = ({ onClose, onNoteClick }: PendingReviewModalP
               </div>
             ))}
 
-            {pending.count > pending.items.length && (
+            {data.count > data.items.length && (
               <div className="pending-modal__more">
                 <Text variant="caption">
-                  他 {pending.count - pending.items.length}件
+                  他 {data.count - data.items.length}件
                 </Text>
               </div>
             )}

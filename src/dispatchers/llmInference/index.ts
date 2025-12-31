@@ -7,6 +7,7 @@
 import {
   executeLlmInference,
   getPendingResults,
+  getAutoAppliedNotifiedResults,
   approveResult,
   rejectResult,
   overrideResult,
@@ -123,6 +124,17 @@ async function getPending(payload: unknown) {
 }
 
 /**
+ * 確認推奨（auto_applied_notified）一覧を取得
+ */
+async function getAutoAppliedNotified(payload: unknown) {
+  const p = (payload ?? {}) as GetPendingPayload;
+  return await getAutoAppliedNotifiedResults({
+    limit: p.limit,
+    offset: p.offset,
+  });
+}
+
+/**
  * 保留を承認
  */
 async function approve(payload: unknown) {
@@ -181,6 +193,7 @@ export const llmInferenceDispatcher: Record<
   estimateCost,
   execute,
   getPending,
+  getAutoAppliedNotified,
   approve,
   reject,
   override,
