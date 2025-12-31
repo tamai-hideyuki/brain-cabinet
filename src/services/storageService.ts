@@ -30,31 +30,41 @@ const TABLE_DEFINITIONS: Array<{
   label: string;
   blobColumns?: string[];
 }> = [
+  // コアテーブル
   { name: "notes", label: "ノート" },
   { name: "note_history", label: "ノート履歴" },
   { name: "note_relations", label: "ノート関連" },
   { name: "note_embeddings", label: "埋め込みベクトル", blobColumns: ["embedding"] },
+  { name: "note_images", label: "ノート画像", blobColumns: ["data"] },  // v5.4
+  // クラスタ関連
   { name: "clusters", label: "クラスタ" },
   { name: "cluster_history", label: "クラスタ履歴" },
   { name: "cluster_dynamics", label: "クラスタ動態", blobColumns: ["centroid"] },
+  // グラフ・影響関連
   { name: "concept_graph_edges", label: "概念グラフ" },
+  { name: "note_influence_edges", label: "ノート影響" },
+  // メトリクス・ドリフト
   { name: "metrics_time_series", label: "メトリクス時系列", blobColumns: ["growth_vector"] },
   { name: "drift_events", label: "ドリフトイベント" },
-  { name: "note_influence_edges", label: "ノート影響" },
+  // PTM
   { name: "ptm_snapshots", label: "PTMスナップショット", blobColumns: ["center_of_gravity", "cluster_strengths", "influence_map", "growth_direction"] },
+  // 推論関連（v4〜v6）
   { name: "note_inferences", label: "ノート推論" },
+  { name: "llm_inference_results", label: "LLM推論結果" },  // v6
   { name: "promotion_notifications", label: "昇格通知" },
   { name: "decision_counterevidences", label: "反証ログ" },
+  // レビュー機能
   { name: "review_schedules", label: "レビュースケジュール" },
   { name: "recall_questions", label: "想起質問" },
   { name: "review_sessions", label: "レビューセッション" },
+  // ブックマーク・シークレットBOX
   { name: "bookmark_nodes", label: "ブックマーク" },
   { name: "secret_box_items", label: "シークレットBOX", blobColumns: ["data", "thumbnail"] },
   { name: "secret_box_folders", label: "BOXフォルダ" },
+  // システム
   { name: "job_statuses", label: "ジョブ状態" },
   { name: "workflow_status", label: "ワークフロー状態" },
-  { name: "analysis_cache", label: "分析キャッシュ" },
-  { name: "note_images", label: "ノート画像", blobColumns: ["data", "thumbnail"] },
+  { name: "analysis_cache", label: "分析キャッシュ" },  // v5.12
 ];
 
 /**
