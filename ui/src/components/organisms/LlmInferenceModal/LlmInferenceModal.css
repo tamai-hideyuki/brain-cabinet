@@ -5,7 +5,7 @@
 .llm-modal__backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.75);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -14,7 +14,7 @@
 }
 
 .llm-modal {
-  background: var(--color-surface);
+  background: var(--color-bg-surface);
   border-radius: var(--radius-lg);
   width: 100%;
   max-width: 480px;
