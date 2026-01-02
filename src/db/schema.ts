@@ -497,7 +497,7 @@ export const bookmarkNodes = sqliteTable("bookmark_nodes", {
 // ============================================================
 
 // シークレットBOXアイテムタイプ定義
-export const SECRET_BOX_ITEM_TYPES = ["image", "video"] as const;
+export const SECRET_BOX_ITEM_TYPES = ["image", "video", "document"] as const;
 export type SecretBoxItemType = (typeof SECRET_BOX_ITEM_TYPES)[number];
 
 // シークレットBOXアイテムテーブル

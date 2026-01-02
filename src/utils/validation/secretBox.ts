@@ -11,6 +11,7 @@ export const SECRET_BOX_LIMITS = {
   NAME_MAX_LENGTH: 255,
   ALLOWED_IMAGE_TYPES: ["image/jpeg", "image/png", "image/gif", "image/webp"] as const,
   ALLOWED_VIDEO_TYPES: ["video/mp4", "video/webm", "video/quicktime"] as const,
+  ALLOWED_DOCUMENT_TYPES: ["application/pdf"] as const,
 } as const;
 
 /**
@@ -28,7 +29,7 @@ export const validateFileSize = (size: number, field = "file"): void => {
 
 /**
  * MIMEタイプのバリデーション
- * @returns 判定されたアイテムタイプ（"image" | "video"）
+ * @returns 判定されたアイテムタイプ（"image" | "video" | "document"）
  */
 export const validateMimeType = (mimeType: string, field = "file"): SecretBoxItemType => {
   if (SECRET_BOX_LIMITS.ALLOWED_IMAGE_TYPES.includes(mimeType as typeof SECRET_BOX_LIMITS.ALLOWED_IMAGE_TYPES[number])) {
@@ -37,8 +38,11 @@ export const validateMimeType = (mimeType: string, field = "file"): SecretBoxIte
   if (SECRET_BOX_LIMITS.ALLOWED_VIDEO_TYPES.includes(mimeType as typeof SECRET_BOX_LIMITS.ALLOWED_VIDEO_TYPES[number])) {
     return "video";
   }
+  if (SECRET_BOX_LIMITS.ALLOWED_DOCUMENT_TYPES.includes(mimeType as typeof SECRET_BOX_LIMITS.ALLOWED_DOCUMENT_TYPES[number])) {
+    return "document";
+  }
   throw new ValidationError(
-    `${field} has unsupported type: ${mimeType}. Allowed: ${[...SECRET_BOX_LIMITS.ALLOWED_IMAGE_TYPES, ...SECRET_BOX_LIMITS.ALLOWED_VIDEO_TYPES].join(", ")}`,
+    `${field} has unsupported type: ${mimeType}. Allowed: ${[...SECRET_BOX_LIMITS.ALLOWED_IMAGE_TYPES, ...SECRET_BOX_LIMITS.ALLOWED_VIDEO_TYPES, ...SECRET_BOX_LIMITS.ALLOWED_DOCUMENT_TYPES].join(", ")}`,
     field,
     ErrorCodes.SECRET_BOX_INVALID_FILE_TYPE
   );
