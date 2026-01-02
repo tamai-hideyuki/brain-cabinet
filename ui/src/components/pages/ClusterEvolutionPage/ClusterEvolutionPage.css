@@ -1,0 +1,20 @@
+.cluster-evolution-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 1rem;
+  gap: 1rem;
+}
+
+.cluster-evolution-page__header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.cluster-evolution-page__content {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}

@@ -14,6 +14,7 @@ import {
   getLatestWorkflowStatus,
   updateWorkflowProgress,
 } from "../../repositories/workflowStatusRepo";
+import { maybeCreateSnapshot } from "../cluster/temporalClustering";
 
 // デフォルトクラスタ数
 const DEFAULT_K = 8;
@@ -172,6 +173,27 @@ export const handleClusterRebuildJob = async (payload: ClusterRebuildPayload) =>
     },
     "[ClusterWorker] Cluster rebuild completed"
   );
+
+  // v7: Temporal Clustering スナップショット作成判定
+  try {
+    const snapshot = await maybeCreateSnapshot(
+      clusterInfos,
+      assignments,
+      payload.forceSnapshot ?? false
+    );
+    if (snapshot) {
+      logger.info(
+        {
+          snapshotId: snapshot.id,
+          trigger: snapshot.trigger,
+          changeScore: snapshot.changeScore,
+        },
+        "[ClusterWorker] Temporal clustering snapshot created"
+      );
+    }
+  } catch (err) {
+    logger.warn({ err }, "[ClusterWorker] Failed to create temporal clustering snapshot");
+  }
 
   // ワークフローの clusters ステップを完了に更新
   try {

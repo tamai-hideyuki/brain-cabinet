@@ -25,6 +25,7 @@ export type NoteAnalyzePayload = {
 export type ClusterRebuildPayload = {
   k?: number; // クラスタ数（デフォルト: 8）
   regenerateEmbeddings?: boolean; // Embedding 未生成ノートを自動生成（デフォルト: true）
+  forceSnapshot?: boolean; // v7: 強制的にスナップショットを作成（デフォルト: false）
 };
 
 // INDEX_REBUILD ジョブのペイロード

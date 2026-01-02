@@ -617,3 +617,107 @@ export const llmInferenceResults = sqliteTable("llm_inference_results", {
 
   createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
 });
+
+// ============================================================
+// v7 Temporal Clustering（時系列クラスタ追跡）
+// ============================================================
+
+// スナップショットトリガー定義
+export const SNAPSHOT_TRIGGERS = [
+  "significant_change",  // 有意な変化を検出
+  "scheduled",           // 週次保険
+  "manual",              // 手動実行
+  "initial",             // 初回スナップショット
+] as const;
+export type SnapshotTrigger = (typeof SNAPSHOT_TRIGGERS)[number];
+
+// クラスタリングスナップショット（世代管理）
+export const clusteringSnapshots = sqliteTable("clustering_snapshots", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  prevSnapshotId: integer("prev_snapshot_id"),                    // 比較元スナップショット
+  createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
+  trigger: text("trigger").notNull(),                             // SnapshotTrigger
+  k: integer("k").notNull(),                                      // クラスタ数
+  totalNotes: integer("total_notes").notNull(),
+  avgCohesion: real("avg_cohesion"),                              // 全体の平均凝集度
+  isCurrent: integer("is_current").notNull().default(0),          // 最新かどうか (0/1)
+
+  // 変化検出用メトリクス
+  changeScore: real("change_score"),                              // 前回からの変化度（0〜1）
+  notesAdded: integer("notes_added").notNull().default(0),
+  notesRemoved: integer("notes_removed").notNull().default(0),
+});
+
+// スナップショット内クラスタ
+export const snapshotClusters = sqliteTable("snapshot_clusters", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  snapshotId: integer("snapshot_id").notNull(),
+  localId: integer("local_id").notNull(),                         // 0〜k-1（スナップショット内ID）
+  centroid: blob("centroid").notNull(),                           // Float32Array
+  centroidNorm: real("centroid_norm"),                            // cosine高速化用
+  size: integer("size").notNull(),
+  sampleNoteId: text("sample_note_id"),
+  cohesion: real("cohesion"),
+  identityId: integer("identity_id"),                             // v7.1: 論理クラスタID（cluster_identities.id）
+});
+
+// クラスタ継承関係（predecessor）
+export const CONFIDENCE_LABELS = ["high", "medium", "low", "none"] as const;
+export type ConfidenceLabel = (typeof CONFIDENCE_LABELS)[number];
+
+export const clusterLineage = sqliteTable("cluster_lineage", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  snapshotId: integer("snapshot_id").notNull(),                   // 新スナップショット
+  clusterId: integer("cluster_id").notNull(),                     // snapshot_clusters.id
+  predecessorClusterId: integer("predecessor_cluster_id"),        // 前スナップショットのsnapshot_clusters.id (NULLなら新規)
+  similarity: real("similarity").notNull(),                       // predecessorとの類似度
+  confidenceScore: real("confidence_score").notNull(),            // 0〜1の数値
+  confidenceLabel: text("confidence_label").notNull(),            // high/medium/low/none
+});
+
+// クラスタイベントタイプ定義
+export const CLUSTER_EVENT_TYPES = [
+  "split",      // 分裂: 1つのpredecessorに複数の新クラスタ
+  "merge",      // 統合: 複数の旧クラスタが1つの新クラスタに収束
+  "extinct",    // 消滅: predecessorとして参照されなかった旧クラスタ
+  "emerge",     // 新規出現: predecessorなし
+  "continue",   // 継続: 1対1の継承
+] as const;
+export type ClusterEventType = (typeof CLUSTER_EVENT_TYPES)[number];
+
+// クラスタイベント（分裂/統合/消滅/新規）
+export const clusterEvents = sqliteTable("cluster_events", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  snapshotId: integer("snapshot_id").notNull(),                   // このイベントが発生したスナップショット
+  eventType: text("event_type").notNull(),                        // ClusterEventType
+  createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
+
+  // イベント詳細（JSON）
+  // split:  { source: cluster_id, targets: [cluster_id, ...] }
+  // merge:  { sources: [cluster_id, ...], target: cluster_id }
+  // extinct: { cluster_id: id, last_size: n }
+  // emerge: { cluster_id: id, initial_size: n }
+  // continue: { from: cluster_id, to: cluster_id, similarity: 0.85 }
+  details: text("details").notNull(),
+});
+
+// スナップショット内ノート割り当て
+export const snapshotNoteAssignments = sqliteTable("snapshot_note_assignments", {
+  snapshotId: integer("snapshot_id").notNull(),
+  noteId: text("note_id").notNull(),
+  clusterId: integer("cluster_id").notNull(),                     // snapshot_clusters.id
+});
+
+// ============================================================
+// v7.1 クラスタアイデンティティ（論理クラスタID）
+// ============================================================
+
+// クラスタアイデンティティ（思考系譜の永続的な識別子）
+export const clusterIdentities = sqliteTable("cluster_identities", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
+  label: text("label"),                                           // 例: "OAuth理解", "設計判断"
+  description: text("description"),                               // 詳細説明
+  isActive: integer("is_active").notNull().default(1),            // 1: アクティブ, 0: 消滅済み
+  lastSeenSnapshotId: integer("last_seen_snapshot_id"),           // 最後に観測されたスナップショット
+});
