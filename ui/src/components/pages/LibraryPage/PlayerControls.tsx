@@ -1,6 +1,6 @@
 /**
  * PlayerControls - WASD移動 + QE上下 + PointerLock視点操作
- * 床の当たり判定付き
+ * 床の当たり判定付き + テレポート機能
  */
 
 import { useRef, useEffect } from 'react'
@@ -11,8 +11,14 @@ import * as THREE from 'three'
 const MOVE_SPEED = 15
 const SPRINT_MULTIPLIER = 2
 const FLOOR_Y = 0 // 床の高さ（カメラの最低高さ）
+const TELEPORT_OFFSET_Z = 15 // テレポート時のクラスターからの距離
 
-export function PlayerControls() {
+type Props = {
+  teleportTarget?: [number, number, number] | null
+  onTeleportComplete?: () => void
+}
+
+export function PlayerControls({ teleportTarget, onTeleportComplete }: Props = {}) {
   const { camera, gl } = useThree()
   const controlsRef = useRef<PointerLockControlsImpl | null>(null)
   const moveState = useRef({
@@ -112,6 +118,24 @@ export function PlayerControls() {
       document.removeEventListener('keyup', handleKeyUp)
     }
   }, [camera, gl])
+
+  // テレポート処理
+  useEffect(() => {
+    if (teleportTarget) {
+      // クラスターの位置の少し手前にテレポート
+      camera.position.set(
+        teleportTarget[0],
+        5, // 視点の高さ
+        teleportTarget[2] + TELEPORT_OFFSET_Z
+      )
+      // クラスターの方向を向く
+      camera.lookAt(teleportTarget[0], 5, teleportTarget[2])
+      // 速度をリセット
+      velocity.current.set(0, 0, 0)
+      // 完了コールバック
+      onTeleportComplete?.()
+    }
+  }, [teleportTarget, camera, onTeleportComplete])
 
   useFrame((_, delta) => {
     if (!controlsRef.current?.isLocked) return

@@ -38,6 +38,10 @@ type Props = {
   clusters: LibraryCluster[]
   onSelectNote: (noteId: string) => void
   onClusterPositionChange?: (clusterId: number, position: [number, number, number]) => void
+  highlightedNoteIds: Set<string>
+  isSearchActive: boolean
+  teleportTarget: [number, number, number] | null
+  onTeleportComplete: () => void
 }
 
 function Floor() {
@@ -68,7 +72,15 @@ function LoadingIndicator() {
   )
 }
 
-export function LibraryScene({ clusters, onSelectNote, onClusterPositionChange }: Props) {
+export function LibraryScene({
+  clusters,
+  onSelectNote,
+  onClusterPositionChange,
+  highlightedNoteIds,
+  isSearchActive,
+  teleportTarget,
+  onTeleportComplete,
+}: Props) {
   const isTouchDevice = useIsTouchDevice()
 
   // ブックマーククラスタかどうかを判定（負のIDはブックマーク）
@@ -102,18 +114,29 @@ export function LibraryScene({ clusters, onSelectNote, onClusterPositionChange }
               cluster={cluster}
               onSelectNote={onSelectNote}
               onPositionChange={handlePositionChange}
+              highlightedNoteIds={highlightedNoteIds}
+              isSearchActive={isSearchActive}
             />
           ) : (
             <BookShelf
               key={cluster.id}
               cluster={cluster}
               onSelectNote={onSelectNote}
+              highlightedNoteIds={highlightedNoteIds}
+              isSearchActive={isSearchActive}
             />
           )
         )}
 
         {/* デバイスに応じたコントロールを表示 */}
-        {isTouchDevice ? <TouchControls /> : <PlayerControls />}
+        {isTouchDevice ? (
+          <TouchControls />
+        ) : (
+          <PlayerControls
+            teleportTarget={teleportTarget}
+            onTeleportComplete={onTeleportComplete}
+          />
+        )}
       </Suspense>
     </Canvas>
   )

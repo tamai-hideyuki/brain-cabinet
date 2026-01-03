@@ -14,6 +14,8 @@ type Props = {
   cluster: LibraryCluster
   onSelectNote: (noteId: string) => void
   onPositionChange: (clusterId: number, position: [number, number, number]) => void
+  highlightedNoteIds: Set<string>
+  isSearchActive: boolean
 }
 
 // 配置設定
@@ -42,7 +44,13 @@ function calculateTotalHeight(noteCount: number): number {
   return rows * CARD_HEIGHT + 3
 }
 
-export function DraggableBookShelf({ cluster, onSelectNote, onPositionChange }: Props) {
+export function DraggableBookShelf({
+  cluster,
+  onSelectNote,
+  onPositionChange,
+  highlightedNoteIds,
+  isSearchActive,
+}: Props) {
   const totalHeight = calculateTotalHeight(cluster.notes.length)
   const groupRef = useRef<THREE.Group>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -164,6 +172,8 @@ export function DraggableBookShelf({ cluster, onSelectNote, onPositionChange }: 
           position={calculateBookPosition(index, cluster.notes.length)}
           color={cluster.color}
           onSelect={onSelectNote}
+          isHighlighted={highlightedNoteIds.has(note.id)}
+          isSearchActive={isSearchActive}
         />
       ))}
     </group>

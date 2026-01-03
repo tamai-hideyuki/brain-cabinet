@@ -9,6 +9,8 @@ import type { LibraryCluster } from '../../../types/library'
 type Props = {
   cluster: LibraryCluster
   onSelectNote: (noteId: string) => void
+  highlightedNoteIds: Set<string>
+  isSearchActive: boolean
 }
 
 // 配置設定
@@ -48,7 +50,12 @@ function calculateTotalHeight(noteCount: number): number {
   return rows * CARD_HEIGHT + 3
 }
 
-export function BookShelf({ cluster, onSelectNote }: Props) {
+export function BookShelf({
+  cluster,
+  onSelectNote,
+  highlightedNoteIds,
+  isSearchActive,
+}: Props) {
   const totalHeight = calculateTotalHeight(cluster.notes.length)
 
   return (
@@ -95,6 +102,8 @@ export function BookShelf({ cluster, onSelectNote }: Props) {
           position={calculateBookPosition(index, cluster.notes.length)}
           color={cluster.color}
           onSelect={onSelectNote}
+          isHighlighted={highlightedNoteIds.has(note.id)}
+          isSearchActive={isSearchActive}
         />
       ))}
     </group>

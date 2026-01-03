@@ -3,11 +3,12 @@
  * 思考空間を3D図書館として探索する
  */
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { LibraryScene, useIsTouchDevice } from './LibraryScene'
 import { NotePanel } from './NotePanel'
 import { HUD } from './HUD'
+import { SearchOverlay } from './SearchOverlay'
 import { TouchJoystickOverlay } from './TouchJoystickOverlay'
 import { fetchLibraryData } from '../../../api/libraryApi'
 import type { LibraryCluster } from '../../../types/library'
@@ -19,6 +20,17 @@ export function LibraryPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const isTouchDevice = useIsTouchDevice()
+
+  // 検索関連の状態
+  const [highlightedNoteIds, setHighlightedNoteIds] = useState<string[]>([])
+  const [teleportTarget, setTeleportTarget] = useState<[number, number, number] | null>(null)
+
+  // Set に変換（パフォーマンス最適化）
+  const highlightedNoteIdSet = useMemo(
+    () => new Set(highlightedNoteIds),
+    [highlightedNoteIds]
+  )
+  const isSearchActive = highlightedNoteIds.length > 0
 
   useEffect(() => {
     async function load() {
@@ -40,6 +52,25 @@ export function LibraryPage() {
 
   const handleClosePanel = useCallback(() => {
     setSelectedNoteId(null)
+  }, [])
+
+  // 検索結果からテレポート
+  const handleTeleport = useCallback(
+    (position: [number, number, number], noteId: string) => {
+      setTeleportTarget(position)
+      // テレポート後に該当ノートを選択状態にする
+      setSelectedNoteId(noteId)
+    },
+    []
+  )
+
+  const handleTeleportComplete = useCallback(() => {
+    setTeleportTarget(null)
+  }, [])
+
+  // ハイライト対象を更新
+  const handleHighlight = useCallback((noteIds: string[]) => {
+    setHighlightedNoteIds(noteIds)
   }, [])
 
   const totalNotes = clusters.reduce((sum, c) => sum + c.notes.length, 0)
@@ -73,7 +104,21 @@ export function LibraryPage() {
         <h1>Brain Library</h1>
       </header>
 
-      <LibraryScene clusters={clusters} onSelectNote={handleSelectNote} />
+      <LibraryScene
+        clusters={clusters}
+        onSelectNote={handleSelectNote}
+        highlightedNoteIds={highlightedNoteIdSet}
+        isSearchActive={isSearchActive}
+        teleportTarget={teleportTarget}
+        onTeleportComplete={handleTeleportComplete}
+      />
+
+      {/* 検索オーバーレイ */}
+      <SearchOverlay
+        clusters={clusters}
+        onTeleport={handleTeleport}
+        onHighlight={handleHighlight}
+      />
 
       <HUD noteCount={totalNotes} clusterCount={clusters.length} />
 
