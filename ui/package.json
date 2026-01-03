@@ -26,6 +26,9 @@
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.59.0",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.5.0",
+    "@types/three": "^0.182.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-markdown": "^10.1.0",
@@ -33,6 +36,7 @@
     "rehype-raw": "^7.0.0",
     "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.1",
+    "three": "^0.182.0",
     "vis-data": "^8.0.3",
     "vis-network": "^10.0.2"
   }

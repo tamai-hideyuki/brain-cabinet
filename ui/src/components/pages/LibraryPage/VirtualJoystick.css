@@ -1,0 +1,55 @@
+/* VirtualJoystick - タッチ用仮想ジョイスティック */
+
+.virtual-joystick {
+  position: fixed;
+  bottom: 40px;
+  z-index: 100;
+  touch-action: none;
+  user-select: none;
+}
+
+.virtual-joystick--left {
+  left: 40px;
+}
+
+.virtual-joystick--right {
+  right: 40px;
+}
+
+.virtual-joystick__base {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.virtual-joystick__stick {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.6);
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: transform 0.05s ease-out;
+}
+
+.virtual-joystick__label {
+  text-align: center;
+  margin-top: 8px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+}
+
+/* 押下時のフィードバック */
+.virtual-joystick__base:active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.virtual-joystick__stick:active {
+  background: rgba(255, 255, 255, 0.8);
+}
