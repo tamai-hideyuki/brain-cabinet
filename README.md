@@ -1,17 +1,20 @@
-# Brain Cabinet v6.0.0 (LLM Inference)
+# Brain Cabinet v7.0.0 (3D Library & Temporal Clustering)
 
 **思考ベースの検索型知識システム — あなたの思考を理解し、成長を見守る外部脳**
 
 > Brain Cabinet は単なるメモ帳ではありません。
 > ノートの**文脈を理解**し、質問に応じて**必要な部分だけを抽出・再構成**する仕組みです。
 >
-> **v7 [実験的] Temporal Clustering（時系列クラスタ追跡）**
-> - **思考系譜追跡** — クラスタの分裂・統合・出現・消滅を時系列で追跡
-> - **クラスタアイデンティティ** — クラスタに永続的なIDを付与し、再構築後も同一性を維持
-> - **スナップショット履歴** — 変化検出または定期（7日）でスナップショットを自動作成
+> **v7 の新機能: 3Dライブラリ & Temporal Clustering**
+> - **🏛️ 3Dライブラリ UI** — ブックマークフォルダを本棚として3D空間に配置、ウォークスルーで探索
+> - **🔍 ライブラリ検索** — ノートをキーワードで検索、ハイライト表示、クリックでテレポート
+> - **🗺️ ミニマップ** — 上空から全体を俯瞰、クリックでテレポート
+> - **🎨 フォルダカラー** — 右クリックで本棚の色をカスタマイズ（DB永続化）
+> - **📦 ドラッグ移動** — 本棚を自由に配置（位置はDB永続化）
+> - **🧬 Temporal Clustering** — クラスタの分裂・統合・出現・消滅を時系列で追跡
 > - **進化UI** — `/ui/evolution` で思考系譜とイベント履歴を可視化
 >
-> **v6.0 の新機能: ローカルLLM推論（Ollama + Qwen2.5:3b）**
+> **v6.0 の機能: ローカルLLM推論（Ollama + Qwen2.5:3b）**
 > - **ローカルLLM推論** — Ollama + Qwen2.5:3b でノートを高精度分類（APIコストゼロ）
 > - **閾値ベース自動反映** — confidence ≥ 0.85 は自動反映、0.7-0.85 は週次通知、< 0.7 は保留
 > - **週次サマリー** — ダッシュボードでLLM推論の統計と保留中アイテムを一覧表示
@@ -285,6 +288,44 @@ POST /api/v1
 | `review.stats` | ノート別のレビュー統計 |
 | `review.overview` | 全体のレビュー統計 |
 
+### 12. 3Dライブラリ（v7 新機能）
+
+ブックマークフォルダを3D空間の「本棚」として可視化：
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    3D Library Scene                          │
+├─────────────────────────────────────────────────────────────┤
+│  BookShelf        │ フォルダを本棚として3D配置               │
+│  NoteMesh         │ ノートをカード形式で表示                 │
+│  PlayerControls   │ WASD/矢印キーで移動、右ドラッグで視点回転 │
+│  SearchOverlay    │ キーワード検索＆ハイライト               │
+│  Minimap          │ 上空俯瞰＆クリックテレポート             │
+│  ColorPicker      │ 右クリックで本棚の色をカスタマイズ        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**主な機能:**
+
+| 機能 | 説明 |
+|------|------|
+| ウォークスルー | WASD/矢印キーで3D空間を探索 |
+| 視点操作 | 右ドラッグで視点回転 |
+| ノート閲覧 | カードクリックで詳細パネル表示 |
+| 検索＆ハイライト | キーワードでノートを検索、発光エフェクト |
+| テレポート | ミニマップ or 検索結果クリックで即座に移動 |
+| ドラッグ移動 | 本棚を自由に配置（位置はDB永続化） |
+| カラー設定 | 右クリックで14色から選択（色はDB永続化） |
+
+**Bookmark API（ライブラリ関連）:**
+
+| アクション | 説明 |
+|-----------|------|
+| `bookmark.updateLibraryPosition` | 本棚の3D位置を更新 |
+| `bookmark.getLibraryPositions` | 全本棚の位置を取得 |
+| `bookmark.updateLibraryColor` | 本棚の色を更新 |
+| `bookmark.getLibraryColors` | 全本棚の色を取得 |
+
 ---
 
 ## GPTでの使い方
@@ -429,6 +470,21 @@ POST /api/v1
 | `llmInference.override` | タイプを上書き（pending/確認推奨） | `{resultId, overrideType, reason?}` |
 | `llmInference.weeklySummary` | 週次サマリー | - |
 | `llmInference.health` | Ollamaヘルスチェック | - |
+
+#### Bookmark ドメイン（v5.2〜v7）
+| アクション | 説明 | payload |
+|-----------|------|---------|
+| `bookmark.list` | ブックマークツリー取得 | - |
+| `bookmark.get` | 単一ノード取得 | `{id}` |
+| `bookmark.create` | ノード作成 | `{type, name, parentId?, noteId?, url?}` |
+| `bookmark.update` | ノード更新 | `{id, name?, isExpanded?}` |
+| `bookmark.delete` | ノード削除 | `{id}` |
+| `bookmark.move` | ノード移動 | `{id, newParentId?, newPosition?}` |
+| `bookmark.reorder` | 並び順更新 | `{parentId?, orderedIds}` |
+| `bookmark.updateLibraryPosition` | 本棚の3D位置を更新（v7） | `{folderName, position: [x, y, z]}` |
+| `bookmark.getLibraryPositions` | 全本棚の位置を取得（v7） | - |
+| `bookmark.updateLibraryColor` | 本棚の色を更新（v7） | `{folderName, color}` |
+| `bookmark.getLibraryColors` | 全本棚の色を取得（v7） | - |
 
 #### Workflow ドメイン
 | アクション | 説明 | payload |
@@ -752,12 +808,27 @@ brain-cabinet/
 │   │   ├── ragDispatcher.ts
 │   │   ├── decisionDispatcher.ts  # v4 新規
 │   │   ├── reviewDispatcher.ts    # v4.5 新規
+│   │   ├── bookmarkDispatcher.ts  # v5.2 新規
 │   │   └── systemDispatcher.ts
 │   ├── types/
 │   │   └── command.ts            # Command型定義（v3 新規）
 │   ├── services/                 # ビジネスロジック
+│   │   └── bookmark/             # ブックマーク・ライブラリ3D位置/色管理
 │   ├── repositories/             # データアクセス層
 │   └── utils/                    # ユーティリティ
+├── ui/                            # フロントエンド（React + Vite）
+│   └── src/
+│       └── components/pages/
+│           └── LibraryPage/       # v7 3Dライブラリ UI
+│               ├── index.tsx      # メインページ
+│               ├── LibraryScene.tsx    # 3Dシーン
+│               ├── BookShelf.tsx       # 本棚コンポーネント
+│               ├── DraggableBookShelf.tsx  # ドラッグ可能本棚
+│               ├── NoteMesh.tsx        # ノートカード3D
+│               ├── PlayerControls.tsx  # WASD操作
+│               ├── SearchOverlay.tsx   # 検索UI
+│               ├── Minimap.tsx         # ミニマップ
+│               └── ColorPicker.tsx     # 色選択UI
 ├── docs/                         # ドキュメント
 ├── drizzle/                      # マイグレーションファイル
 ├── openapi-command.json          # GPT Actions用 OpenAPI仕様
@@ -922,7 +993,36 @@ brain-cabinet/
   - `llmInference.health`: Ollamaヘルスチェック
 - [x] **`llm_inference_results` テーブル** - AI推論結果の永続化（note_historyと分離）
 
-### Phase 7（予定）
+### Phase 7（v7.0 完了）
+- [x] **3Dライブラリ UI** - ブックマークフォルダを3D空間に本棚として配置
+  - **WASD/矢印キー操作**: FPS風ウォークスルーでノートを探索
+  - **マウス視点操作**: 右ドラッグで視点回転
+  - **ノートカード表示**: 本棚にノートをカード形式で整列表示
+  - **ノートクリック**: クリックでノート詳細パネルを表示
+- [x] **ライブラリ検索機能** - ノートをキーワードで検索
+  - 検索バーでリアルタイム検索
+  - ヒットしたノートをハイライト表示（発光エフェクト）
+  - 検索結果クリックでその本棚にテレポート
+- [x] **ミニマップ & テレポート** - 上空からの俯瞰ビュー
+  - 画面右上にミニマップ表示
+  - クリックした位置にテレポート
+  - 現在位置をリアルタイム表示
+- [x] **フォルダカラー設定** - 本棚の色をカスタマイズ
+  - 右クリックで14色のプリセットから選択
+  - 色設定はDB永続化（`library_color` カラム）
+  - Command API: `bookmark.updateLibraryColor`, `bookmark.getLibraryColors`
+- [x] **本棚ドラッグ移動** - 3D空間で本棚を自由に配置
+  - ラベル部分をドラッグして移動
+  - 位置はDB永続化（`library_position` カラム）
+  - Command API: `bookmark.updateLibraryPosition`, `bookmark.getLibraryPositions`
+- [x] **Temporal Clustering** - クラスタの時系列追跡
+  - 思考系譜追跡（分裂・統合・出現・消滅）
+  - クラスタアイデンティティ（永続ID）
+  - スナップショット履歴（変化検出 or 7日定期）
+  - 進化UI（`/ui/evolution`）
+- [x] **ナビゲーション更新**: ホーム/ノート/ブックマーク/ライブラリ/レビュー/タイムライン/グラフ/進化
+
+### Phase 8（予定）
 - [ ] 要約生成・保存
 - [ ] Webhook / 自動インポート
 - [ ] マルチモデル対応（GPT-4, Claude等）
@@ -966,6 +1066,7 @@ brain-cabinet/
 | `search` | keyword, semantic, hybrid |
 | `cluster` | list, get, build |
 | `relation` | similar, influence |
+| `bookmark` | list, create, update, delete, move, updateLibraryPosition, updateLibraryColor |
 | `workflow` | reconstruct, status（クラスタ/Embedding/FTS再構築） |
 | `gpt` | search, context, task, overview |
 | `rag` | context（質問応答） |
@@ -985,6 +1086,39 @@ brain-cabinet/
 ---
 
 ## バージョン履歴
+
+### v7.0.0
+- **3Dライブラリ UI** (`/ui/library`): ブックマークフォルダを3D空間の本棚として可視化
+  - **React Three Fiber**: Three.jsベースの3Dレンダリング
+  - **WASD/矢印キー操作**: FPS風ウォークスルーでノートを探索
+  - **マウス視点操作**: 右ドラッグで視点回転
+  - **ノートカード表示**: 本棚にノートをカード形式で整列表示
+  - **ノートクリック**: クリックでノート詳細パネルを表示
+- **ライブラリ検索機能**: 3D空間内でノートをキーワード検索
+  - 検索バーでリアルタイム検索（タイトル・カテゴリ）
+  - ヒットしたノートをハイライト表示（発光エフェクト）
+  - 検索結果クリックでその本棚にテレポート
+  - 非マッチノートは暗く表示
+- **ミニマップ & テレポート**: 上空からの俯瞰ビュー
+  - 画面右上にミニマップ表示
+  - クリックした位置にテレポート
+  - 現在位置をリアルタイム表示（赤ドット）
+  - 各本棚をクラスタ色で表示
+- **フォルダカラー設定**: 本棚の色をカスタマイズ
+  - 右クリックで14色のプリセットから選択
+  - 色設定はDB永続化（`library_color` カラム）
+  - `bookmark.updateLibraryColor`: 色を更新
+  - `bookmark.getLibraryColors`: 全色設定を取得
+- **本棚ドラッグ移動**: 3D空間で本棚を自由に配置
+  - ラベル部分をドラッグして移動
+  - 位置はDB永続化（`library_position` カラム）
+  - `bookmark.updateLibraryPosition`: 位置を更新
+  - `bookmark.getLibraryPositions`: 全位置設定を取得
+- **Temporal Clustering**: クラスタの時系列追跡
+  - 思考系譜追跡（分裂・統合・出現・消滅）
+  - クラスタアイデンティティ（永続ID）
+  - スナップショット履歴（変化検出 or 7日定期）
+  - 進化UI（`/ui/evolution`）
 
 ### v6.1.0
 - **ダッシュボード強化** - 5つの新しい分析セクションを追加
