@@ -42,6 +42,7 @@ type Props = {
   isSearchActive: boolean
   teleportTarget: [number, number, number] | null
   onTeleportComplete: () => void
+  onCameraMove?: (position: { x: number; z: number }) => void
 }
 
 function Floor() {
@@ -80,6 +81,7 @@ export function LibraryScene({
   isSearchActive,
   teleportTarget,
   onTeleportComplete,
+  onCameraMove,
 }: Props) {
   const isTouchDevice = useIsTouchDevice()
 
@@ -135,6 +137,7 @@ export function LibraryScene({
           <PlayerControls
             teleportTarget={teleportTarget}
             onTeleportComplete={onTeleportComplete}
+            onCameraMove={onCameraMove}
           />
         )}
       </Suspense>

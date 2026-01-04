@@ -9,6 +9,7 @@ import { LibraryScene, useIsTouchDevice } from './LibraryScene'
 import { NotePanel } from './NotePanel'
 import { HUD } from './HUD'
 import { SearchOverlay } from './SearchOverlay'
+import { Minimap } from './Minimap'
 import { TouchJoystickOverlay } from './TouchJoystickOverlay'
 import { fetchLibraryData } from '../../../api/libraryApi'
 import type { LibraryCluster } from '../../../types/library'
@@ -24,6 +25,9 @@ export function LibraryPage() {
   // 検索関連の状態
   const [highlightedNoteIds, setHighlightedNoteIds] = useState<string[]>([])
   const [teleportTarget, setTeleportTarget] = useState<[number, number, number] | null>(null)
+
+  // カメラ位置（ミニマップ用）
+  const [cameraPosition, setCameraPosition] = useState({ x: 0, z: 30 })
 
   // Set に変換（パフォーマンス最適化）
   const highlightedNoteIdSet = useMemo(
@@ -54,8 +58,8 @@ export function LibraryPage() {
     setSelectedNoteId(null)
   }, [])
 
-  // 検索結果からテレポート
-  const handleTeleport = useCallback(
+  // 検索結果からテレポート（noteId付き）
+  const handleSearchTeleport = useCallback(
     (position: [number, number, number], noteId: string) => {
       setTeleportTarget(position)
       // テレポート後に該当ノートを選択状態にする
@@ -64,6 +68,11 @@ export function LibraryPage() {
     []
   )
 
+  // ミニマップからテレポート（noteIdなし）
+  const handleMinimapTeleport = useCallback((position: [number, number, number]) => {
+    setTeleportTarget(position)
+  }, [])
+
   const handleTeleportComplete = useCallback(() => {
     setTeleportTarget(null)
   }, [])
@@ -71,6 +80,11 @@ export function LibraryPage() {
   // ハイライト対象を更新
   const handleHighlight = useCallback((noteIds: string[]) => {
     setHighlightedNoteIds(noteIds)
+  }, [])
+
+  // カメラ位置を更新
+  const handleCameraMove = useCallback((position: { x: number; z: number }) => {
+    setCameraPosition(position)
   }, [])
 
   const totalNotes = clusters.reduce((sum, c) => sum + c.notes.length, 0)
@@ -111,14 +125,24 @@ export function LibraryPage() {
         isSearchActive={isSearchActive}
         teleportTarget={teleportTarget}
         onTeleportComplete={handleTeleportComplete}
+        onCameraMove={handleCameraMove}
       />
 
       {/* 検索オーバーレイ */}
       <SearchOverlay
         clusters={clusters}
-        onTeleport={handleTeleport}
+        onTeleport={handleSearchTeleport}
         onHighlight={handleHighlight}
       />
+
+      {/* ミニマップ（タッチデバイスでは非表示） */}
+      {!isTouchDevice && (
+        <Minimap
+          clusters={clusters}
+          cameraPosition={cameraPosition}
+          onTeleport={handleMinimapTeleport}
+        />
+      )}
 
       <HUD noteCount={totalNotes} clusterCount={clusters.length} />
 

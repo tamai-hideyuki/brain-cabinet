@@ -16,9 +16,14 @@ const TELEPORT_OFFSET_Z = 15 // テレポート時のクラスターからの距
 type Props = {
   teleportTarget?: [number, number, number] | null
   onTeleportComplete?: () => void
+  onCameraMove?: (position: { x: number; z: number }) => void
 }
 
-export function PlayerControls({ teleportTarget, onTeleportComplete }: Props = {}) {
+export function PlayerControls({
+  teleportTarget,
+  onTeleportComplete,
+  onCameraMove,
+}: Props = {}) {
   const { camera, gl } = useThree()
   const controlsRef = useRef<PointerLockControlsImpl | null>(null)
   const moveState = useRef({
@@ -137,7 +142,18 @@ export function PlayerControls({ teleportTarget, onTeleportComplete }: Props = {
     }
   }, [teleportTarget, camera, onTeleportComplete])
 
+  // カメラ位置の通知用（スロットリング）
+  const lastReportedPos = useRef({ x: 0, z: 0 })
+
   useFrame((_, delta) => {
+    // カメラ位置を通知（移動量が一定以上の場合のみ）
+    const dx = camera.position.x - lastReportedPos.current.x
+    const dz = camera.position.z - lastReportedPos.current.z
+    if (Math.abs(dx) > 1 || Math.abs(dz) > 1) {
+      lastReportedPos.current = { x: camera.position.x, z: camera.position.z }
+      onCameraMove?.({ x: camera.position.x, z: camera.position.z })
+    }
+
     if (!controlsRef.current?.isLocked) return
 
     const speed = moveState.current.sprint ? MOVE_SPEED * SPRINT_MULTIPLIER : MOVE_SPEED
