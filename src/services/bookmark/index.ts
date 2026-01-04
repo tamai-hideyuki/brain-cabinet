@@ -294,3 +294,113 @@ async function checkIsDescendant(targetId: string, ancestorId: string): Promise<
 
   return checkIsDescendant(node.parentId, ancestorId);
 }
+
+// ライブラリ3D位置を更新（フォルダ名で検索）
+export async function updateLibraryPosition(
+  folderName: string,
+  position: [number, number, number]
+): Promise<{ success: boolean }> {
+  const now = Math.floor(Date.now() / 1000);
+  const positionJson = JSON.stringify(position);
+
+  // フォルダ名でノードを検索
+  const rows = await db
+    .select({ id: bookmarkNodes.id })
+    .from(bookmarkNodes)
+    .where(and(
+      eq(bookmarkNodes.type, "folder"),
+      eq(bookmarkNodes.name, folderName)
+    ));
+
+  if (rows.length === 0) {
+    // フォルダが見つからない場合、ルートブックマークとして保存
+    // 「ブックマーク」という名前のルートノートを探す or 作成
+    if (folderName === "ブックマーク") {
+      // ルートレベルのノートはフォルダがないので、特別な処理は不要
+      // この場合は保存をスキップ（ルートノートはフォルダではない）
+      return { success: true };
+    }
+    throw new Error(`Folder not found: ${folderName}`);
+  }
+
+  await db
+    .update(bookmarkNodes)
+    .set({ libraryPosition: positionJson, updatedAt: now })
+    .where(eq(bookmarkNodes.id, rows[0].id));
+
+  return { success: true };
+}
+
+// 全フォルダのライブラリ位置を取得
+export async function getLibraryPositions(): Promise<Record<string, [number, number, number]>> {
+  const rows = await db
+    .select({
+      name: bookmarkNodes.name,
+      libraryPosition: bookmarkNodes.libraryPosition,
+    })
+    .from(bookmarkNodes)
+    .where(eq(bookmarkNodes.type, "folder"));
+
+  const positions: Record<string, [number, number, number]> = {};
+
+  for (const row of rows) {
+    if (row.libraryPosition) {
+      try {
+        positions[row.name] = JSON.parse(row.libraryPosition);
+      } catch {
+        // JSONパースエラーは無視
+      }
+    }
+  }
+
+  return positions;
+}
+
+// ライブラリ色を更新（フォルダ名で検索）
+export async function updateLibraryColor(
+  folderName: string,
+  color: string
+): Promise<{ success: boolean }> {
+  const now = Math.floor(Date.now() / 1000);
+
+  // フォルダ名でノードを検索
+  const rows = await db
+    .select({ id: bookmarkNodes.id })
+    .from(bookmarkNodes)
+    .where(and(
+      eq(bookmarkNodes.type, "folder"),
+      eq(bookmarkNodes.name, folderName)
+    ));
+
+  if (rows.length === 0) {
+    throw new Error(`Folder not found: ${folderName}`);
+  }
+
+  await db
+    .update(bookmarkNodes)
+    .set({ libraryColor: color, updatedAt: now })
+    .where(eq(bookmarkNodes.id, rows[0].id));
+
+  return { success: true };
+}
+
+// 全フォルダのライブラリ色を取得
+export async function getLibraryColors(): Promise<Record<string, string>> {
+  const rows = await db
+    .select({
+      name: bookmarkNodes.name,
+      libraryColor: bookmarkNodes.libraryColor,
+    })
+    .from(bookmarkNodes)
+    .where(eq(bookmarkNodes.type, "folder"));
+
+  const colors: Record<string, string> = {};
+
+  for (const row of rows) {
+    if (row.libraryColor) {
+      colors[row.name] = row.libraryColor;
+    }
+  }
+
+  return colors;
+}

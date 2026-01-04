@@ -245,26 +245,40 @@ describe("analyticsService", () => {
   // ============================================
   describe("getSemanticDiffTimeline", () => {
     it("空の結果を返す場合", async () => {
+      // 2つのクエリをモック: noteHistory と notes
       const mockOrderBy = vi.fn().mockResolvedValue([]);
-      const mockWhere = vi.fn().mockReturnValue({ orderBy: mockOrderBy });
-      const mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
-      vi.mocked(db.select).mockReturnValue({ from: mockFrom } as any);
+      const mockWhereWithOrderBy = vi.fn().mockReturnValue({ orderBy: mockOrderBy });
+      const mockWhereWithoutOrderBy = vi.fn().mockResolvedValue([]);
+      const mockFromHistory = vi.fn().mockReturnValue({ where: mockWhereWithOrderBy });
+      const mockFromNotes = vi.fn().mockReturnValue({ where: mockWhereWithoutOrderBy });
+
+      vi.mocked(db.select)
+        .mockReturnValueOnce({ from: mockFromHistory } as any)  // noteHistory
+        .mockReturnValueOnce({ from: mockFromNotes } as any);   // notes
 
       const result = await getSemanticDiffTimeline({ start: 0, end: 100 });
       expect(result).toEqual([]);
     });
 
     it("日付ごとに集計する", async () => {
-      const mockData = [
+      const mockHistoryData = [
         { createdAt: 1705276800, semanticDiff: "0.5" },
         { createdAt: 1705276900, semanticDiff: "0.3" },
         { createdAt: 1705363200, semanticDiff: "0.2" },
       ];
+      const mockNotesData = [
+        { createdAt: 1705276800, updatedAt: 1705276800 },
+      ];
 
-      const mockOrderBy = vi.fn().mockResolvedValue(mockData);
-      const mockWhere = vi.fn().mockReturnValue({ orderBy: mockOrderBy });
-      const mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
-      vi.mocked(db.select).mockReturnValue({ from: mockFrom } as any);
+      const mockOrderBy = vi.fn().mockResolvedValue(mockHistoryData);
+      const mockWhereWithOrderBy = vi.fn().mockReturnValue({ orderBy: mockOrderBy });
+      const mockWhereWithoutOrderBy = vi.fn().mockResolvedValue(mockNotesData);
+      const mockFromHistory = vi.fn().mockReturnValue({ where: mockWhereWithOrderBy });
+      const mockFromNotes = vi.fn().mockReturnValue({ where: mockWhereWithoutOrderBy });
+
+      vi.mocked(db.select)
+        .mockReturnValueOnce({ from: mockFromHistory } as any)
+        .mockReturnValueOnce({ from: mockFromNotes } as any);
 
       const result = await getSemanticDiffTimeline({ start: 0, end: Date.now() / 1000 });
 
@@ -275,12 +289,18 @@ describe("analyticsService", () => {
     });
 
     it("semanticDiff が null の場合は 0 として扱う", async () => {
-      const mockData = [{ createdAt: 1705276800, semanticDiff: null }];
+      const mockHistoryData = [{ createdAt: 1705276800, semanticDiff: null }];
+      const mockNotesData: { createdAt: number; updatedAt: number }[] = [];
 
-      const mockOrderBy = vi.fn().mockResolvedValue(mockData);
-      const mockWhere = vi.fn().mockReturnValue({ orderBy: mockOrderBy });
-      const mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
-      vi.mocked(db.select).mockReturnValue({ from: mockFrom } as any);
+      const mockOrderBy = vi.fn().mockResolvedValue(mockHistoryData);
+      const mockWhereWithOrderBy = vi.fn().mockReturnValue({ orderBy: mockOrderBy });
+      const mockWhereWithoutOrderBy = vi.fn().mockResolvedValue(mockNotesData);
+      const mockFromHistory = vi.fn().mockReturnValue({ where: mockWhereWithOrderBy });
+      const mockFromNotes = vi.fn().mockReturnValue({ where: mockWhereWithoutOrderBy });
+
+      vi.mocked(db.select)
+        .mockReturnValueOnce({ from: mockFromHistory } as any)
+        .mockReturnValueOnce({ from: mockFromNotes } as any);
 
       const result = await getSemanticDiffTimeline({ start: 0, end: Date.now() / 1000 });
 

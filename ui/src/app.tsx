@@ -13,6 +13,7 @@ import { BookmarkPage } from './components/pages/BookmarkPage'
 import { SecretBoxPage } from './components/pages/SecretBoxPage'
 import { SystemPage } from './components/pages/SystemPage'
 import { IsolationPage } from './components/pages/IsolationPage'
+import { LibraryPage } from './components/pages/LibraryPage'
 
 function AuthInitializer({ children }: { children: React.ReactNode }) {
   const { getToken } = useAuth()
@@ -49,6 +50,7 @@ export function App() {
             <Route path="/ui/secret-box" element={<SecretBoxPage />} />
             <Route path="/ui/system" element={<SystemPage />} />
             <Route path="/ui/isolation" element={<IsolationPage />} />
+            <Route path="/ui/library" element={<LibraryPage />} />
           </Routes>
         </AuthInitializer>
       </SignedIn>

@@ -1,0 +1,115 @@
+.note-panel-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.note-panel {
+  background: #1a1a2e;
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 600px;
+  max-height: 80vh;
+  width: 90%;
+  overflow-y: auto;
+  position: relative;
+  color: #e0e0e0;
+}
+
+.note-panel-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+}
+
+.note-panel-close:hover {
+  color: #fff;
+}
+
+.note-panel-loading,
+.note-panel-error {
+  text-align: center;
+  padding: 40px;
+  color: #888;
+}
+
+.note-panel-error {
+  color: #ef4444;
+}
+
+.note-panel-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+  color: #fff;
+}
+
+.note-panel-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.note-panel-category {
+  background: #4F46E5;
+  color: #fff;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 0.85rem;
+}
+
+.note-panel-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.note-panel-tag {
+  background: #333;
+  color: #aaa;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+}
+
+.note-panel-content {
+  white-space: pre-wrap;
+  line-height: 1.7;
+  font-size: 0.95rem;
+  color: #ccc;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.note-panel-footer {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #333;
+}
+
+.note-panel-link {
+  color: #818cf8;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.note-panel-link:hover {
+  text-decoration: underline;
+}

@@ -135,4 +135,56 @@ export const bookmarkDispatcher = {
     );
     return { success: true };
   },
+
+  /**
+   * bookmark.updateLibraryPosition - ライブラリ3D空間での位置更新
+   */
+  async updateLibraryPosition(payload: unknown) {
+    const p = payload as {
+      folderName: string;
+      position: [number, number, number];
+    };
+
+    if (!p?.folderName) {
+      throw new Error("folderName is required");
+    }
+    if (!Array.isArray(p?.position) || p.position.length !== 3) {
+      throw new Error("position must be [x, y, z] array");
+    }
+
+    return bookmarkService.updateLibraryPosition(p.folderName, p.position);
+  },
+
+  /**
+   * bookmark.getLibraryPositions - ライブラリ位置一覧取得
+   */
+  async getLibraryPositions(_payload: unknown) {
+    return bookmarkService.getLibraryPositions();
+  },
+
+  /**
+   * bookmark.updateLibraryColor - ライブラリ3D空間での色更新
+   */
+  async updateLibraryColor(payload: unknown) {
+    const p = payload as {
+      folderName: string;
+      color: string;
+    };
+
+    if (!p?.folderName) {
+      throw new Error("folderName is required");
+    }
+    if (!p?.color || !/^#[0-9A-Fa-f]{6}$/.test(p.color)) {
+      throw new Error("color must be a valid hex color (e.g., #FF5733)");
+    }
+
+    return bookmarkService.updateLibraryColor(p.folderName, p.color);
+  },
+
+  /**
+   * bookmark.getLibraryColors - ライブラリ色一覧取得
+   */
+  async getLibraryColors(_payload: unknown) {
+    return bookmarkService.getLibraryColors();
+  },
 };

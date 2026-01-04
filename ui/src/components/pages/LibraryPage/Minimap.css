@@ -1,0 +1,150 @@
+/**
+ * Minimap スタイル
+ * 画面右下に固定表示
+ */
+
+.minimap {
+  position: fixed;
+  bottom: 100px;
+  right: 20px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.minimap-container {
+  position: relative;
+  width: 180px;
+  height: 180px;
+  background: rgba(0, 0, 0, 0.7);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  overflow: hidden;
+  backdrop-filter: blur(4px);
+}
+
+/* グリッド背景 */
+.minimap-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
+  pointer-events: none;
+}
+
+/* 中心線 */
+.minimap-container::before,
+.minimap-container::after {
+  content: '';
+  position: absolute;
+  background: rgba(255, 255, 255, 0.1);
+  pointer-events: none;
+}
+
+.minimap-container::before {
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+
+.minimap-container::after {
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+/* クラスターマーカー */
+.minimap-cluster {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.minimap-cluster:hover {
+  transform: translate(-50%, -50%) scale(1.3);
+  box-shadow: 0 0 12px currentColor;
+  z-index: 10;
+}
+
+.minimap-cluster-count {
+  font-size: 9px;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 0 2px #000;
+}
+
+/* 現在位置マーカー */
+.minimap-player {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #fff;
+  border: 2px solid #3B82F6;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 8px #3B82F6;
+  pointer-events: none;
+  z-index: 20;
+}
+
+/* パルスアニメーション */
+.minimap-player::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border: 2px solid #3B82F6;
+  border-radius: 50%;
+  animation: minimap-pulse 2s ease-out infinite;
+}
+
+@keyframes minimap-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+/* 方位表示 */
+.minimap-compass {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  font-weight: bold;
+  color: rgba(255, 255, 255, 0.6);
+  pointer-events: none;
+}
+
+/* ヒント */
+.minimap-hint {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  pointer-events: none;
+}
+
+/* モバイル対応：小さい画面では非表示 */
+@media (max-width: 640px) {
+  .minimap {
+    display: none;
+  }
+}

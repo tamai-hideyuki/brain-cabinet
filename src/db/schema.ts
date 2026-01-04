@@ -488,6 +488,8 @@ export const bookmarkNodes = sqliteTable("bookmark_nodes", {
   url: text("url"),                                               // type="link" の場合の外部URL
   position: integer("position").notNull().default(0),             // 同階層内の表示順
   isExpanded: integer("is_expanded").notNull().default(1),        // フォルダの展開状態（1: 展開, 0: 折りたたみ）
+  libraryPosition: text("library_position"),                      // ライブラリ3D空間での位置 [x, y, z] JSON
+  libraryColor: text("library_color"),                            // ライブラリ3D空間での色 (#RRGGBB形式)
   createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
   updatedAt: integer("updated_at").notNull().default(sql`(strftime('%s','now'))`),
 });
