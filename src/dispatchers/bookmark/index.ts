@@ -161,4 +161,30 @@ export const bookmarkDispatcher = {
   async getLibraryPositions(_payload: unknown) {
     return bookmarkService.getLibraryPositions();
   },
+
+  /**
+   * bookmark.updateLibraryColor - ライブラリ3D空間での色更新
+   */
+  async updateLibraryColor(payload: unknown) {
+    const p = payload as {
+      folderName: string;
+      color: string;
+    };
+
+    if (!p?.folderName) {
+      throw new Error("folderName is required");
+    }
+    if (!p?.color || !/^#[0-9A-Fa-f]{6}$/.test(p.color)) {
+      throw new Error("color must be a valid hex color (e.g., #FF5733)");
+    }
+
+    return bookmarkService.updateLibraryColor(p.folderName, p.color);
+  },
+
+  /**
+   * bookmark.getLibraryColors - ライブラリ色一覧取得
+   */
+  async getLibraryColors(_payload: unknown) {
+    return bookmarkService.getLibraryColors();
+  },
 };

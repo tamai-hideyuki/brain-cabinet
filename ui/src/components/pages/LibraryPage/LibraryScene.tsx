@@ -38,6 +38,7 @@ type Props = {
   clusters: LibraryCluster[]
   onSelectNote: (noteId: string) => void
   onClusterPositionChange?: (clusterId: number, position: [number, number, number]) => void
+  onColorPickerOpen?: (clusterId: number, folderName: string, screenPosition: { x: number; y: number }) => void
   highlightedNoteIds: Set<string>
   isSearchActive: boolean
   teleportTarget: [number, number, number] | null
@@ -77,6 +78,7 @@ export function LibraryScene({
   clusters,
   onSelectNote,
   onClusterPositionChange,
+  onColorPickerOpen,
   highlightedNoteIds,
   isSearchActive,
   teleportTarget,
@@ -116,6 +118,7 @@ export function LibraryScene({
               cluster={cluster}
               onSelectNote={onSelectNote}
               onPositionChange={handlePositionChange}
+              onColorChange={onColorPickerOpen}
               highlightedNoteIds={highlightedNoteIds}
               isSearchActive={isSearchActive}
             />

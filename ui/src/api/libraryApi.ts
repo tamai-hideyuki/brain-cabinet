@@ -6,7 +6,7 @@
 import { sendCommand } from './commandClient'
 import type { LibraryCluster, LibraryNote } from '../types/library'
 import type { BookmarkNode } from '../types/bookmark'
-import { loadLibraryPositions, getBookmarkPosition } from '../utils/libraryStorage'
+import { loadLibraryPositions, getBookmarkPosition, loadLibraryColors, getBookmarkColor } from '../utils/libraryStorage'
 
 type ClusterListItem = {
   id: number
@@ -156,11 +156,12 @@ function extractBookmarkNotes(
  * ライブラリ用のクラスタ・ノートデータを取得
  */
 export async function fetchLibraryData(): Promise<LibraryCluster[]> {
-  // クラスタ一覧、ブックマーク、保存済み位置を並列取得
+  // クラスタ一覧、ブックマーク、保存済み位置・色を並列取得
   const [clusters, bookmarks] = await Promise.all([
     sendCommand<ClusterListItem[]>('cluster.list', {}),
     sendCommand<BookmarkNode[]>('bookmark.list', {}),
     loadLibraryPositions(), // キャッシュにロード
+    loadLibraryColors(),    // 色もキャッシュにロード
   ])
 
   const libraryClusters: LibraryCluster[] = []
@@ -207,10 +208,14 @@ export async function fetchLibraryData(): Promise<LibraryCluster[]> {
           BOOKMARK_POSITIONS[folder.folderName] ??
           calculateDefaultPosition(positionIndex, libraryClusters.length + bookmarkFolders.length)
 
+        // 色も優先順位: 1.ユーザー保存色 2.デフォルト色
+        const savedColor = getBookmarkColor(folder.folderName)
+        const color = savedColor ?? '#F59E0B' // デフォルトはamber
+
         libraryClusters.push({
           id: -1000 - positionIndex, // 負のIDでブックマーククラスタを識別
           label: `📌 ${folder.folderName}`,
-          color: '#F59E0B', // amber - ブックマーク用の特別な色
+          color,
           position,
           notes: folder.notes,
         })

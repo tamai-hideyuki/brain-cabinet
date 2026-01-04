@@ -10,8 +10,10 @@ import { NotePanel } from './NotePanel'
 import { HUD } from './HUD'
 import { SearchOverlay } from './SearchOverlay'
 import { Minimap } from './Minimap'
+import { ColorPicker } from './ColorPicker'
 import { TouchJoystickOverlay } from './TouchJoystickOverlay'
 import { fetchLibraryData } from '../../../api/libraryApi'
+import { saveBookmarkColor } from '../../../utils/libraryStorage'
 import type { LibraryCluster } from '../../../types/library'
 import './LibraryPage.css'
 
@@ -28,6 +30,14 @@ export function LibraryPage() {
 
   // カメラ位置（ミニマップ用）
   const [cameraPosition, setCameraPosition] = useState({ x: 0, z: 30 })
+
+  // カラーピッカー状態
+  const [colorPickerState, setColorPickerState] = useState<{
+    clusterId: number
+    folderName: string
+    position: { x: number; y: number }
+    currentColor: string
+  } | null>(null)
 
   // Set に変換（パフォーマンス最適化）
   const highlightedNoteIdSet = useMemo(
@@ -87,6 +97,43 @@ export function LibraryPage() {
     setCameraPosition(position)
   }, [])
 
+  // カラーピッカーを開く
+  const handleColorPickerOpen = useCallback(
+    (clusterId: number, folderName: string, screenPosition: { x: number; y: number }) => {
+      const cluster = clusters.find((c) => c.id === clusterId)
+      setColorPickerState({
+        clusterId,
+        folderName,
+        position: screenPosition,
+        currentColor: cluster?.color || '#F59E0B',
+      })
+    },
+    [clusters]
+  )
+
+  // 色を変更
+  const handleColorChange = useCallback(
+    async (color: string) => {
+      if (!colorPickerState) return
+
+      // サーバーに保存
+      await saveBookmarkColor(colorPickerState.folderName, color)
+
+      // ローカル状態も更新（即座に反映）
+      setClusters((prev) =>
+        prev.map((c) =>
+          c.id === colorPickerState.clusterId ? { ...c, color } : c
+        )
+      )
+    },
+    [colorPickerState]
+  )
+
+  // カラーピッカーを閉じる
+  const handleColorPickerClose = useCallback(() => {
+    setColorPickerState(null)
+  }, [])
+
   const totalNotes = clusters.reduce((sum, c) => sum + c.notes.length, 0)
 
   if (loading) {
@@ -121,6 +168,7 @@ export function LibraryPage() {
       <LibraryScene
         clusters={clusters}
         onSelectNote={handleSelectNote}
+        onColorPickerOpen={handleColorPickerOpen}
         highlightedNoteIds={highlightedNoteIdSet}
         isSearchActive={isSearchActive}
         teleportTarget={teleportTarget}
@@ -151,6 +199,16 @@ export function LibraryPage() {
 
       {selectedNoteId && (
         <NotePanel noteId={selectedNoteId} onClose={handleClosePanel} />
+      )}
+
+      {/* カラーピッカー */}
+      {colorPickerState && (
+        <ColorPicker
+          currentColor={colorPickerState.currentColor}
+          position={colorPickerState.position}
+          onSelectColor={handleColorChange}
+          onClose={handleColorPickerClose}
+        />
       )}
     </div>
   )

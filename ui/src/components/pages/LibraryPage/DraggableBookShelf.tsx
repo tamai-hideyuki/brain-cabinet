@@ -14,6 +14,7 @@ type Props = {
   cluster: LibraryCluster
   onSelectNote: (noteId: string) => void
   onPositionChange: (clusterId: number, position: [number, number, number]) => void
+  onColorChange?: (clusterId: number, folderName: string, screenPosition: { x: number; y: number }) => void
   highlightedNoteIds: Set<string>
   isSearchActive: boolean
 }
@@ -48,6 +49,7 @@ export function DraggableBookShelf({
   cluster,
   onSelectNote,
   onPositionChange,
+  onColorChange,
   highlightedNoteIds,
   isSearchActive,
 }: Props) {
@@ -97,12 +99,27 @@ export function DraggableBookShelf({
     }
   }
 
+  // 右クリックで色変更メニューを表示
+  const handleContextMenu = (e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation()
+    e.nativeEvent.preventDefault()
+    if (onColorChange && cluster.label) {
+      // ラベルからフォルダ名を抽出（"📌 フォルダ名" → "フォルダ名"）
+      const folderName = cluster.label.replace(/^📌\s*/, '')
+      onColorChange(cluster.id, folderName, {
+        x: e.nativeEvent.clientX,
+        y: e.nativeEvent.clientY,
+      })
+    }
+  }
+
   return (
     <group
       ref={groupRef}
       position={cluster.position}
       onPointerOver={() => setIsHovered(true)}
       onPointerOut={() => setIsHovered(false)}
+      onContextMenu={handleContextMenu}
     >
       {/* ドラッグハンドル（クラスタラベルの背景） */}
       <mesh

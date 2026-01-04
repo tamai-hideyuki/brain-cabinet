@@ -1,11 +1,12 @@
 /**
- * ライブラリ配置のサーバー保存
+ * ライブラリ配置・色のサーバー保存
  */
 
 import { sendCommand } from '../api/commandClient'
 
-// キャッシュ（サーバーから取得した位置を保持）
+// キャッシュ（サーバーから取得した位置・色を保持）
 let positionsCache: Record<string, [number, number, number]> | null = null
+let colorsCache: Record<string, string> | null = null
 
 /**
  * サーバーから全ブックマーク位置を取得
@@ -52,4 +53,49 @@ export function getBookmarkPosition(
   folderName: string
 ): [number, number, number] | null {
   return positionsCache?.[folderName] || null
+}
+
+/**
+ * サーバーから全ブックマーク色を取得
+ */
+export async function loadLibraryColors(): Promise<Record<string, string>> {
+  try {
+    const colors = await sendCommand<Record<string, string>>(
+      'bookmark.getLibraryColors',
+      {}
+    )
+    colorsCache = colors
+    return colors
+  } catch (e) {
+    console.warn('Failed to load library colors:', e)
+    return {}
+  }
+}
+
+/**
+ * ブックマーク色をサーバーに保存
+ */
+export async function saveBookmarkColor(
+  folderName: string,
+  color: string
+): Promise<void> {
+  try {
+    await sendCommand('bookmark.updateLibraryColor', {
+      folderName,
+      color,
+    })
+    // キャッシュも更新
+    if (colorsCache) {
+      colorsCache[folderName] = color
+    }
+  } catch (e) {
+    console.warn('Failed to save library color:', e)
+  }
+}
+
+/**
+ * キャッシュからブックマーク色を取得（同期）
+ */
+export function getBookmarkColor(folderName: string): string | null {
+  return colorsCache?.[folderName] || null
 }
