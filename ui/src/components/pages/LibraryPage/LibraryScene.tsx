@@ -48,7 +48,7 @@ type Props = {
 function Floor() {
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -2, 0]} receiveShadow>
-      <planeGeometry args={[200, 200]} />
+      <planeGeometry args={[400, 400]} />
       <meshStandardMaterial color="#1a1a2e" />
     </mesh>
   )
