@@ -55,7 +55,7 @@ export const fetchNote = async (id: string): Promise<Note> => {
 }
 
 export const fetchNoteHistory = async (id: string): Promise<NoteHistory[]> => {
-  const result = await sendCommand<{ histories: NoteHistory[] }>('note.history', { id })
+  const result = await sendCommand<{ histories: NoteHistory[] }>('note.history', { id, includeContent: true })
   return result.histories
 }
 

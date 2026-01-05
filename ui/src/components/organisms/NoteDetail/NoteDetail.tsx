@@ -5,6 +5,7 @@ import { Button } from '../../atoms/Button'
 import { TagList } from '../../molecules/TagList'
 import { Spinner } from '../../atoms/Spinner'
 import { MarkdownContent } from '../../atoms/MarkdownContent'
+import { DiffView } from '../../atoms/DiffView'
 import { InfluenceSection } from '../../molecules/InfluenceSection'
 import type { Note, NoteHistory } from '../../../types/note'
 import type { NoteInfluence } from '../../../types/influence'
@@ -164,7 +165,7 @@ export const NoteDetail = ({
                 </div>
                 {expandedHistoryId === h.id && (
                   <div className="note-detail__history-item-content">
-                    <MarkdownContent content={h.content} />
+                    <DiffView oldText={h.content} newText={note.content} />
                   </div>
                 )}
               </div>
