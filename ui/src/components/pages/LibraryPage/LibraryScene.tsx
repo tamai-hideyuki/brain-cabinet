@@ -4,7 +4,7 @@
 
 import { Suspense, useState, useEffect } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { Html } from '@react-three/drei'
+import { Html, Stars } from '@react-three/drei'
 import { BookShelf } from './BookShelf'
 import { DraggableBookShelf } from './DraggableBookShelf'
 import { PlayerControls } from './PlayerControls'
@@ -108,6 +108,17 @@ export function LibraryScene({
       shadows
     >
       <Suspense fallback={<LoadingIndicator />}>
+        {/* 満点の星空 */}
+        <Stars
+          radius={200}
+          depth={100}
+          count={5000}
+          factor={4}
+          saturation={0}
+          fade
+          speed={0.5}
+        />
+
         <Lighting />
         <Floor />
 
