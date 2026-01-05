@@ -81,3 +81,27 @@ export const createNote = async (title: string, content: string): Promise<Note> 
 export const updateNote = async (id: string, title: string, content: string): Promise<Note> => {
   return sendCommand<Note>('note.update', { id, title, content })
 }
+
+// 削除済みノートの型
+export type DeletedNote = {
+  id: string
+  title: string
+  category: string | null
+  deletedAt: number
+  snippet: string
+}
+
+export type DeletedNotesResult = {
+  total: number
+  notes: DeletedNote[]
+}
+
+// 削除済みノート一覧を取得
+export const fetchDeletedNotes = async (): Promise<DeletedNotesResult> => {
+  return sendCommand<DeletedNotesResult>('note.listDeleted', {})
+}
+
+// 削除済みノートを復元
+export const restoreNote = async (id: string): Promise<Note> => {
+  return sendCommand<Note>('note.restore', { id })
+}

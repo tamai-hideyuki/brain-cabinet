@@ -1,0 +1,1 @@
+export { DeletedNoteCard } from './DeletedNoteCard'

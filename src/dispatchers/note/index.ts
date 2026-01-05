@@ -45,6 +45,26 @@ export const noteDispatcher = {
     return notesService.deleteNote(id);
   },
 
+  async restore(payload: unknown) {
+    const p = payload as { id?: string } | undefined;
+    const id = validateId(p?.id);
+    return notesService.restoreNote(id);
+  },
+
+  async listDeleted(_payload: unknown) {
+    const notes = await notesService.getDeletedNotes();
+    return {
+      total: notes.length,
+      notes: notes.map((note) => ({
+        id: note.id,
+        title: note.title,
+        category: note.category,
+        deletedAt: (note as any).deletedAt,
+        snippet: note.content ? note.content.slice(0, 100) + "..." : "",
+      })),
+    };
+  },
+
   async list(payload: unknown) {
     const p = payload as {
       limit?: number;

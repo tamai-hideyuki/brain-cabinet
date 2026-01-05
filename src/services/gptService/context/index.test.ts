@@ -38,6 +38,7 @@ const createMockNote = (overrides: Partial<{
   headings: string | null;
   createdAt: number;
   updatedAt: number;
+  deletedAt: number | null;
 }> = {}) => ({
   id: overrides.id ?? "note-1",
   title: overrides.title ?? "テストノート",
@@ -49,6 +50,7 @@ const createMockNote = (overrides: Partial<{
   clusterId: null,
   createdAt: overrides.createdAt ?? 1700000000,
   updatedAt: overrides.updatedAt ?? 1700000000,
+  deletedAt: overrides.deletedAt ?? null,
 });
 
 describe("getContextForGPT", () => {

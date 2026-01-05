@@ -1,5 +1,5 @@
 import { logger } from "../../utils/logger";
-import { handleNoteAnalyzeJob } from "./job-worker";
+import { handleNoteAnalyzeJob, handleCleanupDeletedNotesJob } from "./job-worker";
 import { handleClusterRebuildJob } from "./cluster-worker";
 import { buildSearchIndex } from "../embeddingService";
 import {
@@ -11,7 +11,7 @@ import {
 import type { JobType as SchemaJobType } from "../../db/schema";
 
 // ジョブタイプ
-export type JobType = "NOTE_ANALYZE" | "CLUSTER_REBUILD" | "INDEX_REBUILD";
+export type JobType = "NOTE_ANALYZE" | "CLUSTER_REBUILD" | "INDEX_REBUILD" | "CLEANUP_DELETED_NOTES";
 
 // NOTE_ANALYZE ジョブのペイロード
 export type NoteAnalyzePayload = {
@@ -33,8 +33,13 @@ export type IndexRebuildPayload = {
   // 現時点ではオプションなし
 };
 
+// CLEANUP_DELETED_NOTES ジョブのペイロード
+export type CleanupDeletedNotesPayload = {
+  thresholdSeconds?: number; // 削除からの経過秒数（デフォルト: 3600秒 = 1時間）
+};
+
 // ペイロードの型
-type JobPayload = NoteAnalyzePayload | ClusterRebuildPayload | IndexRebuildPayload;
+type JobPayload = NoteAnalyzePayload | ClusterRebuildPayload | IndexRebuildPayload | CleanupDeletedNotesPayload;
 
 // ジョブ定義
 type Job = {
@@ -54,6 +59,7 @@ let isProcessing = false;
 export function enqueueJob(type: "NOTE_ANALYZE", payload: NoteAnalyzePayload): Promise<string>;
 export function enqueueJob(type: "CLUSTER_REBUILD", payload?: ClusterRebuildPayload): Promise<string>;
 export function enqueueJob(type: "INDEX_REBUILD", payload?: IndexRebuildPayload): Promise<string>;
+export function enqueueJob(type: "CLEANUP_DELETED_NOTES", payload?: CleanupDeletedNotesPayload): Promise<string>;
 export async function enqueueJob(type: JobType, payload: JobPayload = {}): Promise<string> {
   // DBにジョブを作成
   const jobId = await createJob(type as SchemaJobType, payload as Record<string, unknown>);
@@ -116,6 +122,8 @@ const handleJob = async (job: Job) => {
       return handleClusterRebuildJob(job.payload as ClusterRebuildPayload);
     case "INDEX_REBUILD":
       return buildSearchIndex();
+    case "CLEANUP_DELETED_NOTES":
+      return handleCleanupDeletedNotesJob(job.payload as CleanupDeletedNotesPayload);
     default:
       logger.warn({ type: job.type }, "[JobQueue] Unknown job type");
   }

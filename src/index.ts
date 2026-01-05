@@ -19,6 +19,7 @@ import { secretBoxRoute } from "./routes/secret-box/index";
 import { systemRoute } from "./routes/system/index";
 import { authMiddleware } from "./middleware/auth";
 import { logger } from "./utils/logger";
+import { enqueueJob } from "./services/jobs/job-queue";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -112,4 +113,9 @@ app.get("/", (c) => c.text("brain-cabinet API running"));
 
 serve({ fetch: app.fetch, port: 3000 }, (info) => {
   logger.info(`Server running on http://localhost:${info.port}`);
+
+  // サーバー起動時に削除済みノートのクリーンアップを実行
+  enqueueJob("CLEANUP_DELETED_NOTES").catch((err) => {
+    logger.error({ err }, "Failed to enqueue cleanup job");
+  });
 });

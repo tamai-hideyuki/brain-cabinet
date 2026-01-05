@@ -3,7 +3,9 @@ import {
   updateNoteInDB,
   findNoteById,
   createNoteInDB,
-  deleteNoteInDB,
+  softDeleteNoteInDB,
+  restoreNoteInDB,
+  findDeletedNotes,
   updateNotesCategoryInDB,
   findNotesByIds,
 } from "../../repositories/notesRepo";
@@ -91,9 +93,8 @@ export const createNote = async (title: string, content: string) => {
 };
 
 export const deleteNote = async (id: string) => {
-  // deleteNoteInDBが全関連データ（Embedding, Relations, History, ClusterHistory, InfluenceEdges, FTS）を
-  // トランザクション内で一括削除する
-  const deleted = await deleteNoteInDB(id);
+  // ソフトデリート（deletedAt を設定、FTS から削除）
+  const deleted = await softDeleteNoteInDB(id);
   if (!deleted) {
     throw new NotFoundError("Note", id, ErrorCodes.NOTE_NOT_FOUND);
   }
@@ -105,6 +106,32 @@ export const deleteNote = async (id: string) => {
   invalidateAnalysisCache();
 
   return formatNoteForAPI(deleted);
+};
+
+/**
+ * 削除済みノートを復元
+ */
+export const restoreNote = async (id: string) => {
+  const restored = await restoreNoteInDB(id);
+  if (!restored) {
+    throw new NotFoundError("DeletedNote", id, ErrorCodes.NOTE_NOT_FOUND);
+  }
+
+  // IDFキャッシュを無効化（ノート復元でDF値が変わる）
+  invalidateIDFCache();
+
+  // 分析キャッシュを無効化（ノート復元は全分析に影響）
+  invalidateAnalysisCache();
+
+  return formatNoteForAPI(restored);
+};
+
+/**
+ * 削除済みノート一覧を取得
+ */
+export const getDeletedNotes = async () => {
+  const notes = await findDeletedNotes();
+  return notes.map(formatNoteForAPI);
 };
 
 export const updateNote = async (id: string, newContent: string, newTitle?: string) => {
@@ -205,7 +232,7 @@ export const batchDeleteNotes = async (ids: string[]): Promise<BatchDeleteResult
 
   for (const id of ids) {
     try {
-      const deleted = await deleteNoteInDB(id);
+      const deleted = await softDeleteNoteInDB(id);
       if (deleted) {
         result.deleted++;
       } else {

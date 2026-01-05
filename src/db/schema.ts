@@ -27,6 +27,7 @@ export const notes = sqliteTable("notes", {
   clusterId: integer("cluster_id"),      // 所属クラスタID（自動更新）
   createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
   updatedAt: integer("updated_at").notNull().default(sql`(strftime('%s','now'))`),
+  deletedAt: integer("deleted_at"),      // ソフトデリート用: 削除日時（NULLなら未削除）
 });
 
 export const noteHistory = sqliteTable("note_history", {

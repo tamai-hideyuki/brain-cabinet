@@ -37,6 +37,7 @@ const createMockNote = (overrides: {
   tags?: string;
   headings?: string;
   updatedAt?: number;
+  deletedAt?: number | null;
 }) => ({
   id: overrides.id,
   title: overrides.title,
@@ -48,6 +49,7 @@ const createMockNote = (overrides: {
   clusterId: null,
   createdAt: 1700000000,
   updatedAt: overrides.updatedAt ?? 1700000000,
+  deletedAt: overrides.deletedAt ?? null,
 });
 
 describe("searchForGPT", () => {

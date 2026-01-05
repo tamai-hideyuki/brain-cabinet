@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { getAllNotes, getNoteById, createNote, updateNote, deleteNote } from "../../services/notesService";
+import { getAllNotes, getNoteById, createNote, updateNote, deleteNote, restoreNote, getDeletedNotes } from "../../services/notesService";
 import { logger } from "../../utils/logger";
 
 export const crudRoute = new Hono();
@@ -8,6 +8,17 @@ export const crudRoute = new Hono();
 crudRoute.get("/", async (c) => {
   const notes = await getAllNotes();
   return c.json(notes);
+});
+
+// GET /api/notes/deleted - 削除済みノート一覧（:id より前に定義）
+crudRoute.get("/deleted", async (c) => {
+  try {
+    const notes = await getDeletedNotes();
+    return c.json({ notes, total: notes.length });
+  } catch (e) {
+    logger.error({ err: e }, "Failed to get deleted notes");
+    return c.json({ error: (e as Error).message }, 500);
+  }
 });
 
 // POST /api/notes - 新規作成
@@ -49,14 +60,26 @@ crudRoute.put("/:id", async (c) => {
   }
 });
 
-// DELETE /api/notes/:id - 削除
+// DELETE /api/notes/:id - 削除（ソフトデリート）
 crudRoute.delete("/:id", async (c) => {
   const id = c.req.param("id");
   try {
     const deleted = await deleteNote(id);
-    return c.json({ message: "Note deleted", note: deleted });
+    return c.json({ message: "Note deleted (can be restored within 1 hour)", note: deleted });
   } catch (e) {
     logger.error({ err: e, noteId: id }, "Failed to delete note");
+    return c.json({ error: (e as Error).message }, 404);
+  }
+});
+
+// POST /api/notes/:id/restore - 削除済みノートを復元
+crudRoute.post("/:id/restore", async (c) => {
+  const id = c.req.param("id");
+  try {
+    const restored = await restoreNote(id);
+    return c.json({ message: "Note restored", note: restored });
+  } catch (e) {
+    logger.error({ err: e, noteId: id }, "Failed to restore note");
     return c.json({ error: (e as Error).message }, 404);
   }
 });

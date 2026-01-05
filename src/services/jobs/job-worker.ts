@@ -1,4 +1,4 @@
-import { findNoteById } from "../../repositories/notesRepo";
+import { findNoteById, purgeExpiredDeletedNotes } from "../../repositories/notesRepo";
 import { insertHistory } from "../../repositories/historyRepo";
 import {
   deleteRelationsBySourceNote,
@@ -13,7 +13,7 @@ import {
 import { computeDiff } from "../../utils/diff";
 import { logger } from "../../utils/logger";
 import { randomUUID } from "crypto";
-import type { NoteAnalyzePayload } from "./job-queue";
+import type { NoteAnalyzePayload, CleanupDeletedNotesPayload } from "./job-queue";
 import type { RelationType } from "../../db/schema";
 import { generateInfluenceEdges } from "../influence/influenceService";
 import {
@@ -240,4 +240,27 @@ const rebuildRelationsForNote = async (
       "[JobWorker] Relations created with cluster boost"
     );
   }
+};
+
+/**
+ * CLEANUP_DELETED_NOTES ジョブのメイン処理
+ *
+ * 削除から一定時間（デフォルト1時間）経過したノートを完全削除
+ */
+export const handleCleanupDeletedNotesJob = async (payload: CleanupDeletedNotesPayload) => {
+  const thresholdSeconds = payload.thresholdSeconds ?? 3600; // デフォルト: 1時間
+
+  logger.info(
+    { thresholdSeconds },
+    "[JobWorker] Starting cleanup of deleted notes"
+  );
+
+  const deletedCount = await purgeExpiredDeletedNotes(thresholdSeconds);
+
+  logger.info(
+    { deletedCount, thresholdSeconds },
+    "[JobWorker] Cleanup completed"
+  );
+
+  return { deletedCount };
 };
