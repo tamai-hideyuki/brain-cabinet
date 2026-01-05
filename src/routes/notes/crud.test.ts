@@ -168,7 +168,7 @@ describe("crudRoute", () => {
       const json = await res.json();
 
       expect(res.status).toBe(200);
-      expect(json.message).toBe("Note deleted");
+      expect(json.message).toBe("Note deleted (can be restored within 1 hour)");
       expect(json.note).toEqual(mockDeleted);
       expect(notesService.deleteNote).toHaveBeenCalledWith("1");
     });

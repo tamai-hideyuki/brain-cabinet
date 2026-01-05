@@ -85,7 +85,8 @@ describe("notesRepo", () => {
       ];
 
       const mockOrderBy = vi.fn().mockResolvedValue(mockNotes);
-      const mockFrom = vi.fn().mockReturnValue({ orderBy: mockOrderBy });
+      const mockWhere = vi.fn().mockReturnValue({ orderBy: mockOrderBy });
+      const mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
       vi.mocked(db.select).mockReturnValue({ from: mockFrom } as any);
 
       const result = await findAllNotes();
@@ -96,7 +97,8 @@ describe("notesRepo", () => {
 
     it("ノートがない場合は空配列を返す", async () => {
       const mockOrderBy = vi.fn().mockResolvedValue([]);
-      const mockFrom = vi.fn().mockReturnValue({ orderBy: mockOrderBy });
+      const mockWhere = vi.fn().mockReturnValue({ orderBy: mockOrderBy });
+      const mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
       vi.mocked(db.select).mockReturnValue({ from: mockFrom } as any);
 
       const result = await findAllNotes();

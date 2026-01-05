@@ -1,0 +1,142 @@
+/**
+ * TimelineSearchOverlay スタイル
+ * 画面上部に固定された検索UI
+ */
+
+.timeline-search-overlay {
+  position: fixed;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.timeline-search-container {
+  position: relative;
+  width: min(400px, calc(100vw - 2rem));
+}
+
+.timeline-search-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 24px;
+  padding: 8px 16px;
+  backdrop-filter: blur(8px);
+}
+
+.timeline-search-icon {
+  width: 18px;
+  height: 18px;
+  color: rgba(255, 255, 255, 0.6);
+  flex-shrink: 0;
+}
+
+.timeline-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #fff;
+  font-size: 14px;
+  min-width: 0;
+}
+
+.timeline-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.timeline-search-clear {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.timeline-search-clear:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* 検索結果リスト */
+.timeline-search-results {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  max-height: 320px;
+  overflow-y: auto;
+  backdrop-filter: blur(8px);
+}
+
+.timeline-search-no-results {
+  padding: 16px;
+  color: rgba(255, 255, 255, 0.6);
+  text-align: center;
+  font-size: 13px;
+}
+
+.timeline-search-result-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 16px;
+  background: transparent;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.timeline-search-result-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.timeline-search-result-item:not(:last-child) {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.timeline-search-result-title {
+  flex: 1;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.timeline-search-result-date {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+}
+
+/* ヒント表示 */
+.timeline-search-hint {
+  background: rgba(59, 130, 246, 0.8);
+  color: #fff;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  pointer-events: none;
+}

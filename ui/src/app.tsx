@@ -14,6 +14,7 @@ import { SecretBoxPage } from './components/pages/SecretBoxPage'
 import { SystemPage } from './components/pages/SystemPage'
 import { IsolationPage } from './components/pages/IsolationPage'
 import { LibraryPage } from './components/pages/LibraryPage'
+import { Timeline3DPage } from './components/pages/Timeline3DPage'
 import { TrashPage } from './components/pages/TrashPage'
 
 function AuthInitializer({ children }: { children: React.ReactNode }) {
@@ -52,6 +53,7 @@ export function App() {
             <Route path="/ui/system" element={<SystemPage />} />
             <Route path="/ui/isolation" element={<IsolationPage />} />
             <Route path="/ui/library" element={<LibraryPage />} />
+            <Route path="/ui/timeline-3d" element={<Timeline3DPage />} />
             <Route path="/ui/trash" element={<TrashPage />} />
           </Routes>
         </AuthInitializer>
