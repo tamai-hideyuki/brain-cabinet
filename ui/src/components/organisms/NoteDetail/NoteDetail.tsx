@@ -32,6 +32,8 @@ type NoteDetailProps = {
   bookmarkAdding?: boolean
   onAddLink?: (noteId: string, noteTitle: string) => void
   addingLinkNoteId?: string | null
+  onDelete?: () => void
+  deleting?: boolean
 }
 
 export const NoteDetail = ({
@@ -49,6 +51,8 @@ export const NoteDetail = ({
   bookmarkAdding,
   onAddLink,
   addingLinkNoteId,
+  onDelete,
+  deleting,
 }: NoteDetailProps) => {
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null)
   const [historyLoaded, setHistoryLoaded] = useState(false)
@@ -118,6 +122,16 @@ export const NoteDetail = ({
             <Button variant="secondary" size="sm" onClick={onEdit}>
               編集
             </Button>
+            {onDelete && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onDelete}
+                disabled={deleting}
+              >
+                {deleting ? '削除中...' : '削除'}
+              </Button>
+            )}
           </div>
         </div>
         <div className="note-detail__id">

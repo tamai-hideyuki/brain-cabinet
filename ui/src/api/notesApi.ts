@@ -105,3 +105,8 @@ export const fetchDeletedNotes = async (): Promise<DeletedNotesResult> => {
 export const restoreNote = async (id: string): Promise<Note> => {
   return sendCommand<Note>('note.restore', { id })
 }
+
+// ノートを削除（ソフトデリート）
+export const deleteNote = async (id: string): Promise<void> => {
+  await sendCommand<void>('note.delete', { id })
+}

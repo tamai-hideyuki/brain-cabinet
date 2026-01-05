@@ -3,11 +3,12 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { MainLayout } from '../../templates/MainLayout'
 import { NoteDetail } from '../../organisms/NoteDetail'
 import { EditNoteModal } from '../../organisms/EditNoteModal'
+import { ConfirmModal } from '../../organisms/ConfirmModal'
 import { Button } from '../../atoms/Button'
 import { useNote } from '../../../hooks/useNote'
 import { useNoteInfluence } from '../../../hooks/useNoteInfluence'
 import { createBookmarkNode } from '../../../api/bookmarkApi'
-import { updateNote } from '../../../api/notesApi'
+import { updateNote, deleteNote } from '../../../api/notesApi'
 import './NoteDetailPage.css'
 
 export const NoteDetailPage = () => {
@@ -16,6 +17,8 @@ export const NoteDetailPage = () => {
   const { note, history, loading, historyLoading, error, loadHistory, reload } = useNote(id)
   const { influence, loading: influenceLoading } = useNoteInfluence(id ?? null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [bookmarkAdding, setBookmarkAdding] = useState(false)
   const [addingLinkNoteId, setAddingLinkNoteId] = useState<string | null>(null)
 
@@ -73,6 +76,29 @@ export const NoteDetailPage = () => {
     }
   }
 
+  const handleDelete = () => {
+    setIsDeleteModalOpen(true)
+  }
+
+  const handleDeleteCancel = () => {
+    setIsDeleteModalOpen(false)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!note) return
+    setDeleting(true)
+    try {
+      await deleteNote(note.id)
+      setIsDeleteModalOpen(false)
+      navigate('/ui/notes')
+    } catch (e) {
+      alert('削除に失敗しました')
+      console.error(e)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   return (
     <MainLayout>
       <div className="note-detail-page">
@@ -96,6 +122,8 @@ export const NoteDetailPage = () => {
           bookmarkAdding={bookmarkAdding}
           onAddLink={handleAddLink}
           addingLinkNoteId={addingLinkNoteId}
+          onDelete={handleDelete}
+          deleting={deleting}
         />
       </div>
       {isEditModalOpen && note && (
@@ -103,6 +131,18 @@ export const NoteDetailPage = () => {
           note={note}
           onClose={handleEditClose}
           onUpdated={handleEditUpdated}
+        />
+      )}
+      {isDeleteModalOpen && note && (
+        <ConfirmModal
+          title="ノートを削除"
+          message={`「${note.title}」を削除しますか？削除後1時間以内であればゴミ箱から復元できます。`}
+          confirmLabel="削除"
+          cancelLabel="キャンセル"
+          variant="danger"
+          onConfirm={handleDeleteConfirm}
+          onCancel={handleDeleteCancel}
+          confirming={deleting}
         />
       )}
     </MainLayout>
