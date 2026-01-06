@@ -1,45 +1,43 @@
 /**
- * Timeline3DPage - 3Dタイムライン メインページ
- * 時間軸に沿った道の上でメモを探索する
+ * Timeline3DPage - 3Dカレンダー メインページ
+ * 年→月→日→ノートの階層的ナビゲーション
  */
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { Timeline3DScene } from './Timeline3DScene'
-import { TimelineSearchOverlay } from './TimelineSearchOverlay'
+import { Calendar3DScene } from './Calendar3DScene'
 import { NotePanel } from '../LibraryPage/NotePanel'
+import { TouchJoystickOverlay } from '../LibraryPage/TouchJoystickOverlay'
+import { useIsTouchDevice } from '../LibraryPage/LibraryScene'
 import { fetchNotes } from '../../../api/notesApi'
-import type { TimelineNote } from './TimelinePath'
+import { buildCalendarHierarchy, type CalendarNote } from '../../../utils/calendarHierarchy'
+import { useCalendarExpansion } from '../../../hooks/useCalendarExpansion'
 import './Timeline3DPage.css'
 
 export function Timeline3DPage() {
-  const [notes, setNotes] = useState<TimelineNote[]>([])
+  const [notes, setNotes] = useState<CalendarNote[]>([])
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null)
-  const [highlightedNoteIds, setHighlightedNoteIds] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Set に変換（パフォーマンス最適化）
-  const highlightedNoteIdSet = useMemo(
-    () => new Set(highlightedNoteIds),
-    [highlightedNoteIds]
-  )
-  const isSearchActive = highlightedNoteIds.length > 0
+  const isTouchDevice = useIsTouchDevice()
+  const [expansionState, expansionActions] = useCalendarExpansion()
+
+  // ノートをカレンダー階層に変換
+  const hierarchy = useMemo(() => buildCalendarHierarchy(notes), [notes])
 
   useEffect(() => {
     async function load() {
       try {
-        // 全ノートを取得（limit: 0 で全件）
         const result = await fetchNotes({ limit: 0 })
-        // TimelineNote形式に変換
-        const timelineNotes: TimelineNote[] = result.notes.map((n) => ({
+        const calendarNotes: CalendarNote[] = result.notes.map((n) => ({
           id: n.id,
           title: n.title,
           category: n.category,
           createdAt: n.createdAt,
           updatedAt: n.updatedAt,
         }))
-        setNotes(timelineNotes)
+        setNotes(calendarNotes)
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to load notes')
       } finally {
@@ -57,15 +55,24 @@ export function Timeline3DPage() {
     setSelectedNoteId(null)
   }, [])
 
-  const handleHighlight = useCallback((noteIds: string[]) => {
-    setHighlightedNoteIds(noteIds)
-  }, [])
+  // 展開状態のサマリー
+  const expansionSummary = useMemo(() => {
+    const years = expansionState.expandedYears.size
+    const months = expansionState.expandedMonths.size
+    const days = expansionState.expandedDays.size
+    if (years === 0 && months === 0 && days === 0) return null
+    const parts = []
+    if (years > 0) parts.push(`${years}年`)
+    if (months > 0) parts.push(`${months}月`)
+    if (days > 0) parts.push(`${days}日`)
+    return parts.join(' / ')
+  }, [expansionState])
 
   if (loading) {
     return (
       <div className="timeline3d-loading">
         <div className="timeline3d-loading-spinner" />
-        <p>Loading Timeline...</p>
+        <p>Loading Calendar...</p>
       </div>
     )
   }
@@ -87,39 +94,50 @@ export function Timeline3DPage() {
         <Link to="/ui" className="timeline3d-back">
           ← Back
         </Link>
-        <h1>Timeline Walk</h1>
+        <h1>Calendar View</h1>
         <span className="timeline3d-note-count">{notes.length} notes</span>
       </header>
 
-      <Timeline3DScene
-        notes={notes}
-        onSelectNote={handleSelectNote}
-        highlightedNoteIds={highlightedNoteIdSet}
-        isSearchActive={isSearchActive}
-      />
-
-      {/* 検索オーバーレイ */}
-      <TimelineSearchOverlay
-        notes={notes}
-        onHighlight={handleHighlight}
+      <Calendar3DScene
+        hierarchy={hierarchy}
+        expansionState={expansionState}
+        expansionActions={expansionActions}
         onSelectNote={handleSelectNote}
       />
 
-      {/* 操作説明 */}
-      <div className="timeline3d-hud">
-        <div className="timeline3d-hud-item">
-          <kbd>Click</kbd> to lock mouse
+      {/* 展開状態のサマリーと全閉じボタン */}
+      {expansionSummary && (
+        <div className="timeline3d-expansion-summary">
+          <span>展開中: {expansionSummary}</span>
+          <button
+            className="timeline3d-collapse-all"
+            onClick={expansionActions.collapseAll}
+          >
+            全て閉じる
+          </button>
         </div>
-        <div className="timeline3d-hud-item">
-          <kbd>WASD</kbd> / <kbd>Arrow</kbd> to move
+      )}
+
+      {/* タッチデバイス用ジョイスティック */}
+      {isTouchDevice && <TouchJoystickOverlay />}
+
+      {/* 操作説明（PCのみ） */}
+      {!isTouchDevice && (
+        <div className="timeline3d-hud">
+          <div className="timeline3d-hud-item">
+            <kbd>Click</kbd> year/month/day to expand
+          </div>
+          <div className="timeline3d-hud-item">
+            <kbd>WASD</kbd> / <kbd>Arrow</kbd> to move
+          </div>
+          <div className="timeline3d-hud-item">
+            <kbd>Q</kbd>/<kbd>E</kbd> to up/down
+          </div>
+          <div className="timeline3d-hud-item">
+            <kbd>Shift</kbd> to sprint
+          </div>
         </div>
-        <div className="timeline3d-hud-item">
-          <kbd>Q</kbd>/<kbd>E</kbd> to up/down
-        </div>
-        <div className="timeline3d-hud-item">
-          <kbd>Shift</kbd> to sprint
-        </div>
-      </div>
+      )}
 
       {selectedNoteId && (
         <NotePanel noteId={selectedNoteId} onClose={handleClosePanel} />

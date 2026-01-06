@@ -8,8 +8,8 @@ import { useRef, useEffect } from 'react'
 import { useThree, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
-const MOVE_SPEED = 15
-const VERTICAL_SPEED = 10
+const MOVE_SPEED = 30
+const VERTICAL_SPEED = 20
 const ROTATION_SPEED = 2
 const FLOOR_Y = 0
 
