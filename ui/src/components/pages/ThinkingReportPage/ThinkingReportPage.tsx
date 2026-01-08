@@ -420,7 +420,7 @@ export const ThinkingReportPage = () => {
                               <ul className="thinking-report__notes-list">
                                 {notes.map((note) => (
                                   <li key={note.id} className="thinking-report__notes-item">
-                                    <a href={`/notes/${note.id}`} className="thinking-report__note-link">
+                                    <a href={`/ui/notes/${note.id}`} className="thinking-report__note-link">
                                       {note.title}
                                     </a>
                                   </li>
@@ -501,7 +501,7 @@ export const ThinkingReportPage = () => {
                               <ul className="thinking-report__notes-list">
                                 {notes.map((note) => (
                                   <li key={note.id} className="thinking-report__notes-item">
-                                    <a href={`/notes/${note.id}`} className="thinking-report__note-link">
+                                    <a href={`/ui/notes/${note.id}`} className="thinking-report__note-link">
                                       {note.title}
                                     </a>
                                   </li>
