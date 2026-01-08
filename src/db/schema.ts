@@ -16,6 +16,17 @@ export const CATEGORIES = [
 
 export type Category = (typeof CATEGORIES)[number];
 
+// v8 視点タイプ定義（思考成長レポート用）
+export const PERSPECTIVES = [
+  "engineer",     // 技術者: 技術的正しさ、実装詳細
+  "po",           // PO: ビジネス価値、ユーザー課題
+  "user",         // ユーザー: 使いやすさ、UX
+  "cto",          // CTO: 技術戦略、スケーラビリティ
+  "team",         // チーム: メンバー、協業
+  "stakeholder",  // ステークホルダー: 経営、事業インパクト
+] as const;
+export type Perspective = (typeof PERSPECTIVES)[number];
+
 export const notes = sqliteTable("notes", {
   id: text("id").primaryKey(),
   title: text("title").notNull(),
@@ -25,6 +36,7 @@ export const notes = sqliteTable("notes", {
   category: text("category"),            // カテゴリ e.g. "技術"
   headings: text("headings"),            // 見出し一覧（JSON） e.g. '["概要","実装"]'
   clusterId: integer("cluster_id"),      // 所属クラスタID（自動更新）
+  perspective: text("perspective"),      // v8: 視点タイプ e.g. "engineer", "po", "user"
   createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
   updatedAt: integer("updated_at").notNull().default(sql`(strftime('%s','now'))`),
   deletedAt: integer("deleted_at"),      // ソフトデリート用: 削除日時（NULLなら未削除）

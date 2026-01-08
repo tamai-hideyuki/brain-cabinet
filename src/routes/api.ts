@@ -19,6 +19,7 @@ import commandRoute from "./command/index";
 import { bookmarksRoute } from "./bookmarks/index";
 import { secretBoxRoute } from "./secret-box/index";
 import { systemRoute } from "./system/index";
+import { thinkingReportRoute } from "./thinking-report/index";
 
 export const apiRoutes = new Hono();
 
@@ -37,3 +38,4 @@ apiRoutes.route("/v1", commandRoute);
 apiRoutes.route("/bookmarks", bookmarksRoute);
 apiRoutes.route("/secret-box", secretBoxRoute);
 apiRoutes.route("/system", systemRoute);
+apiRoutes.route("/thinking-report", thinkingReportRoute);
