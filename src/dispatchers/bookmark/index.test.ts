@@ -4,7 +4,6 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// モック
 vi.mock("../../services/bookmark", () => ({
   getBookmarkTree: vi.fn(),
   getBookmarkNodeById: vi.fn(),
@@ -130,7 +129,7 @@ describe("bookmarkDispatcher", () => {
       const result = await bookmarkDispatcher.getLibraryColors({});
 
       expect(bookmarkService.getLibraryColors).toHaveBeenCalled();
-      expect(result).toEqual(mockColors);
+      expect(result).toStrictEqual(mockColors);
     });
 
     it("空のオブジェクトを返す場合", async () => {
@@ -138,7 +137,7 @@ describe("bookmarkDispatcher", () => {
 
       const result = await bookmarkDispatcher.getLibraryColors({});
 
-      expect(result).toEqual({});
+      expect(result).toStrictEqual({});
     });
   });
 
@@ -191,7 +190,7 @@ describe("bookmarkDispatcher", () => {
       const result = await bookmarkDispatcher.getLibraryPositions({});
 
       expect(bookmarkService.getLibraryPositions).toHaveBeenCalled();
-      expect(result).toEqual(mockPositions);
+      expect(result).toStrictEqual(mockPositions);
     });
   });
 });
