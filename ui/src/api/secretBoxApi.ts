@@ -11,6 +11,7 @@ import type {
   UpdateSecretBoxFolderParams,
 } from '../types/secretBox';
 import { fetchWithAuth } from './client';
+import { notifyDataChange } from '../stores/dataChangeStore';
 
 const API_BASE = '/api/secret-box';
 
@@ -66,7 +67,9 @@ export const uploadSecretBoxItem = async (
     const error = await res.json();
     throw new Error(error.error?.message || 'Failed to upload item');
   }
-  return res.json();
+  const result = await res.json();
+  notifyDataChange();
+  return result;
 };
 
 /**
@@ -85,7 +88,9 @@ export const updateSecretBoxItem = async (
     const error = await res.json();
     throw new Error(error.error?.message || 'Failed to update item');
   }
-  return res.json();
+  const result = await res.json();
+  notifyDataChange();
+  return result;
 };
 
 /**
@@ -97,6 +102,7 @@ export const deleteSecretBoxItem = async (id: string): Promise<void> => {
     const error = await res.json();
     throw new Error(error.error?.message || 'Failed to delete item');
   }
+  notifyDataChange();
 };
 
 /**
@@ -145,7 +151,9 @@ export const createSecretBoxFolder = async (
     const error = await res.json();
     throw new Error(error.error?.message || 'Failed to create folder');
   }
-  return res.json();
+  const result = await res.json();
+  notifyDataChange();
+  return result;
 };
 
 /**
@@ -164,7 +172,9 @@ export const updateSecretBoxFolder = async (
     const error = await res.json();
     throw new Error(error.error?.message || 'Failed to update folder');
   }
-  return res.json();
+  const result = await res.json();
+  notifyDataChange();
+  return result;
 };
 
 /**
@@ -176,6 +186,7 @@ export const deleteSecretBoxFolder = async (id: string): Promise<void> => {
     const error = await res.json();
     throw new Error(error.error?.message || 'Failed to delete folder');
   }
+  notifyDataChange();
 };
 
 /**

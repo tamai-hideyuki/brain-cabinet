@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { MainLayout } from '../../templates/MainLayout'
 import { Text } from '../../atoms/Text'
 import { Spinner } from '../../atoms/Spinner'
@@ -8,6 +8,7 @@ import {
   clearMetrics,
   type MetricsSummary,
 } from '../../../stores/metricsStore'
+import { useDataChangeSubscription } from '../../../hooks/useDataChangeSubscription'
 import './SystemPage.css'
 
 const formatBytes = (bytes: number): string => {
@@ -33,24 +34,32 @@ export const SystemPage = () => {
   const [error, setError] = useState<string | null>(null)
   const [metrics, setMetrics] = useState<MetricsSummary | null>(null)
 
+  const loadData = useCallback(async () => {
+    try {
+      const [storageData, metricsData] = await Promise.all([
+        fetchStorageStats(),
+        getMetricsSummary(),
+      ])
+      setStats(storageData)
+      setMetrics(metricsData)
+      setError(null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'データ取得に失敗しました')
+    }
+  }, [])
+
+  // 初回読み込み
   useEffect(() => {
     const load = async () => {
-      try {
-        setLoading(true)
-        const [storageData, metricsData] = await Promise.all([
-          fetchStorageStats(),
-          getMetricsSummary(),
-        ])
-        setStats(storageData)
-        setMetrics(metricsData)
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'データ取得に失敗しました')
-      } finally {
-        setLoading(false)
-      }
+      setLoading(true)
+      await loadData()
+      setLoading(false)
     }
     load()
-  }, [])
+  }, [loadData])
+
+  // データ変更時に自動更新（1秒デバウンス）
+  useDataChangeSubscription(loadData, 1000)
 
   const handleClearMetrics = async () => {
     await clearMetrics()

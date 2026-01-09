@@ -142,3 +142,13 @@ export const deleteImagesByNoteId = async (noteId: string): Promise<number> => {
   await db.delete(noteImages).where(eq(noteImages.noteId, noteId));
   return images.length;
 };
+
+/**
+ * ノートに紐づく全画像を削除（トランザクション内で使用）
+ */
+export const deleteImagesByNoteIdRaw = async (
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  noteId: string
+): Promise<void> => {
+  await tx.delete(noteImages).where(eq(noteImages.noteId, noteId));
+};
