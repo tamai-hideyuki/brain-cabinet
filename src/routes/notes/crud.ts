@@ -1,6 +1,9 @@
 import { Hono } from "hono";
 import { getAllNotes, getNoteById, createNote, updateNote, deleteNote, restoreNote, getDeletedNotes } from "../../services/notesService";
 import { logger } from "../../utils/logger";
+import { db } from "../../db/client";
+import { sql } from "drizzle-orm";
+import { PERSPECTIVES, Perspective } from "../../db/schema";
 
 export const crudRoute = new Hono();
 
@@ -81,5 +84,41 @@ crudRoute.post("/:id/restore", async (c) => {
   } catch (e) {
     logger.error({ err: e, noteId: id }, "Failed to restore note");
     return c.json({ error: (e as Error).message }, 404);
+  }
+});
+
+// PATCH /api/notes/:id/perspective - 視点タグを更新
+crudRoute.patch("/:id/perspective", async (c) => {
+  const id = c.req.param("id");
+  try {
+    const { perspective } = await c.req.json();
+
+    // perspectiveの検証
+    if (perspective !== null && !PERSPECTIVES.includes(perspective as Perspective)) {
+      return c.json({ error: `Invalid perspective. Must be one of: ${PERSPECTIVES.join(", ")}` }, 400);
+    }
+
+    // カラムが存在するか確認
+    const hasColumn = await db.get<{ count: number }>(sql`
+      SELECT COUNT(*) as count FROM pragma_table_info('notes')
+      WHERE name = 'perspective'
+    `);
+
+    if (!hasColumn || hasColumn.count === 0) {
+      return c.json({ error: "perspective column not found. Please run migration first." }, 400);
+    }
+
+    // 更新
+    await db.run(sql`
+      UPDATE notes
+      SET perspective = ${perspective}, updated_at = strftime('%s','now')
+      WHERE id = ${id}
+    `);
+
+    const note = await getNoteById(id);
+    return c.json({ message: "Perspective updated", note });
+  } catch (e) {
+    logger.error({ err: e, noteId: id }, "Failed to update perspective");
+    return c.json({ error: (e as Error).message }, 400);
   }
 });

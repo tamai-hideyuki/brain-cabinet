@@ -7,6 +7,7 @@
 
 import { fetchWithAuth } from './client'
 import { recordMetric, setLastLatency } from '../stores/metricsStore'
+import { notifyDataChange, isMutatingAction } from '../stores/dataChangeStore'
 
 const API_BASE = '/api/v1'
 
@@ -61,6 +62,11 @@ export async function sendCommand<T>(
       data._bcMeta.cached
     )
     setLastLatency(data._bcMeta.serverLatency, totalLatency)
+  }
+
+  // データ変更イベントを発行
+  if (isMutatingAction(action)) {
+    notifyDataChange()
   }
 
   return data.result

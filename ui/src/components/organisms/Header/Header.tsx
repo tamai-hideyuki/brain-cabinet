@@ -46,6 +46,7 @@ export const Header = ({ title = 'Brain Cabinet' }: HeaderProps) => {
     { href: '/ui/notes', label: 'ノート' },
     { href: '/ui/bookmarks', label: 'ブックマーク' },
     { href: '/ui/reviews', label: 'レビュー' },
+    { href: '/ui/thinking-report', label: '成長' },
     { href: '/ui/timeline', label: 'タイムライン' },
     { href: '/ui/timeline-3d', label: 'TL 3D' },
     { href: '/ui/graph', label: 'グラフ' },

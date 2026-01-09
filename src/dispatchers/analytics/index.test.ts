@@ -4,7 +4,6 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// モック
 vi.mock("../../services/analytics", () => ({
   getSummaryStats: vi.fn(),
   parseDateRange: vi.fn(),
@@ -35,7 +34,7 @@ describe("analyticsDispatcher", () => {
       const result = await analyticsDispatcher.summary();
 
       expect(analyticsService.getSummaryStats).toHaveBeenCalledTimes(1);
-      expect(result).toEqual(mockResult);
+      expect(result).toStrictEqual(mockResult);
     });
   });
 
@@ -74,7 +73,7 @@ describe("analyticsDispatcher", () => {
 
       const result = await analyticsDispatcher.timeline(undefined);
 
-      expect(result).toEqual(mockResult);
+      expect(result).toStrictEqual(mockResult);
     });
   });
 
@@ -136,7 +135,7 @@ describe("analyticsDispatcher", () => {
 
       const result = await analyticsDispatcher.heatmap({ year: 2024 });
 
-      expect(result).toEqual(mockResult);
+      expect(result).toStrictEqual(mockResult);
     });
   });
 

@@ -36,6 +36,7 @@ const createMockNote = (overrides: Partial<{
   category: string | null;
   tags: string | null;
   headings: string | null;
+  perspective: string | null;
   createdAt: number;
   updatedAt: number;
   deletedAt: number | null;
@@ -48,6 +49,7 @@ const createMockNote = (overrides: Partial<{
   tags: overrides.tags ?? JSON.stringify(["tag1", "tag2"]),
   headings: overrides.headings ?? JSON.stringify(["見出し1"]),
   clusterId: null,
+  perspective: overrides.perspective ?? null,
   createdAt: overrides.createdAt ?? 1700000000,
   updatedAt: overrides.updatedAt ?? 1700000000,
   deletedAt: overrides.deletedAt ?? null,

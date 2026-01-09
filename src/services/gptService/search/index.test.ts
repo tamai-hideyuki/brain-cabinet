@@ -36,6 +36,7 @@ const createMockNote = (overrides: {
   category?: string;
   tags?: string;
   headings?: string;
+  perspective?: string | null;
   updatedAt?: number;
   deletedAt?: number | null;
 }) => ({
@@ -47,6 +48,7 @@ const createMockNote = (overrides: {
   tags: overrides.tags ?? JSON.stringify([]),
   headings: overrides.headings ?? JSON.stringify([]),
   clusterId: null,
+  perspective: overrides.perspective ?? null,
   createdAt: 1700000000,
   updatedAt: overrides.updatedAt ?? 1700000000,
   deletedAt: overrides.deletedAt ?? null,

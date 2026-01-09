@@ -8,6 +8,7 @@ import { deleteHistoryByNoteIdRaw } from "../historyRepo";
 import { deleteAllRelationsForNoteRaw } from "../relationRepo";
 import { deleteClusterHistoryByNoteIdRaw } from "../clusterRepo";
 import { deleteEmbeddingRaw } from "../embeddingRepo";
+import { deleteImagesByNoteIdRaw } from "../noteImagesRepo";
 
 export const findAllNotes = async () => {
   return await db
@@ -160,6 +161,7 @@ export const findDeletedNotes = async () => {
  * - note_embeddings (ベクトル埋め込み)
  * - cluster_history (クラスタ遷移履歴)
  * - note_influence_edges (影響グラフ)
+ * - note_images (画像)
  */
 export const hardDeleteNoteInDB = async (id: string) => {
   const note = await findNoteById(id, true); // 削除済みも含めて検索
@@ -190,7 +192,10 @@ export const hardDeleteNoteInDB = async (id: string) => {
     // 6. FTS5インデックスを削除（念のため）
     await deleteFTSRaw(tx, id);
 
-    // 7. 本体を削除（最後に実行）
+    // 7. 画像を削除
+    await deleteImagesByNoteIdRaw(tx, id);
+
+    // 8. 本体を削除（最後に実行）
     await tx.delete(notes).where(eq(notes.id, id));
   });
 

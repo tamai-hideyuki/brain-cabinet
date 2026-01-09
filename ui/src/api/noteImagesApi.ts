@@ -2,6 +2,7 @@
  * ノート画像 API
  */
 import { fetchWithAuth } from './client'
+import { notifyDataChange } from '../stores/dataChangeStore'
 
 const API_BASE = '/api/notes'
 
@@ -42,7 +43,9 @@ export const uploadNoteImage = async (
     throw new Error(error.error || 'Failed to upload image')
   }
 
-  return res.json()
+  const result = await res.json()
+  notifyDataChange()
+  return result
 }
 
 /**
@@ -71,7 +74,9 @@ export const deleteNoteImage = async (imageId: string): Promise<NoteImageMeta> =
     throw new Error(error.error || 'Failed to delete image')
   }
 
-  return res.json()
+  const result = await res.json()
+  notifyDataChange()
+  return result
 }
 
 /**
