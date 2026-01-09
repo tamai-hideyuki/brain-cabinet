@@ -15,24 +15,20 @@
 ## クイックスタート
 
 ```bash
-# インストール
+
 git clone https://github.com/your-username/brain-cabinet.git
 cd brain-cabinet
 pnpm install
 
-# データベース初期化
 pnpm migrate
 
-# ノートのインポート
 pnpm import-notes -- --dir /path/to/your/notes
 
-# インデックス構築
 pnpm init-fts          # 全文検索
 pnpm init-embeddings   # Embedding（ローカル、API不要）
 
-# サーバー起動
 pnpm dev
-# → http://localhost:3000
+
 ```
 
 ## 主なUI
