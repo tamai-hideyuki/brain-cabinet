@@ -430,4 +430,16 @@ export const GPT_IDENTITY_PROMPT = `あなたは Brain Cabinet の「クラス�
     },
     "future": "未来予測"
   }
+}
+
+🚨【重要】人格化出力を生成したら、必ず system.evaluateVoice を呼び出してください。
+これにより観測者ルールの遵守度が評価・記録され、声の混在を防ぐためのフィードバックが得られます。
+
+呼び出し例:
+{
+  "action": "system.evaluateVoice",
+  "payload": {
+    "output": { /* 上記フォーマットで生成した人格化出力 */ },
+    "promptVersion": "v7.1.0-observer"
+  }
 }`;
