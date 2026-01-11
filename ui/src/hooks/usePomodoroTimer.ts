@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 const WORK_DURATION = 25 * 60 // 25分
 const BREAK_DURATION = 5 * 60 // 5分
 const STORAGE_KEY = 'pomodoro-sessions'
+const TIMER_STATE_KEY = 'pomodoro-timer-state'
 
 type PomodoroState = {
   isRunning: boolean
@@ -10,6 +11,14 @@ type PomodoroState = {
   remainingSeconds: number
   completedSessions: number
   isNotifying: boolean
+}
+
+type PersistedTimerState = {
+  isRunning: boolean
+  isBreak: boolean
+  startedAt: number // タイマー開始時のタイムスタンプ
+  totalDuration: number // そのセッションの合計時間（秒）
+  remainingAtStart: number // 開始時の残り時間（一時停止からの再開用）
 }
 
 export type PomodoroHistory = Record<string, number>
@@ -48,18 +57,82 @@ const saveCompletedSessions = (count: number) => {
   }
 }
 
+const loadTimerState = (): PersistedTimerState | null => {
+  try {
+    const stored = localStorage.getItem(TIMER_STATE_KEY)
+    if (!stored) return null
+    return JSON.parse(stored)
+  } catch {
+    return null
+  }
+}
+
+const saveTimerState = (state: PersistedTimerState | null) => {
+  try {
+    if (state === null) {
+      localStorage.removeItem(TIMER_STATE_KEY)
+    } else {
+      localStorage.setItem(TIMER_STATE_KEY, JSON.stringify(state))
+    }
+  } catch {
+    // localStorage unavailable
+  }
+}
+
+const calculateRestoredState = (): Partial<PomodoroState> | null => {
+  const persisted = loadTimerState()
+  if (!persisted) return null
+
+  const now = Date.now()
+  const elapsedSeconds = Math.floor((now - persisted.startedAt) / 1000)
+  const remainingSeconds = persisted.remainingAtStart - elapsedSeconds
+
+  if (remainingSeconds <= 0) {
+    // タイマーが終了していた場合、通知状態にする
+    saveTimerState(null)
+    return {
+      isRunning: false,
+      isBreak: persisted.isBreak,
+      remainingSeconds: 0,
+      isNotifying: true,
+    }
+  }
+
+  // まだ時間が残っている場合
+  return {
+    isRunning: persisted.isRunning,
+    isBreak: persisted.isBreak,
+    remainingSeconds,
+  }
+}
+
 export const getPomodoroHistory = (): PomodoroHistory => {
   return loadAllSessions()
 }
 
 export const usePomodoroTimer = () => {
-  const [state, setState] = useState<PomodoroState>(() => ({
-    isRunning: false,
-    isBreak: false,
-    remainingSeconds: WORK_DURATION,
-    completedSessions: loadCompletedSessions(),
-    isNotifying: false,
-  }))
+  const [state, setState] = useState<PomodoroState>(() => {
+    const restored = calculateRestoredState()
+    const completedSessions = loadCompletedSessions()
+
+    if (restored) {
+      return {
+        isRunning: restored.isRunning ?? false,
+        isBreak: restored.isBreak ?? false,
+        remainingSeconds: restored.remainingSeconds ?? WORK_DURATION,
+        completedSessions,
+        isNotifying: restored.isNotifying ?? false,
+      }
+    }
+
+    return {
+      isRunning: false,
+      isBreak: false,
+      remainingSeconds: WORK_DURATION,
+      completedSessions,
+      isNotifying: false,
+    }
+  })
 
   const intervalRef = useRef<number | null>(null)
 
@@ -71,15 +144,30 @@ export const usePomodoroTimer = () => {
   }, [])
 
   const start = useCallback(() => {
-    setState((prev) => ({ ...prev, isRunning: true, isNotifying: false }))
+    setState((prev) => {
+      // タイマー開始時に状態を永続化
+      saveTimerState({
+        isRunning: true,
+        isBreak: prev.isBreak,
+        startedAt: Date.now(),
+        totalDuration: prev.isBreak ? BREAK_DURATION : WORK_DURATION,
+        remainingAtStart: prev.remainingSeconds,
+      })
+      return { ...prev, isRunning: true, isNotifying: false }
+    })
   }, [])
 
   const pause = useCallback(() => {
-    setState((prev) => ({ ...prev, isRunning: false }))
+    setState((prev) => {
+      // 一時停止時は永続化データをクリア（残り時間は state に保持）
+      saveTimerState(null)
+      return { ...prev, isRunning: false }
+    })
   }, [])
 
   const reset = useCallback(() => {
     clearTimer()
+    saveTimerState(null) // リセット時に永続化データをクリア
     setState((prev) => ({
       ...prev,
       isRunning: false,
@@ -97,6 +185,9 @@ export const usePomodoroTimer = () => {
       if (!prev.isBreak) {
         saveCompletedSessions(newCompletedSessions)
       }
+
+      // 通知を閉じた時点で永続化データをクリア
+      saveTimerState(null)
 
       return {
         ...prev,
@@ -117,6 +208,8 @@ export const usePomodoroTimer = () => {
     intervalRef.current = window.setInterval(() => {
       setState((prev) => {
         if (prev.remainingSeconds <= 1) {
+          // タイマー完了時に永続化データをクリア
+          saveTimerState(null)
           return {
             ...prev,
             remainingSeconds: 0,
