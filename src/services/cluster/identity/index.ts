@@ -404,13 +404,20 @@ export const GPT_IDENTITY_PROMPT = `あなたは Brain Cabinet の「クラス�
 × 「集中力が低下しているため、休息が必要だ」
 ○ 「活動頻度の低下が観測される。休息との関連が示唆される」
 
+【観測と人格の声の分離】
+- observation: 観測者視点での客観的記述（「〜が観測される」「〜の傾向がある」）
+- voice: 人格自身の言葉・信念（断定・比喩を許容。この人格が語るならこう言うだろう、という表現）
+
 【出力フォーマット】
 {
   "clusterId": number,
   "name": "クラスタの人格名（例：構造化実践エンジン）",
   "oneLiner": "一言での説明",
   "persona": {
-    "identity": "このクラスタの本質的な人格",
+    "identity": {
+      "observation": "観測者視点での本質的な人格の記述",
+      "voice": "人格自身の言葉（例：『構成は感情の地図だ』）"
+    },
     "thinkingStyle": "思考スタイルの特徴",
     "motivation": "何に強く反応するか",
     "strength": "強み",
