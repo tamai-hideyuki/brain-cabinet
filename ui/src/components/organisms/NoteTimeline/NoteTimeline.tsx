@@ -4,6 +4,7 @@ import { Badge } from '../../atoms/Badge'
 import { Spinner } from '../../atoms/Spinner'
 import { Button } from '../../atoms/Button'
 import { fetchNotes } from '../../../api/notesApi'
+import { getPomodoroHistory } from '../../../hooks/usePomodoroTimer'
 import type { Note } from '../../../types/note'
 import './NoteTimeline.css'
 
@@ -154,6 +155,9 @@ export const NoteTimeline = ({ onNoteClick }: NoteTimelineProps) => {
     })
     return counts
   }, [notes])
+
+  // ポモドーロセッション履歴
+  const pomodoroHistory = useMemo(() => getPomodoroHistory(), [])
 
   // 選択された日付のノート一覧
   const selectedDateNotes = useMemo((): Note[] => {
@@ -335,13 +339,15 @@ export const NoteTimeline = ({ onNoteClick }: NoteTimelineProps) => {
             {days.map((day) => {
               const dateStr = toLocalDateStr(day)
               const count = noteCountByDate.get(dateStr) || 0
+              const pomodoroCount = pomodoroHistory[dateStr] || 0
               const isToday = dateStr === toLocalDateStr(new Date())
+              const hasContent = count > 0 || pomodoroCount > 0
 
               return (
                 <button
                   key={dateStr}
                   className={`note-timeline__calendar-day ${isToday ? 'note-timeline__calendar-day--today' : ''} ${count > 0 ? 'note-timeline__calendar-day--has-notes' : ''} ${selectedDate === dateStr ? 'note-timeline__calendar-day--selected' : ''}`}
-                  title={count > 0 ? `${count}件のノート` : undefined}
+                  title={hasContent ? `${count}件のノート / ${pomodoroCount}ポモドーロ` : undefined}
                   onClick={() => count > 0 && setSelectedDate(selectedDate === dateStr ? null : dateStr)}
                   disabled={count === 0}
                 >
@@ -354,6 +360,11 @@ export const NoteTimeline = ({ onNoteClick }: NoteTimelineProps) => {
                       }}
                     >
                       {count}
+                    </span>
+                  )}
+                  {pomodoroCount > 0 && (
+                    <span className="note-timeline__calendar-day-pomodoro">
+                      {pomodoroCount}
                     </span>
                   )}
                 </button>

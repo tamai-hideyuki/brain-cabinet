@@ -227,6 +227,27 @@
   font-weight: 600;
 }
 
+.note-timeline__calendar-day-pomodoro {
+  position: absolute;
+  bottom: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ef4444;
+  color: white;
+  border-radius: 50%;
+  font-size: 0.625rem;
+  font-weight: 600;
+}
+
+.note-timeline__calendar-day--selected .note-timeline__calendar-day-pomodoro {
+  background: white;
+  color: #ef4444;
+}
+
 /* Selected date notes panel */
 .note-timeline__calendar-selected {
   margin-top: 1rem;
@@ -301,6 +322,14 @@
     right: 1px;
   }
 
+  .note-timeline__calendar-day-pomodoro {
+    width: 14px;
+    height: 14px;
+    font-size: 0.5rem;
+    bottom: 1px;
+    left: 1px;
+  }
+
   .note-timeline__calendar-selected-notes {
     max-height: 200px;
   }
@@ -316,6 +345,12 @@
   }
 
   .note-timeline__calendar-day-count {
+    width: 20px;
+    height: 20px;
+    font-size: 0.7rem;
+  }
+
+  .note-timeline__calendar-day-pomodoro {
     width: 20px;
     height: 20px;
     font-size: 0.7rem;

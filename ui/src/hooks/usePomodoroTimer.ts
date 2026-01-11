@@ -12,30 +12,44 @@ type PomodoroState = {
   isNotifying: boolean
 }
 
+export type PomodoroHistory = Record<string, number>
+
 const getTodayKey = () => {
   const today = new Date()
-  return `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`
+  const month = String(today.getMonth() + 1).padStart(2, '0')
+  const day = String(today.getDate()).padStart(2, '0')
+  return `${today.getFullYear()}-${month}-${day}`
+}
+
+const loadAllSessions = (): PomodoroHistory => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (!stored) return {}
+    return JSON.parse(stored)
+  } catch {
+    return {}
+  }
 }
 
 const loadCompletedSessions = (): number => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (!stored) return 0
-    const data = JSON.parse(stored)
-    const todayKey = getTodayKey()
-    return data[todayKey] || 0
-  } catch {
-    return 0
-  }
+  const data = loadAllSessions()
+  const todayKey = getTodayKey()
+  return data[todayKey] || 0
 }
 
 const saveCompletedSessions = (count: number) => {
   try {
     const todayKey = getTodayKey()
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ [todayKey]: count }))
+    const existingData = loadAllSessions()
+    existingData[todayKey] = count
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(existingData))
   } catch {
     // localStorage unavailable
   }
+}
+
+export const getPomodoroHistory = (): PomodoroHistory => {
+  return loadAllSessions()
 }
 
 export const usePomodoroTimer = () => {
