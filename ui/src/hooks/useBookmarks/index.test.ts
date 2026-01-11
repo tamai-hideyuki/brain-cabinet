@@ -223,7 +223,7 @@ describe('useBookmarks', () => {
 
     expect(bookmarkApi.moveBookmarkNode).toHaveBeenCalledWith(
       '22222222-2222-2222-2222-222222222222',
-      { parentId: '11111111-1111-1111-1111-111111111111', position: 0 }
+      { newParentId: '11111111-1111-1111-1111-111111111111', newPosition: 0 }
     )
     expect(bookmarkApi.fetchBookmarkTree).toHaveBeenCalledTimes(2)
   })

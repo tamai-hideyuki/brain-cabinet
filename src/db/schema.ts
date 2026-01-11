@@ -736,3 +736,23 @@ export const clusterIdentities = sqliteTable("cluster_identities", {
   isActive: integer("is_active").notNull().default(1),            // 1: アクティブ, 0: 消滅済み
   lastSeenSnapshotId: integer("last_seen_snapshot_id"),           // 最後に観測されたスナップショット
 });
+
+// ============================================================
+// Voice Evaluation（観測者ルール評価ログ）
+// ============================================================
+
+export const voiceEvaluationLogs = sqliteTable("voice_evaluation_logs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  clusterId: integer("cluster_id").notNull(),                     // 評価対象クラスタID
+  clusterName: text("cluster_name").notNull(),                    // クラスタ名
+  promptVersion: text("prompt_version").notNull(),                // プロンプトバージョン
+  totalSentences: integer("total_sentences").notNull(),           // 総文数
+  assertionCount: integer("assertion_count").notNull(),           // 断定表現数（voice以外）
+  causalCount: integer("causal_count").notNull(),                 // 因果表現数（voice以外）
+  assertionRate: integer("assertion_rate").notNull(),             // 断定率（0-100）
+  causalRate: integer("causal_rate").notNull(),                   // 因果率（0-100）
+  structureSeparated: integer("structure_separated").notNull(),   // 1: 分離済み, 0: 未分離
+  detectedExpressions: text("detected_expressions").notNull(),    // 検出表現（JSON）
+  rawOutput: text("raw_output").notNull(),                        // 生データ（JSON）
+  createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
+});

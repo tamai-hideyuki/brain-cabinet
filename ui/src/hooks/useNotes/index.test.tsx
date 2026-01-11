@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, waitFor, act } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
+import type { ReactNode } from 'react'
 import { useNotes } from './index'
 import * as notesApi from '../../api/notesApi'
 import type { Note } from '../../types/note'
@@ -33,6 +35,11 @@ const mockNotes: Note[] = [
 
 const mockFetchNotesResult = { notes: mockNotes, total: mockNotes.length }
 
+// React Router wrapper for hooks that use useSearchParams
+const wrapper = ({ children }: { children: ReactNode }) => (
+  <MemoryRouter>{children}</MemoryRouter>
+)
+
 describe('useNotes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -45,7 +52,7 @@ describe('useNotes', () => {
   it('初期状態でloadingがtrueになる', () => {
     vi.mocked(notesApi.fetchNotes).mockReturnValue(new Promise(() => {}))
 
-    const { result } = renderHook(() => useNotes())
+    const { result } = renderHook(() => useNotes(), { wrapper })
 
     expect(result.current.loading).toBe(true)
     expect(result.current.notes).toEqual([])
@@ -55,7 +62,7 @@ describe('useNotes', () => {
   it('ノートを取得して更新日時順にソートする', async () => {
     vi.mocked(notesApi.fetchNotes).mockResolvedValue(mockFetchNotesResult)
 
-    const { result } = renderHook(() => useNotes())
+    const { result } = renderHook(() => useNotes(), { wrapper })
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false)
@@ -70,7 +77,7 @@ describe('useNotes', () => {
   it('エラー時にerrorがセットされる', async () => {
     vi.mocked(notesApi.fetchNotes).mockRejectedValue(new Error('Network error'))
 
-    const { result } = renderHook(() => useNotes())
+    const { result } = renderHook(() => useNotes(), { wrapper })
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false)
@@ -83,7 +90,7 @@ describe('useNotes', () => {
   it('reloadでノートを再取得する', async () => {
     vi.mocked(notesApi.fetchNotes).mockResolvedValue(mockFetchNotesResult)
 
-    const { result } = renderHook(() => useNotes())
+    const { result } = renderHook(() => useNotes(), { wrapper })
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false)
@@ -101,7 +108,7 @@ describe('useNotes', () => {
   it('setSearchで検索クエリを設定できる', async () => {
     vi.mocked(notesApi.fetchNotes).mockResolvedValue(mockFetchNotesResult)
 
-    const { result } = renderHook(() => useNotes())
+    const { result } = renderHook(() => useNotes(), { wrapper })
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false)
@@ -117,7 +124,7 @@ describe('useNotes', () => {
   it('setSearchModeで検索モードを設定できる', async () => {
     vi.mocked(notesApi.fetchNotes).mockResolvedValue(mockFetchNotesResult)
 
-    const { result } = renderHook(() => useNotes())
+    const { result } = renderHook(() => useNotes(), { wrapper })
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false)
@@ -134,7 +141,7 @@ describe('useNotes', () => {
     vi.mocked(notesApi.fetchNotes).mockResolvedValue(mockFetchNotesResult)
     vi.mocked(notesApi.searchNotes).mockResolvedValue([mockNotes[0]])
 
-    const { result } = renderHook(() => useNotes())
+    const { result } = renderHook(() => useNotes(), { wrapper })
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false)
@@ -155,7 +162,7 @@ describe('useNotes', () => {
   it('空の検索クエリでexecuteSearchを実行するとloadNotesが呼ばれる', async () => {
     vi.mocked(notesApi.fetchNotes).mockResolvedValue(mockFetchNotesResult)
 
-    const { result } = renderHook(() => useNotes())
+    const { result } = renderHook(() => useNotes(), { wrapper })
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false)
@@ -175,7 +182,7 @@ describe('useNotes', () => {
     vi.mocked(notesApi.fetchNotes).mockResolvedValue(mockFetchNotesResult)
     vi.mocked(notesApi.searchNotes).mockRejectedValue(new Error('Search failed'))
 
-    const { result } = renderHook(() => useNotes())
+    const { result } = renderHook(() => useNotes(), { wrapper })
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false)
@@ -219,7 +226,7 @@ describe('useNotes', () => {
     ]
     vi.mocked(notesApi.fetchNotes).mockResolvedValue({ notes: notesWithSameUpdatedAt, total: notesWithSameUpdatedAt.length })
 
-    const { result } = renderHook(() => useNotes())
+    const { result } = renderHook(() => useNotes(), { wrapper })
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false)
