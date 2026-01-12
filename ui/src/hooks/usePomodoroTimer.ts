@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import * as pomodoroApi from '../api/pomodoroApi'
 
 const WORK_DURATION = 25 * 60 // 25分
 const BREAK_DURATION = 5 * 60 // 5分
-const STORAGE_KEY = 'pomodoro-sessions'
-const TIMER_STATE_KEY = 'pomodoro-timer-state'
+const POLLING_INTERVAL = 5000 // 5秒
 
 type PomodoroState = {
   isRunning: boolean
@@ -11,131 +11,37 @@ type PomodoroState = {
   remainingSeconds: number
   completedSessions: number
   isNotifying: boolean
-}
-
-type PersistedTimerState = {
-  isRunning: boolean
-  isBreak: boolean
-  startedAt: number // タイマー開始時のタイムスタンプ
-  totalDuration: number // そのセッションの合計時間（秒）
-  remainingAtStart: number // 開始時の残り時間（一時停止からの再開用）
+  isLoading: boolean
 }
 
 export type PomodoroHistory = Record<string, number>
 
-const getTodayKey = () => {
-  const today = new Date()
-  const month = String(today.getMonth() + 1).padStart(2, '0')
-  const day = String(today.getDate()).padStart(2, '0')
-  return `${today.getFullYear()}-${month}-${day}`
-}
-
-const loadAllSessions = (): PomodoroHistory => {
+/**
+ * ポモドーロ履歴を取得（API経由）
+ */
+export const getPomodoroHistory = async (): Promise<PomodoroHistory> => {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (!stored) return {}
-    return JSON.parse(stored)
+    return await pomodoroApi.getHistory(365)
   } catch {
     return {}
   }
 }
 
-const loadCompletedSessions = (): number => {
-  const data = loadAllSessions()
-  const todayKey = getTodayKey()
-  return data[todayKey] || 0
-}
-
-const saveCompletedSessions = (count: number) => {
-  try {
-    const todayKey = getTodayKey()
-    const existingData = loadAllSessions()
-    existingData[todayKey] = count
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(existingData))
-  } catch {
-    // localStorage unavailable
-  }
-}
-
-const loadTimerState = (): PersistedTimerState | null => {
-  try {
-    const stored = localStorage.getItem(TIMER_STATE_KEY)
-    if (!stored) return null
-    return JSON.parse(stored)
-  } catch {
-    return null
-  }
-}
-
-const saveTimerState = (state: PersistedTimerState | null) => {
-  try {
-    if (state === null) {
-      localStorage.removeItem(TIMER_STATE_KEY)
-    } else {
-      localStorage.setItem(TIMER_STATE_KEY, JSON.stringify(state))
-    }
-  } catch {
-    // localStorage unavailable
-  }
-}
-
-const calculateRestoredState = (): Partial<PomodoroState> | null => {
-  const persisted = loadTimerState()
-  if (!persisted) return null
-
-  const now = Date.now()
-  const elapsedSeconds = Math.floor((now - persisted.startedAt) / 1000)
-  const remainingSeconds = persisted.remainingAtStart - elapsedSeconds
-
-  if (remainingSeconds <= 0) {
-    // タイマーが終了していた場合、通知状態にする
-    saveTimerState(null)
-    return {
-      isRunning: false,
-      isBreak: persisted.isBreak,
-      remainingSeconds: 0,
-      isNotifying: true,
-    }
-  }
-
-  // まだ時間が残っている場合
-  return {
-    isRunning: persisted.isRunning,
-    isBreak: persisted.isBreak,
-    remainingSeconds,
-  }
-}
-
-export const getPomodoroHistory = (): PomodoroHistory => {
-  return loadAllSessions()
-}
-
 export const usePomodoroTimer = () => {
-  const [state, setState] = useState<PomodoroState>(() => {
-    const restored = calculateRestoredState()
-    const completedSessions = loadCompletedSessions()
-
-    if (restored) {
-      return {
-        isRunning: restored.isRunning ?? false,
-        isBreak: restored.isBreak ?? false,
-        remainingSeconds: restored.remainingSeconds ?? WORK_DURATION,
-        completedSessions,
-        isNotifying: restored.isNotifying ?? false,
-      }
-    }
-
-    return {
-      isRunning: false,
-      isBreak: false,
-      remainingSeconds: WORK_DURATION,
-      completedSessions,
-      isNotifying: false,
-    }
+  const [state, setState] = useState<PomodoroState>({
+    isRunning: false,
+    isBreak: false,
+    remainingSeconds: WORK_DURATION,
+    completedSessions: 0,
+    isNotifying: false,
+    isLoading: true,
   })
 
   const intervalRef = useRef<number | null>(null)
+  const pollingRef = useRef<number | null>(null)
+  const isMountedRef = useRef(true)
 
+  // タイマーインターバルをクリア
   const clearTimer = useCallback(() => {
     if (intervalRef.current !== null) {
       clearInterval(intervalRef.current)
@@ -143,31 +49,103 @@ export const usePomodoroTimer = () => {
     }
   }, [])
 
-  const start = useCallback(() => {
-    setState((prev) => {
-      // タイマー開始時に状態を永続化
-      saveTimerState({
-        isRunning: true,
-        isBreak: prev.isBreak,
-        startedAt: Date.now(),
-        totalDuration: prev.isBreak ? BREAK_DURATION : WORK_DURATION,
-        remainingAtStart: prev.remainingSeconds,
-      })
-      return { ...prev, isRunning: true, isNotifying: false }
-    })
+  // ポーリングをクリア
+  const clearPolling = useCallback(() => {
+    if (pollingRef.current !== null) {
+      clearInterval(pollingRef.current)
+      pollingRef.current = null
+    }
   }, [])
 
-  const pause = useCallback(() => {
-    setState((prev) => {
-      // 一時停止時は永続化データをクリア（残り時間は state に保持）
-      saveTimerState(null)
-      return { ...prev, isRunning: false }
-    })
+  // サーバーから状態を取得して更新
+  const fetchState = useCallback(async () => {
+    try {
+      const serverState = await pomodoroApi.getState()
+      if (isMountedRef.current) {
+        setState((prev) => ({
+          ...prev,
+          isRunning: serverState.isRunning,
+          isBreak: serverState.isBreak,
+          remainingSeconds: serverState.remainingSeconds,
+          completedSessions: serverState.completedSessions,
+          isNotifying: serverState.isNotifying,
+          isLoading: false,
+        }))
+      }
+    } catch (error) {
+      console.error('Failed to fetch pomodoro state:', error)
+      if (isMountedRef.current) {
+        setState((prev) => ({ ...prev, isLoading: false }))
+      }
+    }
   }, [])
 
-  const reset = useCallback(() => {
+  // 初期化時にサーバーから状態を取得
+  useEffect(() => {
+    isMountedRef.current = true
+    fetchState()
+
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [fetchState])
+
+  // タイマー開始
+  const start = useCallback(async () => {
+    // 楽観的更新
+    setState((prev) => ({ ...prev, isRunning: true, isNotifying: false }))
+
+    try {
+      const serverState = await pomodoroApi.start(state.remainingSeconds, state.isBreak)
+      if (isMountedRef.current) {
+        setState((prev) => ({
+          ...prev,
+          isRunning: serverState.isRunning,
+          isBreak: serverState.isBreak,
+          remainingSeconds: serverState.remainingSeconds,
+          completedSessions: serverState.completedSessions,
+          isNotifying: serverState.isNotifying,
+        }))
+      }
+    } catch (error) {
+      console.error('Failed to start pomodoro:', error)
+      // ロールバック
+      if (isMountedRef.current) {
+        setState((prev) => ({ ...prev, isRunning: false }))
+      }
+    }
+  }, [state.remainingSeconds, state.isBreak])
+
+  // タイマー一時停止
+  const pause = useCallback(async () => {
+    // 楽観的更新
+    setState((prev) => ({ ...prev, isRunning: false }))
+
+    try {
+      const serverState = await pomodoroApi.pause()
+      if (isMountedRef.current) {
+        setState((prev) => ({
+          ...prev,
+          isRunning: serverState.isRunning,
+          isBreak: serverState.isBreak,
+          remainingSeconds: serverState.remainingSeconds,
+          completedSessions: serverState.completedSessions,
+          isNotifying: serverState.isNotifying,
+        }))
+      }
+    } catch (error) {
+      console.error('Failed to pause pomodoro:', error)
+      // ロールバック
+      if (isMountedRef.current) {
+        setState((prev) => ({ ...prev, isRunning: true }))
+      }
+    }
+  }, [])
+
+  // タイマーリセット
+  const reset = useCallback(async () => {
     clearTimer()
-    saveTimerState(null) // リセット時に永続化データをクリア
+    // 楽観的更新
     setState((prev) => ({
       ...prev,
       isRunning: false,
@@ -175,32 +153,59 @@ export const usePomodoroTimer = () => {
       remainingSeconds: WORK_DURATION,
       isNotifying: false,
     }))
+
+    try {
+      const serverState = await pomodoroApi.reset()
+      if (isMountedRef.current) {
+        setState((prev) => ({
+          ...prev,
+          isRunning: serverState.isRunning,
+          isBreak: serverState.isBreak,
+          remainingSeconds: serverState.remainingSeconds,
+          completedSessions: serverState.completedSessions,
+          isNotifying: serverState.isNotifying,
+        }))
+      }
+    } catch (error) {
+      console.error('Failed to reset pomodoro:', error)
+    }
   }, [clearTimer])
 
-  const dismissNotification = useCallback(() => {
-    setState((prev) => {
-      const newIsBreak = !prev.isBreak
-      const newCompletedSessions = prev.isBreak ? prev.completedSessions : prev.completedSessions + 1
+  // 通知を閉じて次のセッションへ
+  const dismissNotification = useCallback(async () => {
+    const currentIsBreak = state.isBreak
+    const newIsBreak = !currentIsBreak
+    const newCompletedSessions = currentIsBreak ? state.completedSessions : state.completedSessions + 1
 
-      if (!prev.isBreak) {
-        saveCompletedSessions(newCompletedSessions)
+    // 楽観的更新
+    setState((prev) => ({
+      ...prev,
+      isNotifying: false,
+      isBreak: newIsBreak,
+      remainingSeconds: newIsBreak ? BREAK_DURATION : WORK_DURATION,
+      completedSessions: newCompletedSessions,
+    }))
+
+    try {
+      const serverState = await pomodoroApi.complete(currentIsBreak)
+      if (isMountedRef.current) {
+        setState((prev) => ({
+          ...prev,
+          isRunning: serverState.isRunning,
+          isBreak: serverState.isBreak,
+          remainingSeconds: serverState.remainingSeconds,
+          completedSessions: serverState.completedSessions,
+          isNotifying: serverState.isNotifying,
+        }))
       }
+    } catch (error) {
+      console.error('Failed to complete pomodoro session:', error)
+    }
+  }, [state.isBreak, state.completedSessions])
 
-      // 通知を閉じた時点で永続化データをクリア
-      saveTimerState(null)
-
-      return {
-        ...prev,
-        isNotifying: false,
-        isBreak: newIsBreak,
-        remainingSeconds: newIsBreak ? BREAK_DURATION : WORK_DURATION,
-        completedSessions: newCompletedSessions,
-      }
-    })
-  }, [])
-
+  // ローカルタイマー（1秒ごとにカウントダウン）
   useEffect(() => {
-    if (!state.isRunning) {
+    if (!state.isRunning || state.isLoading) {
       clearTimer()
       return
     }
@@ -208,8 +213,6 @@ export const usePomodoroTimer = () => {
     intervalRef.current = window.setInterval(() => {
       setState((prev) => {
         if (prev.remainingSeconds <= 1) {
-          // タイマー完了時に永続化データをクリア
-          saveTimerState(null)
           return {
             ...prev,
             remainingSeconds: 0,
@@ -225,7 +228,35 @@ export const usePomodoroTimer = () => {
     }, 1000)
 
     return clearTimer
-  }, [state.isRunning, clearTimer])
+  }, [state.isRunning, state.isLoading, clearTimer])
+
+  // ポーリング（タイマー実行中のみ）
+  useEffect(() => {
+    if (!state.isRunning || state.isLoading) {
+      clearPolling()
+      return
+    }
+
+    pollingRef.current = window.setInterval(() => {
+      fetchState()
+    }, POLLING_INTERVAL)
+
+    return clearPolling
+  }, [state.isRunning, state.isLoading, fetchState, clearPolling])
+
+  // ページフォーカス時に状態を再取得
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchState()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [fetchState])
 
   const formatTime = useCallback((seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -234,11 +265,17 @@ export const usePomodoroTimer = () => {
   }, [])
 
   return {
-    ...state,
+    isRunning: state.isRunning,
+    isBreak: state.isBreak,
+    remainingSeconds: state.remainingSeconds,
+    completedSessions: state.completedSessions,
+    isNotifying: state.isNotifying,
+    isLoading: state.isLoading,
     formattedTime: formatTime(state.remainingSeconds),
     start,
     pause,
     reset,
     dismissNotification,
+    refetch: fetchState,
   }
 }

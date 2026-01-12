@@ -4,7 +4,7 @@ import { Badge } from '../../atoms/Badge'
 import { Spinner } from '../../atoms/Spinner'
 import { Button } from '../../atoms/Button'
 import { fetchNotes } from '../../../api/notesApi'
-import { getPomodoroHistory } from '../../../hooks/usePomodoroTimer'
+import { getPomodoroHistory, type PomodoroHistory } from '../../../hooks/usePomodoroTimer'
 import type { Note } from '../../../types/note'
 import './NoteTimeline.css'
 
@@ -157,7 +157,14 @@ export const NoteTimeline = ({ onNoteClick }: NoteTimelineProps) => {
   }, [notes])
 
   // ポモドーロセッション履歴
-  const pomodoroHistory = useMemo(() => getPomodoroHistory(), [])
+  const [pomodoroHistory, setPomodoroHistory] = useState<PomodoroHistory>({})
+
+  // カレンダーモードでポモドーロ履歴を取得
+  useEffect(() => {
+    if (viewMode === 'calendar') {
+      getPomodoroHistory().then(setPomodoroHistory)
+    }
+  }, [viewMode])
 
   // 選択された日付のノート一覧
   const selectedDateNotes = useMemo((): Note[] => {
