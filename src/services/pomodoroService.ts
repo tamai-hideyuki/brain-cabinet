@@ -17,6 +17,7 @@ export type PomodoroStateResponse = {
   completedSessions: number;
   isNotifying: boolean;
   totalDuration: number;
+  description: string | null;
 };
 
 // 履歴の型
@@ -49,6 +50,7 @@ export const getState = async (): Promise<PomodoroStateResponse> => {
       completedSessions,
       isNotifying: false,
       totalDuration: WORK_DURATION,
+      description: null,
     };
   }
 
@@ -64,6 +66,7 @@ export const getState = async (): Promise<PomodoroStateResponse> => {
       completedSessions,
       isNotifying: false,
       totalDuration: timerState.totalDuration,
+      description: timerState.description,
     };
   }
 
@@ -83,6 +86,7 @@ export const getState = async (): Promise<PomodoroStateResponse> => {
       completedSessions,
       isNotifying: true,
       totalDuration: timerState.totalDuration,
+      description: timerState.description,
     };
   }
 
@@ -93,6 +97,7 @@ export const getState = async (): Promise<PomodoroStateResponse> => {
     completedSessions,
     isNotifying: false,
     totalDuration: timerState.totalDuration,
+    description: timerState.description,
   };
 };
 
@@ -101,7 +106,8 @@ export const getState = async (): Promise<PomodoroStateResponse> => {
  */
 export const start = async (
   remainingSeconds?: number,
-  isBreak?: boolean
+  isBreak?: boolean,
+  description?: string
 ): Promise<PomodoroStateResponse> => {
   const currentState = await pomodoroRepo.getTimerState();
 
@@ -112,12 +118,16 @@ export const start = async (
   const remaining = remainingSeconds ?? currentState?.remainingAtStart ?? duration;
   const breakMode = isBreak ?? currentState?.isBreak ?? false;
 
+  // 作業セッション開始時はdescriptionを保存、休憩時はnull
+  const sessionDescription = breakMode ? null : (description ?? currentState?.description ?? null);
+
   await pomodoroRepo.updateTimerState({
     isRunning: true,
     isBreak: breakMode,
     startedAt: Date.now(),
     totalDuration: breakMode ? BREAK_DURATION : WORK_DURATION,
     remainingAtStart: remaining,
+    description: sessionDescription,
   });
 
   return getState();
@@ -146,6 +156,7 @@ export const pause = async (): Promise<PomodoroStateResponse> => {
     startedAt: null,
     totalDuration: currentState.totalDuration,
     remainingAtStart: remainingSeconds,
+    description: currentState.description,
   });
 
   return getState();
@@ -161,6 +172,7 @@ export const reset = async (): Promise<PomodoroStateResponse> => {
     startedAt: null,
     totalDuration: WORK_DURATION,
     remainingAtStart: WORK_DURATION,
+    description: null,
   });
 
   return getState();
@@ -172,10 +184,11 @@ export const reset = async (): Promise<PomodoroStateResponse> => {
 export const complete = async (isBreak: boolean): Promise<PomodoroStateResponse> => {
   const todayKey = getTodayKey();
   const duration = isBreak ? BREAK_DURATION : WORK_DURATION;
+  const currentState = await pomodoroRepo.getTimerState();
 
-  // 作業セッション完了時のみ記録
+  // 作業セッション完了時のみ記録（descriptionも保存）
   if (!isBreak) {
-    await pomodoroRepo.recordSession(todayKey, false, duration);
+    await pomodoroRepo.recordSession(todayKey, false, duration, currentState?.description);
   }
 
   // 次のフェーズに切り替え
@@ -188,6 +201,7 @@ export const complete = async (isBreak: boolean): Promise<PomodoroStateResponse>
     startedAt: null,
     totalDuration: nextDuration,
     remainingAtStart: nextDuration,
+    description: null, // 完了後はdescriptionをクリア
   });
 
   return getState();
@@ -205,4 +219,26 @@ export const getHistory = async (days: number = 365): Promise<PomodoroHistory> =
   }
 
   return history;
+};
+
+// 日別セッション詳細の型
+export type SessionDetail = {
+  id: number;
+  completedAt: number;
+  duration: number;
+  description: string | null;
+};
+
+/**
+ * 指定日のセッション詳細を取得
+ */
+export const getSessionsByDate = async (date: string): Promise<SessionDetail[]> => {
+  const sessions = await pomodoroRepo.getSessionsByDate(date);
+
+  return sessions.map((s) => ({
+    id: s.id,
+    completedAt: s.completedAt,
+    duration: s.duration,
+    description: s.description,
+  }));
 };

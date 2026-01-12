@@ -27,12 +27,13 @@ pomodoroRoute.get("/state", async (c) => {
 pomodoroRoute.post("/start", async (c) => {
   try {
     const body = await c.req.json().catch(() => ({}));
-    const { remainingSeconds, isBreak } = body as {
+    const { remainingSeconds, isBreak, description } = body as {
       remainingSeconds?: number;
       isBreak?: boolean;
+      description?: string;
     };
 
-    const state = await pomodoroService.start(remainingSeconds, isBreak);
+    const state = await pomodoroService.start(remainingSeconds, isBreak, description);
     return c.json(state);
   } catch (e) {
     logger.error({ err: e }, "Failed to start pomodoro");
@@ -96,6 +97,25 @@ pomodoroRoute.get("/history", async (c) => {
     return c.json(history);
   } catch (e) {
     logger.error({ err: e }, "Failed to get pomodoro history");
+    return c.json({ error: (e as Error).message }, 500);
+  }
+});
+
+/**
+ * GET /api/pomodoro/sessions/:date - 指定日のセッション詳細を取得
+ */
+pomodoroRoute.get("/sessions/:date", async (c) => {
+  try {
+    const date = c.req.param("date");
+    // 日付形式のバリデーション (YYYY-MM-DD)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return c.json({ error: "Invalid date format. Use YYYY-MM-DD" }, 400);
+    }
+
+    const sessions = await pomodoroService.getSessionsByDate(date);
+    return c.json(sessions);
+  } catch (e) {
+    logger.error({ err: e }, "Failed to get pomodoro sessions");
     return c.json({ error: (e as Error).message }, 500);
   }
 });

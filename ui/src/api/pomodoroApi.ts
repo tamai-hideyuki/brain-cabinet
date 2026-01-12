@@ -12,10 +12,19 @@ export type PomodoroState = {
   completedSessions: number;
   isNotifying: boolean;
   totalDuration: number;
+  description: string | null;
 };
 
 // 履歴の型（日付 -> セッション数）
 export type PomodoroHistory = Record<string, number>;
+
+// セッション詳細の型
+export type SessionDetail = {
+  id: number;
+  completedAt: number;
+  duration: number;
+  description: string | null;
+};
 
 const API_BASE = "/api/pomodoro";
 
@@ -35,12 +44,13 @@ export const getState = async (): Promise<PomodoroState> => {
  */
 export const start = async (
   remainingSeconds?: number,
-  isBreak?: boolean
+  isBreak?: boolean,
+  description?: string
 ): Promise<PomodoroState> => {
   const res = await fetchWithAuth(`${API_BASE}/start`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ remainingSeconds, isBreak }),
+    body: JSON.stringify({ remainingSeconds, isBreak, description }),
   });
   if (!res.ok) {
     throw new Error("Failed to start pomodoro");
@@ -96,6 +106,17 @@ export const getHistory = async (days: number = 365): Promise<PomodoroHistory> =
   const res = await fetchWithAuth(`${API_BASE}/history?days=${days}`);
   if (!res.ok) {
     throw new Error("Failed to fetch pomodoro history");
+  }
+  return res.json();
+};
+
+/**
+ * 指定日のセッション詳細を取得
+ */
+export const getSessionsByDate = async (date: string): Promise<SessionDetail[]> => {
+  const res = await fetchWithAuth(`${API_BASE}/sessions/${date}`);
+  if (!res.ok) {
+    throw new Error("Failed to fetch session details");
   }
   return res.json();
 };

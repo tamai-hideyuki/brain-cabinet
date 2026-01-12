@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { usePomodoroTimer } from '../../../hooks/usePomodoroTimer'
 import './PomodoroBar.css'
 
@@ -8,21 +9,42 @@ export const PomodoroBar = () => {
     formattedTime,
     completedSessions,
     isNotifying,
+    description,
     start,
     pause,
     reset,
     dismissNotification,
   } = usePomodoroTimer()
 
+  const [inputDescription, setInputDescription] = useState('')
+
+  // 待機中（作業セッション）かどうか
+  const isWaiting = !isRunning && !isNotifying && !isBreak
+
   const handleMainClick = () => {
     if (isNotifying) {
       dismissNotification()
     } else if (isRunning) {
       pause()
-    } else {
+    } else if (isBreak) {
+      // 休憩セッションはdescription不要
       start()
+    } else {
+      // 作業セッション開始時はdescriptionが必須
+      if (inputDescription.trim()) {
+        start(inputDescription.trim())
+        setInputDescription('')
+      }
     }
   }
+
+  const handleReset = () => {
+    setInputDescription('')
+    reset()
+  }
+
+  // 開始ボタンを押せるかどうか
+  const canStart = isNotifying || isRunning || isBreak || inputDescription.trim().length > 0
 
   return (
     <div
@@ -66,8 +88,32 @@ export const PomodoroBar = () => {
                 ? isBreak
                   ? '休憩中'
                   : '作業中'
-                : '待機中'}
+                : isBreak
+                  ? '休憩待機'
+                  : '待機中'}
           </span>
+        </div>
+
+        {/* 作業内容表示/入力エリア */}
+        <div className="pomodoro-bar__description">
+          {isWaiting ? (
+            <input
+              type="text"
+              className="pomodoro-bar__input"
+              placeholder="作業内容を入力..."
+              value={inputDescription}
+              onChange={(e) => setInputDescription(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && canStart) {
+                  handleMainClick()
+                }
+              }}
+            />
+          ) : description ? (
+            <span className="pomodoro-bar__description-text" title={description}>
+              {description}
+            </span>
+          ) : null}
         </div>
 
         <div className="pomodoro-bar__timer">
@@ -76,8 +122,9 @@ export const PomodoroBar = () => {
 
         <div className="pomodoro-bar__actions">
           <button
-            className={`pomodoro-bar__btn ${isRunning ? 'pomodoro-bar__btn--pause' : 'pomodoro-bar__btn--play'}`}
+            className={`pomodoro-bar__btn ${isRunning ? 'pomodoro-bar__btn--pause' : 'pomodoro-bar__btn--play'} ${!canStart ? 'pomodoro-bar__btn--disabled' : ''}`}
             onClick={handleMainClick}
+            disabled={!canStart}
             aria-label={
               isNotifying
                 ? '次のセッションを開始'
@@ -104,7 +151,7 @@ export const PomodoroBar = () => {
 
           <button
             className="pomodoro-bar__btn pomodoro-bar__btn--reset"
-            onClick={reset}
+            onClick={handleReset}
             aria-label="リセット"
           >
             <svg

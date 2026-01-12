@@ -768,6 +768,7 @@ export const pomodoroSessions = sqliteTable("pomodoro_sessions", {
   completedAt: integer("completed_at").notNull(),                   // 完了時刻（Unix秒）
   duration: integer("duration").notNull(),                          // セッション時間（秒）
   isBreak: integer("is_break").notNull(),                           // 0: 作業, 1: 休憩
+  description: text("description"),                                  // 作業内容
 });
 
 // ポモドーロタイマー状態（現在の状態、シングルトン）
@@ -778,5 +779,6 @@ export const pomodoroTimerState = sqliteTable("pomodoro_timer_state", {
   startedAt: integer("started_at"),                                 // タイマー開始時刻（Unix ms）
   totalDuration: integer("total_duration").notNull().default(1500), // 合計時間（秒）デフォルト25分
   remainingAtStart: integer("remaining_at_start"),                  // 開始時の残り時間（秒）
+  description: text("description"),                                  // 現在のセッションの作業内容
   updatedAt: integer("updated_at").notNull().default(sql`(strftime('%s','now'))`),
 });

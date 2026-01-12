@@ -82,8 +82,45 @@
   color: var(--color-warning, #eab308);
 }
 
-.pomodoro-bar__timer {
+/* 作業内容入力/表示エリア */
+.pomodoro-bar__description {
   flex: 1;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.pomodoro-bar__input {
+  width: 100%;
+  max-width: 300px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--color-text);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.pomodoro-bar__input::placeholder {
+  color: var(--color-text-subtle);
+}
+
+.pomodoro-bar__input:focus {
+  border-color: var(--color-primary);
+}
+
+.pomodoro-bar__description-text {
+  font-size: 0.8125rem;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 300px;
+}
+
+.pomodoro-bar__timer {
   display: flex;
   justify-content: center;
 }
@@ -132,8 +169,17 @@
   color: white;
 }
 
-.pomodoro-bar__btn--play:hover {
+.pomodoro-bar__btn--play:hover:not(:disabled) {
   background: var(--color-primary-hover, #2563eb);
+}
+
+.pomodoro-bar__btn--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pomodoro-bar__btn--disabled:active {
+  transform: none;
 }
 
 .pomodoro-bar__btn--pause {

@@ -12,6 +12,7 @@ type PomodoroState = {
   completedSessions: number
   isNotifying: boolean
   isLoading: boolean
+  description: string | null
 }
 
 export type PomodoroHistory = Record<string, number>
@@ -35,6 +36,7 @@ export const usePomodoroTimer = () => {
     completedSessions: 0,
     isNotifying: false,
     isLoading: true,
+    description: null,
   })
 
   const intervalRef = useRef<number | null>(null)
@@ -69,6 +71,7 @@ export const usePomodoroTimer = () => {
           remainingSeconds: serverState.remainingSeconds,
           completedSessions: serverState.completedSessions,
           isNotifying: serverState.isNotifying,
+          description: serverState.description,
           isLoading: false,
         }))
       }
@@ -91,12 +94,12 @@ export const usePomodoroTimer = () => {
   }, [fetchState])
 
   // タイマー開始
-  const start = useCallback(async () => {
+  const start = useCallback(async (description?: string) => {
     // 楽観的更新
-    setState((prev) => ({ ...prev, isRunning: true, isNotifying: false }))
+    setState((prev) => ({ ...prev, isRunning: true, isNotifying: false, description: description ?? prev.description }))
 
     try {
-      const serverState = await pomodoroApi.start(state.remainingSeconds, state.isBreak)
+      const serverState = await pomodoroApi.start(state.remainingSeconds, state.isBreak, description)
       if (isMountedRef.current) {
         setState((prev) => ({
           ...prev,
@@ -105,6 +108,7 @@ export const usePomodoroTimer = () => {
           remainingSeconds: serverState.remainingSeconds,
           completedSessions: serverState.completedSessions,
           isNotifying: serverState.isNotifying,
+          description: serverState.description,
         }))
       }
     } catch (error) {
@@ -131,6 +135,7 @@ export const usePomodoroTimer = () => {
           remainingSeconds: serverState.remainingSeconds,
           completedSessions: serverState.completedSessions,
           isNotifying: serverState.isNotifying,
+          description: serverState.description,
         }))
       }
     } catch (error) {
@@ -152,6 +157,7 @@ export const usePomodoroTimer = () => {
       isBreak: false,
       remainingSeconds: WORK_DURATION,
       isNotifying: false,
+      description: null,
     }))
 
     try {
@@ -164,6 +170,7 @@ export const usePomodoroTimer = () => {
           remainingSeconds: serverState.remainingSeconds,
           completedSessions: serverState.completedSessions,
           isNotifying: serverState.isNotifying,
+          description: serverState.description,
         }))
       }
     } catch (error) {
@@ -184,6 +191,7 @@ export const usePomodoroTimer = () => {
       isBreak: newIsBreak,
       remainingSeconds: newIsBreak ? BREAK_DURATION : WORK_DURATION,
       completedSessions: newCompletedSessions,
+      description: null, // 完了後はdescriptionをクリア
     }))
 
     try {
@@ -196,6 +204,7 @@ export const usePomodoroTimer = () => {
           remainingSeconds: serverState.remainingSeconds,
           completedSessions: serverState.completedSessions,
           isNotifying: serverState.isNotifying,
+          description: serverState.description,
         }))
       }
     } catch (error) {
@@ -271,6 +280,7 @@ export const usePomodoroTimer = () => {
     completedSessions: state.completedSessions,
     isNotifying: state.isNotifying,
     isLoading: state.isLoading,
+    description: state.description,
     formattedTime: formatTime(state.remainingSeconds),
     start,
     pause,

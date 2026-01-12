@@ -15,6 +15,7 @@ export type TimerState = {
   startedAt: number | null;
   totalDuration: number;
   remainingAtStart: number | null;
+  description: string | null;
   updatedAt: number;
 };
 
@@ -25,6 +26,7 @@ export type PomodoroSession = {
   completedAt: number;
   duration: number;
   isBreak: boolean;
+  description: string | null;
 };
 
 // 日付別セッション数の型
@@ -54,6 +56,7 @@ export const getTimerState = async (): Promise<TimerState | null> => {
     startedAt: row.startedAt,
     totalDuration: row.totalDuration,
     remainingAtStart: row.remainingAtStart,
+    description: row.description,
     updatedAt: row.updatedAt,
   };
 };
@@ -67,13 +70,14 @@ export const updateTimerState = async (state: {
   startedAt: number | null;
   totalDuration: number;
   remainingAtStart: number | null;
+  description?: string | null;
 }): Promise<TimerState> => {
   const now = Math.floor(Date.now() / 1000);
 
   // SQLite では INSERT OR REPLACE を使用
   await db.run(sql`
     INSERT OR REPLACE INTO pomodoro_timer_state
-    (id, is_running, is_break, started_at, total_duration, remaining_at_start, updated_at)
+    (id, is_running, is_break, started_at, total_duration, remaining_at_start, description, updated_at)
     VALUES (
       1,
       ${state.isRunning ? 1 : 0},
@@ -81,6 +85,7 @@ export const updateTimerState = async (state: {
       ${state.startedAt},
       ${state.totalDuration},
       ${state.remainingAtStart},
+      ${state.description ?? null},
       ${now}
     )
   `);
@@ -92,6 +97,7 @@ export const updateTimerState = async (state: {
     startedAt: state.startedAt,
     totalDuration: state.totalDuration,
     remainingAtStart: state.remainingAtStart,
+    description: state.description ?? null,
     updatedAt: now,
   };
 };
@@ -102,7 +108,8 @@ export const updateTimerState = async (state: {
 export const recordSession = async (
   date: string,
   isBreak: boolean,
-  duration: number
+  duration: number,
+  description?: string | null
 ): Promise<PomodoroSession> => {
   const now = Math.floor(Date.now() / 1000);
 
@@ -113,6 +120,7 @@ export const recordSession = async (
       completedAt: now,
       duration,
       isBreak: isBreak ? 1 : 0,
+      description: description ?? null,
     })
     .returning();
 
@@ -123,6 +131,7 @@ export const recordSession = async (
     completedAt: row.completedAt,
     duration: row.duration,
     isBreak: row.isBreak === 1,
+    description: row.description,
   };
 };
 
@@ -183,5 +192,26 @@ export const getTodaySessions = async (): Promise<PomodoroSession[]> => {
     completedAt: row.completedAt,
     duration: row.duration,
     isBreak: row.isBreak === 1,
+    description: row.description,
+  }));
+};
+
+/**
+ * 指定日のセッション一覧を取得（作業内容詳細表示用）
+ */
+export const getSessionsByDate = async (date: string): Promise<PomodoroSession[]> => {
+  const rows = await db
+    .select()
+    .from(pomodoroSessions)
+    .where(and(eq(pomodoroSessions.date, date), eq(pomodoroSessions.isBreak, 0)))
+    .orderBy(desc(pomodoroSessions.completedAt));
+
+  return rows.map((row) => ({
+    id: row.id,
+    date: row.date,
+    completedAt: row.completedAt,
+    duration: row.duration,
+    isBreak: row.isBreak === 1,
+    description: row.description,
   }));
 };
