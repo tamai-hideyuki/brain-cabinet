@@ -17,6 +17,37 @@ export const fetchStorageStats = async (): Promise<StorageStats> => {
 }
 
 // ============================================================
+// Health Check API
+// ============================================================
+
+export type HealthStatus = 'healthy' | 'degraded' | 'unhealthy'
+
+export type ComponentHealth = {
+  status: HealthStatus
+  latency?: number
+  message: string
+}
+
+export type HealthCheckResult = {
+  status: HealthStatus
+  timestamp: string
+  uptime: number
+  checks: {
+    database: ComponentHealth
+    storage: {
+      status: HealthStatus
+      notesCount: number
+      message: string
+    }
+  }
+  gptSummary: string
+}
+
+export const fetchHealthCheck = async (): Promise<HealthCheckResult> => {
+  return sendCommand<HealthCheckResult>('system.health')
+}
+
+// ============================================================
 // Voice Evaluation API
 // ============================================================
 

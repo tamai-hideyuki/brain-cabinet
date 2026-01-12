@@ -215,6 +215,103 @@
   color: var(--color-text);
 }
 
+/* Health Check Section */
+.system-page__health-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--color-bg-muted);
+  border-radius: 8px;
+}
+
+.system-page__health-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+
+.system-page__health-icon {
+  font-size: 0.75rem;
+}
+
+.system-page__health-indicator--healthy .system-page__health-icon {
+  color: #22c55e;
+}
+
+.system-page__health-indicator--degraded .system-page__health-icon {
+  color: #f59e0b;
+}
+
+.system-page__health-indicator--unhealthy .system-page__health-icon {
+  color: #ef4444;
+}
+
+.system-page__health-label {
+  color: var(--color-text);
+}
+
+.system-page__health-time {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.system-page__health-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.system-page__health-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.system-page__health-dot--healthy {
+  background: #22c55e;
+}
+
+.system-page__health-dot--degraded {
+  background: #f59e0b;
+}
+
+.system-page__health-dot--unhealthy {
+  background: #ef4444;
+}
+
+.system-page__health-details {
+  background: var(--color-bg-muted);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.8125rem;
+}
+
+.system-page__health-detail-row {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+}
+
+.system-page__health-detail-row:not(:last-child) {
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.system-page__health-detail-label {
+  font-weight: 500;
+  color: var(--color-text-subtle);
+  min-width: 60px;
+}
+
+.system-page__health-detail-value {
+  color: var(--color-text);
+  font-family: 'SF Mono', 'Monaco', monospace;
+}
+
 @media (max-width: 640px) {
   .system-page {
     padding: 1rem;
@@ -226,5 +323,11 @@
 
   .system-page__table-cell--bar {
     display: none;
+  }
+
+  .system-page__health-status {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
   }
 }
