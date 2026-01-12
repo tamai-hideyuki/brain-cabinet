@@ -103,11 +103,6 @@ export const PomodoroBar = () => {
               placeholder="作業内容を入力..."
               value={inputDescription}
               onChange={(e) => setInputDescription(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && canStart) {
-                  handleMainClick()
-                }
-              }}
             />
           ) : description ? (
             <span className="pomodoro-bar__description-text" title={description}>
