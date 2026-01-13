@@ -782,3 +782,67 @@ export const pomodoroTimerState = sqliteTable("pomodoro_timer_state", {
   description: text("description"),                                  // 現在のセッションの作業内容
   updatedAt: integer("updated_at").notNull().default(sql`(strftime('%s','now'))`),
 });
+
+// ============================================================
+// 苫米地式コーチングセッション機能
+// ============================================================
+
+// コーチングフェーズ定義
+export const COACHING_PHASES = [
+  "goal_setting",   // ゴール設定（現状の外、want to）
+  "abstraction",    // 抽象度操作（視点上げ、スコトーマ解除）
+  "self_talk",      // セルフトーク改善（アファメーション、エフィカシー）
+  "integration",    // 統合（振り返り）
+] as const;
+export type CoachingPhase = (typeof COACHING_PHASES)[number];
+
+// セッションステータス定義
+export const COACHING_STATUSES = [
+  "active",      // 進行中
+  "completed",   // 完了
+  "abandoned",   // 中断
+] as const;
+export type CoachingStatus = (typeof COACHING_STATUSES)[number];
+
+// コーチングで抽出されるインサイトの型
+export type CoachingInsights = {
+  goals: Array<{
+    content: string;
+    isOutsideCurrentState: boolean;  // 現状の外か
+    wantToScore: number;              // want to度合い (0-1)
+  }>;
+  scotomas: Array<{
+    content: string;
+    discoveredAt: number;
+  }>;
+  affirmations: Array<{
+    content: string;
+    efficacyLevel: number;            // エフィカシー度合い (0-1)
+  }>;
+};
+
+// コーチングセッションテーブル
+export const coachingSessions = sqliteTable("coaching_sessions", {
+  id: text("id").primaryKey(),                                        // UUID
+  currentPhase: text("current_phase").notNull().default("goal_setting"), // CoachingPhase
+  status: text("status").notNull().default("active"),                 // CoachingStatus
+  totalTurns: integer("total_turns").notNull().default(0),
+  phaseProgress: text("phase_progress"),                              // JSON: { goal_setting: 0.5, ... }
+  insights: text("insights"),                                         // JSON: CoachingInsights
+  startedAt: integer("started_at").notNull().default(sql`(strftime('%s','now'))`),
+  completedAt: integer("completed_at"),
+  lastActiveAt: integer("last_active_at").notNull().default(sql`(strftime('%s','now'))`),
+});
+
+// コーチングメッセージテーブル
+export const coachingMessages = sqliteTable("coaching_messages", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  sessionId: text("session_id").notNull(),                            // coachingSessions.id
+  turn: integer("turn").notNull(),                                    // ターン番号（1〜）
+  phase: text("phase").notNull(),                                     // このメッセージ時点のフェーズ
+  role: text("role").notNull(),                                       // "coach" | "user"
+  content: text("content").notNull(),                                 // メッセージ本文
+  promptType: text("prompt_type"),                                    // 使用したプロンプトタイプ
+  extractedInsights: text("extracted_insights"),                      // このターンで抽出したインサイト（JSON）
+  createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
+});
