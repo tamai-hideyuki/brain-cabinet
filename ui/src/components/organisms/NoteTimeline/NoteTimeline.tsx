@@ -4,6 +4,8 @@ import { Badge } from '../../atoms/Badge'
 import { Spinner } from '../../atoms/Spinner'
 import { Button } from '../../atoms/Button'
 import { fetchNotes } from '../../../api/notesApi'
+import { getPomodoroHistory, type PomodoroHistory } from '../../../hooks/usePomodoroTimer'
+import { SessionDetailModal } from '../PomodoroBar'
 import type { Note } from '../../../types/note'
 import './NoteTimeline.css'
 
@@ -90,6 +92,7 @@ export const NoteTimeline = ({ onNoteClick }: NoteTimelineProps) => {
     return { year: now.getFullYear(), month: now.getMonth() }
   })
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [selectedPomodoroDate, setSelectedPomodoroDate] = useState<string | null>(null)
 
   // ページネーション用state
   const [currentPage, setCurrentPage] = useState(1)
@@ -154,6 +157,16 @@ export const NoteTimeline = ({ onNoteClick }: NoteTimelineProps) => {
     })
     return counts
   }, [notes])
+
+  // ポモドーロセッション履歴
+  const [pomodoroHistory, setPomodoroHistory] = useState<PomodoroHistory>({})
+
+  // カレンダーモードでポモドーロ履歴を取得
+  useEffect(() => {
+    if (viewMode === 'calendar') {
+      getPomodoroHistory().then(setPomodoroHistory)
+    }
+  }, [viewMode])
 
   // 選択された日付のノート一覧
   const selectedDateNotes = useMemo((): Note[] => {
@@ -335,28 +348,39 @@ export const NoteTimeline = ({ onNoteClick }: NoteTimelineProps) => {
             {days.map((day) => {
               const dateStr = toLocalDateStr(day)
               const count = noteCountByDate.get(dateStr) || 0
+              const pomodoroCount = pomodoroHistory[dateStr] || 0
               const isToday = dateStr === toLocalDateStr(new Date())
+              const hasContent = count > 0 || pomodoroCount > 0
 
               return (
-                <button
+                <div
                   key={dateStr}
-                  className={`note-timeline__calendar-day ${isToday ? 'note-timeline__calendar-day--today' : ''} ${count > 0 ? 'note-timeline__calendar-day--has-notes' : ''} ${selectedDate === dateStr ? 'note-timeline__calendar-day--selected' : ''}`}
-                  title={count > 0 ? `${count}件のノート` : undefined}
-                  onClick={() => count > 0 && setSelectedDate(selectedDate === dateStr ? null : dateStr)}
-                  disabled={count === 0}
+                  className={`note-timeline__calendar-day ${isToday ? 'note-timeline__calendar-day--today' : ''} ${count > 0 ? 'note-timeline__calendar-day--has-notes' : ''} ${selectedDate === dateStr ? 'note-timeline__calendar-day--selected' : ''} ${!hasContent ? 'note-timeline__calendar-day--disabled' : ''}`}
+                  title={hasContent ? `${count}件のノート / ${pomodoroCount}ポモドーロ` : undefined}
                 >
                   <span className="note-timeline__calendar-day-num">{day.getDate()}</span>
                   {count > 0 && (
-                    <span
+                    <button
                       className="note-timeline__calendar-day-count"
                       style={{
                         opacity: Math.min(0.3 + count * 0.15, 1),
                       }}
+                      onClick={() => setSelectedDate(selectedDate === dateStr ? null : dateStr)}
+                      title={`${count}件のノート`}
                     >
                       {count}
-                    </span>
+                    </button>
                   )}
-                </button>
+                  {pomodoroCount > 0 && (
+                    <button
+                      className="note-timeline__calendar-day-pomodoro"
+                      onClick={() => setSelectedPomodoroDate(dateStr)}
+                      title={`${pomodoroCount}ポモドーロ`}
+                    >
+                      {pomodoroCount}
+                    </button>
+                  )}
+                </div>
               )
             })}
           </div>
@@ -398,6 +422,14 @@ export const NoteTimeline = ({ onNoteClick }: NoteTimelineProps) => {
                 ))}
               </div>
             </div>
+          )}
+
+          {/* ポモドーロセッション詳細モーダル */}
+          {selectedPomodoroDate && (
+            <SessionDetailModal
+              date={selectedPomodoroDate}
+              onClose={() => setSelectedPomodoroDate(null)}
+            />
           )}
         </div>
       )}

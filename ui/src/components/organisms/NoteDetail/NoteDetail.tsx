@@ -164,26 +164,33 @@ export const NoteDetail = ({
         )}
         {history.length > 0 && (
           <div className="note-detail__history-list">
-            {history.map((h, index) => (
-              <div key={h.id} className="note-detail__history-item">
-                <div
-                  className="note-detail__history-item-header"
-                  onClick={() => toggleHistoryExpand(h.id)}
-                >
-                  <div className="note-detail__history-item-info">
-                    <Text variant="caption">#{history.length - index}</Text>
-                    <Text variant="caption">{formatDate(h.createdAt)}</Text>
-                    <span className="note-detail__history-id">{h.id}</span>
+            {history.map((h, index) => {
+              // historyは新しい順で並んでいる
+              // index === 0 は最新の履歴なので、現在のnote.contentと比較
+              // それ以外は、一つ前（より新しい）の履歴と比較
+              const nextContent = index === 0 ? note.content : history[index - 1].content
+
+              return (
+                <div key={h.id} className="note-detail__history-item">
+                  <div
+                    className="note-detail__history-item-header"
+                    onClick={() => toggleHistoryExpand(h.id)}
+                  >
+                    <div className="note-detail__history-item-info">
+                      <Text variant="caption">#{history.length - index}</Text>
+                      <Text variant="caption">{formatDate(h.createdAt)}</Text>
+                      <span className="note-detail__history-id">{h.id}</span>
+                    </div>
+                    <Text variant="caption">{expandedHistoryId === h.id ? '▼' : '▶'}</Text>
                   </div>
-                  <Text variant="caption">{expandedHistoryId === h.id ? '▼' : '▶'}</Text>
+                  {expandedHistoryId === h.id && (
+                    <div className="note-detail__history-item-content">
+                      <DiffView oldText={h.content} newText={nextContent} />
+                    </div>
+                  )}
                 </div>
-                {expandedHistoryId === h.id && (
-                  <div className="note-detail__history-item-content">
-                    <DiffView oldText={h.content} newText={note.content} />
-                  </div>
-                )}
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </section>

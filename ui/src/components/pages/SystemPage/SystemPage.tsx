@@ -2,7 +2,19 @@ import { useState, useEffect, useCallback } from 'react'
 import { MainLayout } from '../../templates/MainLayout'
 import { Text } from '../../atoms/Text'
 import { Spinner } from '../../atoms/Spinner'
-import { fetchStorageStats, type StorageStats, type TableInfo } from '../../../api/systemApi'
+import {
+  fetchStorageStats,
+  fetchHealthCheck,
+  type StorageStats,
+  type TableInfo,
+  type HealthCheckResult,
+  listVoiceEvaluations,
+  getVoiceEvaluation,
+  getVoiceEvaluationSummary,
+  clearVoiceEvaluations,
+  type EvaluationListItem,
+  type EvaluationSummary,
+} from '../../../api/systemApi'
 import {
   getMetricsSummary,
   clearMetrics,
@@ -28,20 +40,57 @@ const formatLatency = (ms: number): string => {
   return `${(ms / 1000).toFixed(2)}s`
 }
 
+const formatUptime = (seconds: number): string => {
+  const minutes = Math.floor(seconds / 60)
+  const hours = Math.floor(minutes / 60)
+  const days = Math.floor(hours / 24)
+
+  if (days > 0) return `${days}日 ${hours % 24}時間`
+  if (hours > 0) return `${hours}時間 ${minutes % 60}分`
+  if (minutes > 0) return `${minutes}分 ${seconds % 60}秒`
+  return `${seconds}秒`
+}
+
 export const SystemPage = () => {
   const [stats, setStats] = useState<StorageStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [metrics, setMetrics] = useState<MetricsSummary | null>(null)
+  const [health, setHealth] = useState<HealthCheckResult | null>(null)
+  const [healthLoading, setHealthLoading] = useState(false)
+
+  // Voice Evaluation state
+  const [voiceEvaluations, setVoiceEvaluations] = useState<EvaluationListItem[]>([])
+  const [voiceSummary, setVoiceSummary] = useState<EvaluationSummary | null>(null)
+  const [selectedMarkdown, setSelectedMarkdown] = useState<string | null>(null)
+  const [copySuccess, setCopySuccess] = useState(false)
+
+  const loadHealthCheck = useCallback(async () => {
+    setHealthLoading(true)
+    try {
+      const healthData = await fetchHealthCheck()
+      setHealth(healthData)
+    } catch (e) {
+      console.error('Health check failed:', e)
+    } finally {
+      setHealthLoading(false)
+    }
+  }, [])
 
   const loadData = useCallback(async () => {
     try {
-      const [storageData, metricsData] = await Promise.all([
+      const [storageData, metricsData, voiceData, summaryData, healthData] = await Promise.all([
         fetchStorageStats(),
         getMetricsSummary(),
+        listVoiceEvaluations(20),
+        getVoiceEvaluationSummary(),
+        fetchHealthCheck(),
       ])
       setStats(storageData)
       setMetrics(metricsData)
+      setVoiceEvaluations(voiceData.evaluations)
+      setVoiceSummary(summaryData)
+      setHealth(healthData)
       setError(null)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'データ取得に失敗しました')
@@ -65,6 +114,31 @@ export const SystemPage = () => {
     await clearMetrics()
     const metricsData = await getMetricsSummary()
     setMetrics(metricsData)
+  }
+
+  // Voice Evaluation handlers
+  const handleShowMarkdown = async (id: number) => {
+    try {
+      const detail = await getVoiceEvaluation(id)
+      setSelectedMarkdown(detail.markdown)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '詳細取得に失敗しました')
+    }
+  }
+
+  const handleCopyMarkdown = async () => {
+    if (selectedMarkdown) {
+      await navigator.clipboard.writeText(selectedMarkdown)
+      setCopySuccess(true)
+      setTimeout(() => setCopySuccess(false), 2000)
+    }
+  }
+
+  const handleClearVoiceEvaluations = async () => {
+    await clearVoiceEvaluations()
+    setVoiceEvaluations([])
+    setVoiceSummary({ totalEvaluations: 0, avgAssertionRate: 0, avgCausalRate: 0, structureSeparationRate: 0 })
+    setSelectedMarkdown(null)
   }
 
   const calculatePercentage = (size: number): number => {
@@ -121,22 +195,99 @@ export const SystemPage = () => {
           </div>
         )}
 
+        {/* ヘルスチェック */}
+        {!loading && (
+          <div className="system-page__section" id="health">
+            <div className="system-page__section-header">
+              <Text variant="subtitle">サーバーヘルスチェック</Text>
+              <button
+                className="system-page__clear-btn"
+                onClick={loadHealthCheck}
+                disabled={healthLoading}
+              >
+                {healthLoading ? '実行中...' : '再実行'}
+              </button>
+            </div>
+
+            {health ? (
+              <>
+                <div className="system-page__health-status">
+                  <div className={`system-page__health-indicator system-page__health-indicator--${health.status}`}>
+                    <span className="system-page__health-icon">
+                      {health.status === 'healthy' ? '●' : health.status === 'degraded' ? '●' : '●'}
+                    </span>
+                    <span className="system-page__health-label">
+                      {health.status === 'healthy' ? '正常稼働中' : health.status === 'degraded' ? '一部機能に問題あり' : '障害発生中'}
+                    </span>
+                  </div>
+                  <div className="system-page__health-time">
+                    最終チェック: {new Date(health.timestamp).toLocaleString('ja-JP')}
+                  </div>
+                </div>
+
+                <div className="system-page__summary">
+                  <div className="system-page__summary-card">
+                    <Text variant="caption">稼働時間</Text>
+                    <Text variant="title">{formatUptime(health.uptime)}</Text>
+                  </div>
+                  <div className="system-page__summary-card">
+                    <Text variant="caption">データベース</Text>
+                    <div className="system-page__health-item">
+                      <span className={`system-page__health-dot system-page__health-dot--${health.checks.database.status}`} />
+                      <Text variant="title">
+                        {health.checks.database.latency !== undefined
+                          ? `${health.checks.database.latency}ms`
+                          : '-'}
+                      </Text>
+                    </div>
+                  </div>
+                  <div className="system-page__summary-card">
+                    <Text variant="caption">ストレージ</Text>
+                    <div className="system-page__health-item">
+                      <span className={`system-page__health-dot system-page__health-dot--${health.checks.storage.status}`} />
+                      <Text variant="title">{formatNumber(health.checks.storage.notesCount)}件</Text>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="system-page__health-details">
+                  <div className="system-page__health-detail-row">
+                    <span className="system-page__health-detail-label">DB:</span>
+                    <span className="system-page__health-detail-value">{health.checks.database.message}</span>
+                  </div>
+                  <div className="system-page__health-detail-row">
+                    <span className="system-page__health-detail-label">Storage:</span>
+                    <span className="system-page__health-detail-value">{health.checks.storage.message}</span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="system-page__empty-metrics">
+                <Text variant="body">ヘルスチェックを実行中...</Text>
+              </div>
+            )}
+          </div>
+        )}
+
         {stats && !loading && (
           <>
-            <div className="system-page__summary">
-              <div className="system-page__summary-card">
-                <Text variant="caption">データベース容量</Text>
-                <Text variant="title">{formatBytes(stats.totalSize)}</Text>
-              </div>
-              <div className="system-page__summary-card">
-                <Text variant="caption">テーブル数</Text>
-                <Text variant="title">{stats.tables.length}</Text>
-              </div>
-              <div className="system-page__summary-card">
-                <Text variant="caption">総レコード数</Text>
-                <Text variant="title">
-                  {formatNumber(stats.tables.reduce((sum, t) => sum + t.rowCount, 0))}
-                </Text>
+            <div className="system-page__section" id="storage">
+              <Text variant="subtitle">ストレージ統計</Text>
+              <div className="system-page__summary">
+                <div className="system-page__summary-card">
+                  <Text variant="caption">データベース容量</Text>
+                  <Text variant="title">{formatBytes(stats.totalSize)}</Text>
+                </div>
+                <div className="system-page__summary-card">
+                  <Text variant="caption">テーブル数</Text>
+                  <Text variant="title">{stats.tables.length}</Text>
+                </div>
+                <div className="system-page__summary-card">
+                  <Text variant="caption">総レコード数</Text>
+                  <Text variant="title">
+                    {formatNumber(stats.tables.reduce((sum, t) => sum + t.rowCount, 0))}
+                  </Text>
+                </div>
               </div>
             </div>
 
@@ -292,6 +443,109 @@ export const SystemPage = () => {
           ) : (
             <div className="system-page__empty-metrics">
               <Text variant="body">まだメトリクスがありません。APIリクエストを実行するとデータが収集されます。</Text>
+            </div>
+          )}
+        </div>
+
+        {/* Voice Evaluation（観測者ルール評価） */}
+        <div className="system-page__section" id="voice-evaluation">
+          <div className="system-page__section-header">
+            <Text variant="subtitle">Voice Evaluation（観測者ルール評価）</Text>
+            {voiceEvaluations.length > 0 && (
+              <button
+                className="system-page__clear-btn"
+                onClick={handleClearVoiceEvaluations}
+              >
+                クリア
+              </button>
+            )}
+          </div>
+
+          {voiceSummary && voiceSummary.totalEvaluations > 0 ? (
+            <>
+              <div className="system-page__summary">
+                <div className="system-page__summary-card">
+                  <Text variant="caption">評価件数</Text>
+                  <Text variant="title">{formatNumber(voiceSummary.totalEvaluations)}</Text>
+                </div>
+                <div className="system-page__summary-card">
+                  <Text variant="caption">平均断定率</Text>
+                  <Text variant="title">{voiceSummary.avgAssertionRate}%</Text>
+                </div>
+                <div className="system-page__summary-card">
+                  <Text variant="caption">平均因果率</Text>
+                  <Text variant="title">{voiceSummary.avgCausalRate}%</Text>
+                </div>
+                <div className="system-page__summary-card">
+                  <Text variant="caption">構造分離率</Text>
+                  <Text variant="title">{voiceSummary.structureSeparationRate}%</Text>
+                </div>
+              </div>
+
+              <div className="system-page__metrics-section">
+                <span className="system-page__metrics-label">評価履歴</span>
+                <div className="system-page__table-wrapper">
+                  <table className="system-page__table">
+                    <thead>
+                      <tr>
+                        <th className="system-page__table-header">クラスタ</th>
+                        <th className="system-page__table-header system-page__table-header--right">断定率</th>
+                        <th className="system-page__table-header system-page__table-header--right">因果率</th>
+                        <th className="system-page__table-header">構造分離</th>
+                        <th className="system-page__table-header">詳細</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {voiceEvaluations.map((ev) => (
+                        <tr key={ev.id} className="system-page__table-row">
+                          <td className="system-page__table-cell system-page__table-cell--name">
+                            <span className="system-page__table-label">{ev.clusterName}</span>
+                            <span className="system-page__table-name">#{ev.clusterId} / {ev.promptVersion}</span>
+                          </td>
+                          <td className="system-page__table-cell system-page__table-cell--count">
+                            {ev.assertionRate}%
+                          </td>
+                          <td className="system-page__table-cell system-page__table-cell--count">
+                            {ev.causalRate}%
+                          </td>
+                          <td className="system-page__table-cell">
+                            {ev.structureSeparated ? '○' : '×'}
+                          </td>
+                          <td className="system-page__table-cell">
+                            <button
+                              className="system-page__clear-btn"
+                              onClick={() => handleShowMarkdown(ev.id)}
+                            >
+                              表示
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {selectedMarkdown && (
+                <div className="system-page__metrics-section">
+                  <div className="system-page__section-header">
+                    <span className="system-page__metrics-label">Markdownレポート（コピー用）</span>
+                    <button
+                      className="system-page__clear-btn"
+                      onClick={handleCopyMarkdown}
+                    >
+                      {copySuccess ? 'コピーしました' : 'コピー'}
+                    </button>
+                  </div>
+                  <div className="system-page__markdown-preview">
+                    <pre className="system-page__markdown-content">{selectedMarkdown}</pre>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="system-page__empty-metrics">
+              <Text variant="body">まだ評価データがありません。GPT Actionsでクラスタ人格化を実行すると記録されます。</Text>
             </div>
           )}
         </div>

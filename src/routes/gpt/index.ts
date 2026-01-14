@@ -5,6 +5,7 @@ import { taskRoute } from "./task";
 import { overviewRoute } from "./overview";
 import { healthRoute } from "./health";
 import { embedRoute } from "./embed";
+import { voiceEvaluationRoute } from "./voiceEvaluation";
 
 export const gptRoute = new Hono();
 
@@ -25,3 +26,6 @@ gptRoute.route("/", healthRoute);
 
 // GPT向けEmbedding
 gptRoute.route("/", embedRoute);
+
+// GPT向けVoice Evaluation
+gptRoute.route("/", voiceEvaluationRoute);

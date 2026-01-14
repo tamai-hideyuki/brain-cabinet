@@ -17,6 +17,7 @@ import { LibraryPage } from './components/pages/LibraryPage'
 import { Timeline3DPage } from './components/pages/Timeline3DPage'
 import { TrashPage } from './components/pages/TrashPage'
 import { ThinkingReportPage } from './components/pages/ThinkingReportPage'
+import { CoachingPage } from './components/pages/CoachingPage'
 
 function AuthInitializer({ children }: { children: React.ReactNode }) {
   const { getToken } = useAuth()
@@ -57,6 +58,7 @@ export function App() {
             <Route path="/ui/timeline-3d" element={<Timeline3DPage />} />
             <Route path="/ui/trash" element={<TrashPage />} />
             <Route path="/ui/thinking-report" element={<ThinkingReportPage />} />
+            <Route path="/ui/coaching" element={<CoachingPage />} />
           </Routes>
         </AuthInitializer>
       </SignedIn>

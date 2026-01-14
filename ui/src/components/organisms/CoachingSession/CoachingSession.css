@@ -1,0 +1,291 @@
+/**
+ * 苫米地式コーチングセッション スタイル
+ */
+
+.coaching-session {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-height: 100vh;
+  background: var(--bg-primary, #ffffff);
+}
+
+/* ヘッダー */
+.coaching-session__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color, #e5e5e5);
+  background: var(--bg-secondary, #f5f5f5);
+}
+
+.coaching-session__title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary, #1a1a1a);
+  margin: 0;
+}
+
+.coaching-session__phase-guide {
+  font-size: 14px;
+  color: var(--text-secondary, #666666);
+  margin-top: 4px;
+  font-style: italic;
+}
+
+.coaching-session__actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* メッセージエリア */
+.coaching-session__messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* メッセージバブル */
+.coaching-message {
+  max-width: 80%;
+  padding: 12px 16px;
+  border-radius: 16px;
+  line-height: 1.6;
+  font-size: 15px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.coaching-message--coach {
+  align-self: flex-start;
+  background: var(--bg-secondary, #f5f5f5);
+  color: var(--text-primary, #1a1a1a);
+  border-bottom-left-radius: 4px;
+}
+
+.coaching-message--user {
+  align-self: flex-end;
+  background: var(--accent-color, #007aff);
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+/* フェーズ遷移提案 */
+.coaching-session__transition {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--bg-accent, #f0f7ff);
+  border-radius: 8px;
+  margin: 8px 20px;
+}
+
+.coaching-session__transition-text {
+  font-size: 14px;
+  color: var(--text-secondary, #666666);
+}
+
+.coaching-session__transition-button {
+  padding: 6px 12px;
+  font-size: 14px;
+  background: var(--accent-color, #007aff);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.coaching-session__transition-button:hover {
+  opacity: 0.9;
+}
+
+/* 入力エリア */
+.coaching-session__input-area {
+  padding: 16px 20px;
+  border-top: 1px solid var(--border-color, #e5e5e5);
+  background: var(--bg-primary, #ffffff);
+}
+
+.coaching-session__input-wrapper {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.coaching-session__textarea {
+  flex: 1;
+  min-height: 60px;
+  max-height: 200px;
+  padding: 12px 16px;
+  font-size: 15px;
+  line-height: 1.5;
+  border: 1px solid var(--border-color, #e5e5e5);
+  border-radius: 12px;
+  resize: none;
+  font-family: inherit;
+  background: var(--bg-secondary, #f5f5f5);
+  color: var(--text-primary, #1a1a1a);
+}
+
+.coaching-session__textarea:focus {
+  outline: none;
+  border-color: var(--accent-color, #007aff);
+  box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.1);
+}
+
+.coaching-session__textarea::placeholder {
+  color: var(--text-tertiary, #999999);
+}
+
+.coaching-session__send-button {
+  padding: 12px 20px;
+  font-size: 15px;
+  font-weight: 500;
+  background: var(--accent-color, #007aff);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.coaching-session__send-button:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.coaching-session__send-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ローディング・エラー状態 */
+.coaching-session__loading,
+.coaching-session__error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  text-align: center;
+}
+
+.coaching-session__error {
+  color: var(--error-color, #ff3b30);
+}
+
+/* 開始画面 */
+.coaching-session__start {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 40px;
+  text-align: center;
+}
+
+.coaching-session__start-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-primary, #1a1a1a);
+  margin-bottom: 16px;
+}
+
+.coaching-session__start-description {
+  font-size: 16px;
+  color: var(--text-secondary, #666666);
+  margin-bottom: 32px;
+  max-width: 400px;
+  line-height: 1.6;
+}
+
+.coaching-session__start-button {
+  padding: 14px 28px;
+  font-size: 16px;
+  font-weight: 500;
+  background: var(--accent-color, #007aff);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.coaching-session__start-button:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.coaching-session__start-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 終了画面 */
+.coaching-session__end {
+  padding: 40px;
+  text-align: center;
+}
+
+.coaching-session__end-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-primary, #1a1a1a);
+  margin-bottom: 24px;
+}
+
+.coaching-session__summary {
+  text-align: left;
+  background: var(--bg-secondary, #f5f5f5);
+  padding: 24px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  white-space: pre-wrap;
+  line-height: 1.8;
+}
+
+.coaching-session__end-button {
+  padding: 14px 28px;
+  font-size: 16px;
+  font-weight: 500;
+  background: var(--bg-secondary, #f5f5f5);
+  color: var(--text-primary, #1a1a1a);
+  border: 1px solid var(--border-color, #e5e5e5);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.coaching-session__end-button:hover {
+  background: var(--bg-tertiary, #eeeeee);
+}
+
+/* ボタン共通 */
+.coaching-session__button--secondary {
+  padding: 8px 16px;
+  font-size: 14px;
+  background: transparent;
+  color: var(--text-secondary, #666666);
+  border: 1px solid var(--border-color, #e5e5e5);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.coaching-session__button--secondary:hover {
+  background: var(--bg-secondary, #f5f5f5);
+}
+
+.coaching-session__button--danger {
+  color: var(--error-color, #ff3b30);
+  border-color: var(--error-color, #ff3b30);
+}
+
+.coaching-session__button--danger:hover {
+  background: rgba(255, 59, 48, 0.1);
+}
