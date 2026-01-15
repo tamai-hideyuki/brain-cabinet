@@ -1,26 +1,9 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import { MainLayout } from '../../templates/MainLayout'
 import { Text } from '../../atoms/Text'
 import { Spinner } from '../../atoms/Spinner'
-import {
-  fetchStorageStats,
-  fetchHealthCheck,
-  type StorageStats,
-  type TableInfo,
-  type HealthCheckResult,
-  listVoiceEvaluations,
-  getVoiceEvaluation,
-  getVoiceEvaluationSummary,
-  clearVoiceEvaluations,
-  type EvaluationListItem,
-  type EvaluationSummary,
-} from '../../../api/systemApi'
-import {
-  getMetricsSummary,
-  clearMetrics,
-  type MetricsSummary,
-} from '../../../stores/metricsStore'
-import { useDataChangeSubscription } from '../../../hooks/useDataChangeSubscription'
+import { useSystemInfo } from '../../../hooks/useSystemInfo'
+import type { TableInfo } from '../../../api/systemApi'
 import './SystemPage.css'
 
 const formatBytes = (bytes: number): string => {
@@ -52,77 +35,30 @@ const formatUptime = (seconds: number): string => {
 }
 
 export const SystemPage = () => {
-  const [stats, setStats] = useState<StorageStats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [metrics, setMetrics] = useState<MetricsSummary | null>(null)
-  const [health, setHealth] = useState<HealthCheckResult | null>(null)
-  const [healthLoading, setHealthLoading] = useState(false)
+  const {
+    stats,
+    health,
+    metrics,
+    voiceEvaluations,
+    voiceSummary,
+    loading,
+    healthLoading,
+    error,
+    refreshHealthCheck,
+    resetMetrics,
+    getVoiceEvaluationMarkdown,
+    resetVoiceEvaluations,
+  } = useSystemInfo()
 
-  // Voice Evaluation state
-  const [voiceEvaluations, setVoiceEvaluations] = useState<EvaluationListItem[]>([])
-  const [voiceSummary, setVoiceSummary] = useState<EvaluationSummary | null>(null)
   const [selectedMarkdown, setSelectedMarkdown] = useState<string | null>(null)
   const [copySuccess, setCopySuccess] = useState(false)
 
-  const loadHealthCheck = useCallback(async () => {
-    setHealthLoading(true)
-    try {
-      const healthData = await fetchHealthCheck()
-      setHealth(healthData)
-    } catch (e) {
-      console.error('Health check failed:', e)
-    } finally {
-      setHealthLoading(false)
-    }
-  }, [])
-
-  const loadData = useCallback(async () => {
-    try {
-      const [storageData, metricsData, voiceData, summaryData, healthData] = await Promise.all([
-        fetchStorageStats(),
-        getMetricsSummary(),
-        listVoiceEvaluations(20),
-        getVoiceEvaluationSummary(),
-        fetchHealthCheck(),
-      ])
-      setStats(storageData)
-      setMetrics(metricsData)
-      setVoiceEvaluations(voiceData.evaluations)
-      setVoiceSummary(summaryData)
-      setHealth(healthData)
-      setError(null)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'データ取得に失敗しました')
-    }
-  }, [])
-
-  // 初回読み込み
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true)
-      await loadData()
-      setLoading(false)
-    }
-    load()
-  }, [loadData])
-
-  // データ変更時に自動更新（1秒デバウンス）
-  useDataChangeSubscription(loadData, 1000)
-
-  const handleClearMetrics = async () => {
-    await clearMetrics()
-    const metricsData = await getMetricsSummary()
-    setMetrics(metricsData)
-  }
-
-  // Voice Evaluation handlers
   const handleShowMarkdown = async (id: number) => {
     try {
-      const detail = await getVoiceEvaluation(id)
-      setSelectedMarkdown(detail.markdown)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '詳細取得に失敗しました')
+      const markdown = await getVoiceEvaluationMarkdown(id)
+      setSelectedMarkdown(markdown)
+    } catch {
+      // エラーはhookで処理される
     }
   }
 
@@ -135,9 +71,7 @@ export const SystemPage = () => {
   }
 
   const handleClearVoiceEvaluations = async () => {
-    await clearVoiceEvaluations()
-    setVoiceEvaluations([])
-    setVoiceSummary({ totalEvaluations: 0, avgAssertionRate: 0, avgCausalRate: 0, structureSeparationRate: 0 })
+    await resetVoiceEvaluations()
     setSelectedMarkdown(null)
   }
 
@@ -202,7 +136,7 @@ export const SystemPage = () => {
               <Text variant="subtitle">サーバーヘルスチェック</Text>
               <button
                 className="system-page__clear-btn"
-                onClick={loadHealthCheck}
+                onClick={refreshHealthCheck}
                 disabled={healthLoading}
               >
                 {healthLoading ? '実行中...' : '再実行'}
@@ -328,7 +262,7 @@ export const SystemPage = () => {
             {metrics && metrics.totalRequests > 0 && (
               <button
                 className="system-page__clear-btn"
-                onClick={handleClearMetrics}
+                onClick={resetMetrics}
               >
                 クリア
               </button>

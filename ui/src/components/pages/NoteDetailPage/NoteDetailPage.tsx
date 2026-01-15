@@ -7,8 +7,7 @@ import { ConfirmModal } from '../../organisms/ConfirmModal'
 import { Button } from '../../atoms/Button'
 import { useNote } from '../../../hooks/useNote'
 import { useNoteInfluence } from '../../../hooks/useNoteInfluence'
-import { createBookmarkNode } from '../../../api/bookmarkApi'
-import { updateNote, deleteNote } from '../../../api/notesApi'
+import { useNoteActions } from '../../../hooks/useNoteActions'
 import './NoteDetailPage.css'
 
 export const NoteDetailPage = () => {
@@ -16,11 +15,17 @@ export const NoteDetailPage = () => {
   const navigate = useNavigate()
   const { note, history, loading, historyLoading, error, loadHistory, reload } = useNote(id)
   const { influence, loading: influenceLoading } = useNoteInfluence(id ?? null)
+  const {
+    bookmarkAdding,
+    addingLinkNoteId,
+    deleting,
+    addBookmark,
+    addLink,
+    remove,
+  } = useNoteActions(note, reload)
+
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  const [bookmarkAdding, setBookmarkAdding] = useState(false)
-  const [addingLinkNoteId, setAddingLinkNoteId] = useState<string | null>(null)
 
   const handleBack = () => {
     navigate('/ui/notes')
@@ -43,36 +48,19 @@ export const NoteDetailPage = () => {
   }
 
   const handleAddBookmark = async () => {
-    if (!note) return
-    setBookmarkAdding(true)
     try {
-      await createBookmarkNode({
-        type: 'note',
-        name: note.title,
-        noteId: note.id,
-      })
+      await addBookmark()
       alert('ブックマークに追加しました')
-    } catch (e) {
+    } catch {
       alert('ブックマークの追加に失敗しました')
-      console.error(e)
-    } finally {
-      setBookmarkAdding(false)
     }
   }
 
   const handleAddLink = async (targetNoteId: string, _targetNoteTitle: string) => {
-    if (!note) return
-    setAddingLinkNoteId(targetNoteId)
     try {
-      const linkText = `\n\n[[${targetNoteId}]]`
-      const newContent = note.content + linkText
-      await updateNote(note.id, note.title, newContent)
-      reload()
-    } catch (e) {
+      await addLink(targetNoteId)
+    } catch {
       alert('リンクの追加に失敗しました')
-      console.error(e)
-    } finally {
-      setAddingLinkNoteId(null)
     }
   }
 
@@ -85,17 +73,12 @@ export const NoteDetailPage = () => {
   }
 
   const handleDeleteConfirm = async () => {
-    if (!note) return
-    setDeleting(true)
     try {
-      await deleteNote(note.id)
+      await remove()
       setIsDeleteModalOpen(false)
       navigate('/ui/notes')
-    } catch (e) {
+    } catch {
       alert('削除に失敗しました')
-      console.error(e)
-    } finally {
-      setDeleting(false)
     }
   }
 
