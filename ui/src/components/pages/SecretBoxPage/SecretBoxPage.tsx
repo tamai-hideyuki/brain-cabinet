@@ -1,91 +1,38 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { MainLayout } from '../../templates/MainLayout'
 import { Text } from '../../atoms/Text'
 import { Button } from '../../atoms/Button'
-import {
-  fetchSecretBoxTree,
-  fetchSecretBoxItems,
-  uploadSecretBoxItem,
-  deleteSecretBoxItem,
-  createSecretBoxFolder,
-  deleteSecretBoxFolder,
-  getSecretBoxItemDataUrl,
-  formatFileSize,
-} from '../../../api/secretBoxApi'
-import type { SecretBoxItem, SecretBoxFolder, SecretBoxTreeNode } from '../../../types/secretBox'
+import { useSecretBox } from '../../../hooks/useSecretBox'
+import { getSecretBoxItemDataUrl, formatFileSize } from '../../../api/secretBoxApi'
+import type { SecretBoxItem, SecretBoxTreeNode } from '../../../types/secretBox'
 import './SecretBoxPage.css'
 
 export const SecretBoxPage = () => {
-  const [folders, setFolders] = useState<SecretBoxTreeNode[]>([])
-  const [rootItems, setRootItems] = useState<SecretBoxItem[]>([])
-  const [currentFolder, setCurrentFolder] = useState<SecretBoxFolder | null>(null)
-  const [currentItems, setCurrentItems] = useState<SecretBoxItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [uploading, setUploading] = useState(false)
+  const {
+    folders,
+    currentFolder,
+    currentItems,
+    loading,
+    error,
+    uploading,
+    selectFolder,
+    uploadFiles,
+    createFolder,
+    removeFolder,
+    removeItem,
+    clearError,
+  } = useSecretBox()
+
   const [selectedItem, setSelectedItem] = useState<SecretBoxItem | null>(null)
   const [isCreatingFolder, setIsCreatingFolder] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
   const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // ツリー読み込み
-  const loadTree = useCallback(async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      const tree = await fetchSecretBoxTree()
-      setFolders(tree.folders)
-      setRootItems(tree.rootItems)
-      if (!currentFolder) {
-        setCurrentItems(tree.rootItems)
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'データの読み込みに失敗しました')
-    } finally {
-      setLoading(false)
-    }
-  }, [currentFolder])
-
-  useEffect(() => {
-    loadTree()
-  }, [loadTree])
-
-  // フォルダ選択時
-  const handleSelectFolder = async (folder: SecretBoxFolder | null) => {
-    try {
-      setCurrentFolder(folder)
-      const items = await fetchSecretBoxItems(folder?.id ?? null)
-      setCurrentItems(items)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'アイテムの読み込みに失敗しました')
-    }
-  }
-
-  // ファイルアップロード
-  const handleUpload = async (files: FileList) => {
-    if (files.length === 0) return
-
-    setUploading(true)
-    setError(null)
-
-    try {
-      for (const file of Array.from(files)) {
-        await uploadSecretBoxItem(file, undefined, currentFolder?.id ?? null)
-      }
-      await loadTree()
-      await handleSelectFolder(currentFolder)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'アップロードに失敗しました')
-    } finally {
-      setUploading(false)
-    }
-  }
-
   // ファイル選択
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      handleUpload(e.target.files)
+      uploadFiles(e.target.files)
     }
   }
 
@@ -104,7 +51,7 @@ export const SecretBoxPage = () => {
     e.preventDefault()
     setIsDragging(false)
     if (e.dataTransfer.files) {
-      handleUpload(e.dataTransfer.files)
+      uploadFiles(e.dataTransfer.files)
     }
   }
 
@@ -113,15 +60,11 @@ export const SecretBoxPage = () => {
     if (!newFolderName.trim()) return
 
     try {
-      await createSecretBoxFolder({
-        name: newFolderName.trim(),
-        parentId: currentFolder?.id ?? null,
-      })
+      await createFolder(newFolderName)
       setNewFolderName('')
       setIsCreatingFolder(false)
-      await loadTree()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'フォルダの作成に失敗しました')
+    } catch {
+      // エラーはhookで処理される
     }
   }
 
@@ -130,14 +73,9 @@ export const SecretBoxPage = () => {
     if (!confirm('このフォルダを削除しますか？')) return
 
     try {
-      await deleteSecretBoxFolder(folderId)
-      if (currentFolder?.id === folderId) {
-        setCurrentFolder(null)
-        setCurrentItems(rootItems)
-      }
-      await loadTree()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'フォルダの削除に失敗しました')
+      await removeFolder(folderId)
+    } catch {
+      // エラーはhookで処理される
     }
   }
 
@@ -146,14 +84,12 @@ export const SecretBoxPage = () => {
     if (!confirm('このファイルを削除しますか？')) return
 
     try {
-      await deleteSecretBoxItem(itemId)
-      await loadTree()
-      await handleSelectFolder(currentFolder)
+      await removeItem(itemId)
       if (selectedItem?.id === itemId) {
         setSelectedItem(null)
       }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'ファイルの削除に失敗しました')
+    } catch {
+      // エラーはhookで処理される
     }
   }
 
@@ -163,7 +99,7 @@ export const SecretBoxPage = () => {
       <div key={node.id} style={{ paddingLeft: depth * 16 }}>
         <div
           className={`secret-box__folder-item ${currentFolder?.id === node.id ? 'secret-box__folder-item--active' : ''}`}
-          onClick={() => handleSelectFolder(node)}
+          onClick={() => selectFolder(node)}
         >
           <span className="secret-box__folder-icon">{node.isExpanded ? '📂' : '📁'}</span>
           <span className="secret-box__folder-name">{node.name}</span>
@@ -219,7 +155,7 @@ export const SecretBoxPage = () => {
         {error && (
           <div className="secret-box__error">
             {error}
-            <button onClick={() => setError(null)}>×</button>
+            <button onClick={clearError}>×</button>
           </div>
         )}
 
@@ -256,7 +192,7 @@ export const SecretBoxPage = () => {
             <div className="secret-box__folder-list">
               <div
                 className={`secret-box__folder-item ${!currentFolder ? 'secret-box__folder-item--active' : ''}`}
-                onClick={() => handleSelectFolder(null)}
+                onClick={() => selectFolder(null)}
               >
                 <span className="secret-box__folder-icon">🏠</span>
                 <span className="secret-box__folder-name">ルート</span>

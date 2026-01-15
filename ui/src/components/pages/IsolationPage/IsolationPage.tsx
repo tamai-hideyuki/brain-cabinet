@@ -1,69 +1,27 @@
-import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MainLayout } from '../../templates/MainLayout'
 import { Text } from '../../atoms/Text'
 import { Badge } from '../../atoms/Badge'
 import { Button } from '../../atoms/Button'
 import { Spinner } from '../../atoms/Spinner'
-import {
-  fetchIsolatedNotes,
-  fetchIsolationStats,
-  fetchIntegrationSuggestions,
-  type IsolatedNote,
-  type IsolationStats,
-  type IntegrationSuggestion,
-} from '../../../api/isolationApi'
+import { useIsolation } from '../../../hooks/useIsolation'
 import './IsolationPage.css'
 
 export const IsolationPage = () => {
   const navigate = useNavigate()
-  const [notes, setNotes] = useState<IsolatedNote[]>([])
-  const [stats, setStats] = useState<IsolationStats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [threshold, setThreshold] = useState(0.7)
-  const [selectedNote, setSelectedNote] = useState<IsolatedNote | null>(null)
-  const [suggestions, setSuggestions] = useState<IntegrationSuggestion[]>([])
-  const [suggestionsLoading, setSuggestionsLoading] = useState(false)
-
-  useEffect(() => {
-    loadData()
-  }, [threshold])
-
-  const loadData = async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const [notesData, statsData] = await Promise.all([
-        fetchIsolatedNotes(threshold, 50),
-        fetchIsolationStats(threshold),
-      ])
-      setNotes(notesData)
-      setStats(statsData)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '読み込みに失敗しました')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleNoteClick = (note: IsolatedNote) => {
-    setSelectedNote(note)
-    loadSuggestions(note.noteId)
-  }
-
-  const loadSuggestions = async (noteId: string) => {
-    setSuggestionsLoading(true)
-    try {
-      const data = await fetchIntegrationSuggestions(noteId, 5)
-      setSuggestions(data)
-    } catch (e) {
-      console.error('Failed to load suggestions:', e)
-      setSuggestions([])
-    } finally {
-      setSuggestionsLoading(false)
-    }
-  }
+  const {
+    notes,
+    stats,
+    loading,
+    error,
+    threshold,
+    selectedNote,
+    suggestions,
+    suggestionsLoading,
+    reload,
+    selectNote,
+    updateThreshold,
+  } = useIsolation()
 
   const handleNavigateToNote = (noteId: string) => {
     navigate(`/ui/notes/${noteId}`)
@@ -92,7 +50,7 @@ export const IsolationPage = () => {
       <MainLayout>
         <div className="isolation-page__error">
           <Text variant="body">{error}</Text>
-          <Button variant="primary" onClick={loadData}>
+          <Button variant="primary" onClick={reload}>
             再読み込み
           </Button>
         </div>
@@ -141,7 +99,7 @@ export const IsolationPage = () => {
           <Text variant="caption">孤立度しきい値:</Text>
           <select
             value={threshold}
-            onChange={(e) => setThreshold(parseFloat(e.target.value))}
+            onChange={(e) => updateThreshold(parseFloat(e.target.value))}
             className="isolation-page__select"
           >
             <option value={0.5}>50%以上</option>
@@ -164,7 +122,7 @@ export const IsolationPage = () => {
                 <button
                   key={note.noteId}
                   className={`isolation-page__note-item ${selectedNote?.noteId === note.noteId ? 'isolation-page__note-item--selected' : ''}`}
-                  onClick={() => handleNoteClick(note)}
+                  onClick={() => selectNote(note)}
                 >
                   <div className="isolation-page__note-main">
                     <Text variant="body" truncate>

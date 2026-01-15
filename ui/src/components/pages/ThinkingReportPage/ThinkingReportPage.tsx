@@ -3,22 +3,11 @@
  * 思考成長レポートページ
  */
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { MainLayout } from '../../templates/MainLayout'
 import { Text } from '../../atoms/Text'
-import {
-  fetchWeeklyReport,
-  fetchDistribution,
-  generateClusterLabels,
-  fetchClusterNotes,
-} from '../../../api/thinkingReportApi'
-import type {
-  WeeklyReport,
-  DistributionResponse,
-  ThinkingPhase,
-  Perspective,
-  ClusterNote,
-} from '../../../api/thinkingReportApi'
+import { useThinkingReport } from '../../../hooks/useThinkingReport'
+import type { ThinkingPhase, Perspective } from '../../../api/thinkingReportApi'
 import './ThinkingReportPage.css'
 
 // フェーズの日本語ラベル
@@ -40,40 +29,21 @@ const PERSPECTIVE_COLORS: Record<Perspective, string> = {
 }
 
 export const ThinkingReportPage = () => {
-  const [report, setReport] = useState<WeeklyReport | null>(null)
-  const [distribution, setDistribution] = useState<DistributionResponse | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const {
+    report,
+    distribution,
+    loading,
+    error,
+    labelGenerating,
+    labelMessage,
+    generateLabels,
+    toggleClusterExpand,
+    isClusterExpanded,
+    isClusterLoading,
+    getClusterNotes,
+  } = useThinkingReport()
+
   const [activeTab, setActiveTab] = useState<'forest' | 'trees'>('forest')
-  const [labelGenerating, setLabelGenerating] = useState(false)
-  const [labelMessage, setLabelMessage] = useState<string | null>(null)
-  const [expandedClusters, setExpandedClusters] = useState<Set<string>>(new Set())
-  const [clusterNotes, setClusterNotes] = useState<Record<string, ClusterNote[]>>({})
-  const [loadingClusters, setLoadingClusters] = useState<Set<string>>(new Set())
-
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-
-        const [reportRes, distRes] = await Promise.all([
-          fetchWeeklyReport(),
-          fetchDistribution('week'),
-        ])
-
-        setReport(reportRes.report)
-        setDistribution(distRes)
-      } catch (err) {
-        console.error('Failed to load thinking report:', err)
-        setError(err instanceof Error ? err.message : 'データの読み込みに失敗しました')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadData()
-  }, [])
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp * 1000).toLocaleDateString('ja-JP', {
@@ -81,61 +51,6 @@ export const ThinkingReportPage = () => {
       month: 'short',
       day: 'numeric',
     })
-  }
-
-  const handleGenerateLabels = async (force = false) => {
-    try {
-      setLabelGenerating(true)
-      setLabelMessage(null)
-      const result = await generateClusterLabels(force)
-      setLabelMessage(result.message)
-      // リロードしてラベルを反映
-      const [reportRes, distRes] = await Promise.all([
-        fetchWeeklyReport(),
-        fetchDistribution('week'),
-      ])
-      setReport(reportRes.report)
-      setDistribution(distRes)
-    } catch (err) {
-      setLabelMessage(err instanceof Error ? err.message : 'ラベル生成に失敗しました')
-    } finally {
-      setLabelGenerating(false)
-    }
-  }
-
-  const toggleClusterExpand = async (clusterKey: string, identityId: number) => {
-    const newExpanded = new Set(expandedClusters)
-
-    if (newExpanded.has(clusterKey)) {
-      newExpanded.delete(clusterKey)
-      setExpandedClusters(newExpanded)
-      return
-    }
-
-    // 展開時にノートを取得
-    newExpanded.add(clusterKey)
-    setExpandedClusters(newExpanded)
-
-    // 既にノートがある場合はスキップ
-    if (clusterNotes[clusterKey]) return
-
-    // ノート取得
-    const newLoading = new Set(loadingClusters)
-    newLoading.add(clusterKey)
-    setLoadingClusters(newLoading)
-
-    try {
-      const res = await fetchClusterNotes(identityId)
-      setClusterNotes((prev) => ({ ...prev, [clusterKey]: res.notes }))
-    } catch (err) {
-      console.error('Failed to fetch cluster notes:', err)
-    } finally {
-      setLoadingClusters((prev) => {
-        const next = new Set(prev)
-        next.delete(clusterKey)
-        return next
-      })
-    }
   }
 
   if (loading) {
@@ -183,14 +98,14 @@ export const ThinkingReportPage = () => {
             <div className="thinking-report__label-buttons">
               <button
                 className="thinking-report__label-btn"
-                onClick={() => handleGenerateLabels(false)}
+                onClick={() => generateLabels(false)}
                 disabled={labelGenerating}
               >
                 {labelGenerating ? '生成中...' : 'ラベル生成'}
               </button>
               <button
                 className="thinking-report__label-btn thinking-report__label-btn--secondary"
-                onClick={() => handleGenerateLabels(true)}
+                onClick={() => generateLabels(true)}
                 disabled={labelGenerating}
                 title="既存ラベルも含めて全て再生成"
               >
@@ -381,9 +296,9 @@ export const ThinkingReportPage = () => {
                 <div className="thinking-report__growth-list">
                   {report.trees.topGrowth.map((growth) => {
                     const clusterKey = `growth-${growth.identityId}`
-                    const isExpanded = expandedClusters.has(clusterKey)
-                    const isLoading = loadingClusters.has(clusterKey)
-                    const notes = clusterNotes[clusterKey] || []
+                    const isExpanded = isClusterExpanded(clusterKey)
+                    const isLoading = isClusterLoading(clusterKey)
+                    const notes = getClusterNotes(clusterKey)
 
                     return (
                       <div key={growth.identityId} className="thinking-report__growth-item">
@@ -466,9 +381,9 @@ export const ThinkingReportPage = () => {
                 <div className="thinking-report__new-thoughts">
                   {report.trees.newThoughts.map((thought) => {
                     const clusterKey = `new-${thought.identityId}`
-                    const isExpanded = expandedClusters.has(clusterKey)
-                    const isLoading = loadingClusters.has(clusterKey)
-                    const notes = clusterNotes[clusterKey] || []
+                    const isExpanded = isClusterExpanded(clusterKey)
+                    const isLoading = isClusterLoading(clusterKey)
+                    const notes = getClusterNotes(clusterKey)
 
                     return (
                       <div key={thought.identityId} className="thinking-report__thought thinking-report__thought--expandable">

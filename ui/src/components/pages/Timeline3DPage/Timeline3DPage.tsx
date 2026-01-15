@@ -3,57 +3,37 @@
  * 年→月→日→ノートの階層的ナビゲーション
  */
 
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { Calendar3DScene } from './Calendar3DScene'
 import { NotePanel } from '../LibraryPage/NotePanel'
 import { TouchJoystickOverlay } from '../LibraryPage/TouchJoystickOverlay'
 import { useIsTouchDevice } from '../LibraryPage/LibraryScene'
-import { fetchNotes } from '../../../api/notesApi'
-import { buildCalendarHierarchy, type CalendarNote } from '../../../utils/calendarHierarchy'
+import { useTimelineNotes } from '../../../hooks/useTimelineNotes'
 import { useCalendarExpansion } from '../../../hooks/useCalendarExpansion'
 import './Timeline3DPage.css'
 
 export function Timeline3DPage() {
-  const [notes, setNotes] = useState<CalendarNote[]>([])
-  const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const {
+    notes,
+    hierarchy,
+    loading,
+    error,
+    selectedNoteId,
+    selectNote,
+    clearSelection,
+  } = useTimelineNotes()
 
   const isTouchDevice = useIsTouchDevice()
   const [expansionState, expansionActions] = useCalendarExpansion()
 
-  // ノートをカレンダー階層に変換
-  const hierarchy = useMemo(() => buildCalendarHierarchy(notes), [notes])
-
-  useEffect(() => {
-    async function load() {
-      try {
-        const result = await fetchNotes({ limit: 0 })
-        const calendarNotes: CalendarNote[] = result.notes.map((n) => ({
-          id: n.id,
-          title: n.title,
-          category: n.category,
-          createdAt: n.createdAt,
-          updatedAt: n.updatedAt,
-        }))
-        setNotes(calendarNotes)
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Failed to load notes')
-      } finally {
-        setLoading(false)
-      }
-    }
-    load()
-  }, [])
-
   const handleSelectNote = useCallback((noteId: string) => {
-    setSelectedNoteId(noteId)
-  }, [])
+    selectNote(noteId)
+  }, [selectNote])
 
   const handleClosePanel = useCallback(() => {
-    setSelectedNoteId(null)
-  }, [])
+    clearSelection()
+  }, [clearSelection])
 
   // 展開状態のサマリー
   const expansionSummary = useMemo(() => {

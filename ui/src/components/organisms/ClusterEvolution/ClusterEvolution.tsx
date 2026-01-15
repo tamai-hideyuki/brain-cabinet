@@ -1,17 +1,7 @@
-import { useState, useEffect } from 'react'
 import { Text } from '../../atoms/Text'
 import { Badge } from '../../atoms/Badge'
 import { Spinner } from '../../atoms/Spinner'
-import {
-  fetchIdentities,
-  fetchIdentityTimeline,
-  fetchSnapshots,
-  fetchSnapshotEvents,
-  type ClusterIdentity,
-  type IdentityTimelineEntry,
-  type SnapshotSummary,
-  type ClusterEvent,
-} from '../../../api/clusterEvolutionApi'
+import { useClusterEvolution } from '../../../hooks/useClusterEvolution'
 import './ClusterEvolution.css'
 
 type ClusterEvolutionProps = {
@@ -57,67 +47,21 @@ const getEventVariant = (eventType: string): 'default' | 'decision' | 'learning'
 
 export const ClusterEvolution = ({ onNoteClick: _onNoteClick }: ClusterEvolutionProps) => {
   // Note: onNoteClick will be used in future when clicking on sample notes in timeline
-  const [identities, setIdentities] = useState<ClusterIdentity[]>([])
-  const [snapshots, setSnapshots] = useState<SnapshotSummary[]>([])
-  const [selectedIdentityId, setSelectedIdentityId] = useState<number | null>(null)
-  const [identityTimeline, setIdentityTimeline] = useState<IdentityTimelineEntry[]>([])
-  const [snapshotEvents, setSnapshotEvents] = useState<Map<number, ClusterEvent[]>>(new Map())
-  const [loading, setLoading] = useState(true)
-  const [timelineLoading, setTimelineLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [tab, setTab] = useState<'identities' | 'snapshots'>('identities')
-
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [identitiesResult, snapshotsResult] = await Promise.all([
-          fetchIdentities(false),
-          fetchSnapshots(20),
-        ])
-        setIdentities(identitiesResult.identities)
-        setSnapshots(snapshotsResult.snapshots)
-
-        // 最初のアクティブなアイデンティティを選択
-        const activeIdentity = identitiesResult.identities.find((i) => i.isActive)
-        if (activeIdentity) {
-          setSelectedIdentityId(activeIdentity.id)
-        }
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'データの読み込みに失敗しました')
-      } finally {
-        setLoading(false)
-      }
-    }
-    loadData()
-  }, [])
-
-  useEffect(() => {
-    if (selectedIdentityId === null) return
-
-    const loadTimeline = async () => {
-      setTimelineLoading(true)
-      try {
-        const result = await fetchIdentityTimeline(selectedIdentityId)
-        setIdentityTimeline(result.timeline)
-      } catch (e) {
-        console.error('Failed to load timeline:', e)
-      } finally {
-        setTimelineLoading(false)
-      }
-    }
-    loadTimeline()
-  }, [selectedIdentityId])
-
-  const loadSnapshotEvents = async (snapshotId: number) => {
-    if (snapshotEvents.has(snapshotId)) return
-
-    try {
-      const result = await fetchSnapshotEvents(snapshotId)
-      setSnapshotEvents((prev) => new Map(prev).set(snapshotId, result.events))
-    } catch (e) {
-      console.error('Failed to load events:', e)
-    }
-  }
+  const {
+    identities,
+    snapshots,
+    selectedIdentity,
+    selectedIdentityId,
+    identityTimeline,
+    loading,
+    timelineLoading,
+    error,
+    tab,
+    setTab,
+    selectIdentity,
+    loadSnapshotEvents,
+    getSnapshotEvents,
+  } = useClusterEvolution()
 
   if (loading) {
     return (
@@ -135,8 +79,6 @@ export const ClusterEvolution = ({ onNoteClick: _onNoteClick }: ClusterEvolution
       </div>
     )
   }
-
-  const selectedIdentity = identities.find((i) => i.id === selectedIdentityId)
 
   return (
     <div className="cluster-evolution">
@@ -168,7 +110,7 @@ export const ClusterEvolution = ({ onNoteClick: _onNoteClick }: ClusterEvolution
                   className={`cluster-evolution__identity-item ${
                     identity.id === selectedIdentityId ? 'cluster-evolution__identity-item--selected' : ''
                   } ${!identity.isActive ? 'cluster-evolution__identity-item--inactive' : ''}`}
-                  onClick={() => setSelectedIdentityId(identity.id)}
+                  onClick={() => selectIdentity(identity.id)}
                 >
                   <div className="cluster-evolution__identity-info">
                     <Text variant="body">
@@ -250,65 +192,69 @@ export const ClusterEvolution = ({ onNoteClick: _onNoteClick }: ClusterEvolution
         <div className="cluster-evolution__snapshots">
           {/* スナップショット履歴 */}
           <div className="cluster-evolution__snapshot-list">
-            {snapshots.map((snapshot) => (
-              <div
-                key={snapshot.id}
-                className={`cluster-evolution__snapshot-item ${
-                  snapshot.isCurrent ? 'cluster-evolution__snapshot-item--current' : ''
-                }`}
-                onClick={() => loadSnapshotEvents(snapshot.id)}
-              >
-                <div className="cluster-evolution__snapshot-header">
-                  <div className="cluster-evolution__snapshot-title">
-                    <Text variant="body">{formatDate(snapshot.createdAt)}</Text>
-                    <Badge variant={snapshot.isCurrent ? 'learning' : 'default'}>
-                      {getTriggerLabel(snapshot.trigger)}
-                    </Badge>
-                  </div>
-                  <div className="cluster-evolution__snapshot-stats">
-                    <Text variant="caption">
-                      クラスタ: {snapshot.k} | ノート: {snapshot.totalNotes}
-                    </Text>
-                    {snapshot.changeScore !== null && (
-                      <Text variant="caption">
-                        変化度: {(snapshot.changeScore * 100).toFixed(1)}%
-                      </Text>
-                    )}
-                  </div>
-                </div>
+            {snapshots.map((snapshot) => {
+              const events = getSnapshotEvents(snapshot.id)
 
-                {/* イベント（初期スナップショットは表示しない） */}
-                {snapshot.trigger !== 'initial' && snapshotEvents.has(snapshot.id) && (
-                  <div className="cluster-evolution__snapshot-events">
-                    {snapshotEvents.get(snapshot.id)!.map((event) => (
-                      <Badge key={event.id} variant={getEventVariant(event.eventType)}>
-                        {getEventLabel(event.eventType)}
+              return (
+                <div
+                  key={snapshot.id}
+                  className={`cluster-evolution__snapshot-item ${
+                    snapshot.isCurrent ? 'cluster-evolution__snapshot-item--current' : ''
+                  }`}
+                  onClick={() => loadSnapshotEvents(snapshot.id)}
+                >
+                  <div className="cluster-evolution__snapshot-header">
+                    <div className="cluster-evolution__snapshot-title">
+                      <Text variant="body">{formatDate(snapshot.createdAt)}</Text>
+                      <Badge variant={snapshot.isCurrent ? 'learning' : 'default'}>
+                        {getTriggerLabel(snapshot.trigger)}
                       </Badge>
-                    ))}
-                    {snapshotEvents.get(snapshot.id)!.length === 0 && (
-                      <Text variant="caption">イベントなし</Text>
-                    )}
+                    </div>
+                    <div className="cluster-evolution__snapshot-stats">
+                      <Text variant="caption">
+                        クラスタ: {snapshot.k} | ノート: {snapshot.totalNotes}
+                      </Text>
+                      {snapshot.changeScore !== null && (
+                        <Text variant="caption">
+                          変化度: {(snapshot.changeScore * 100).toFixed(1)}%
+                        </Text>
+                      )}
+                    </div>
                   </div>
-                )}
-                {snapshot.trigger === 'initial' && (
-                  <div className="cluster-evolution__snapshot-events">
-                    <Text variant="caption">初期構築（{snapshot.k}クラスタ）</Text>
-                  </div>
-                )}
 
-                {/* ノート増減 */}
-                {(snapshot.notesAdded > 0 || snapshot.notesRemoved > 0) && (
-                  <div className="cluster-evolution__snapshot-changes">
-                    {snapshot.notesAdded > 0 && (
-                      <Text variant="caption">+{snapshot.notesAdded}</Text>
-                    )}
-                    {snapshot.notesRemoved > 0 && (
-                      <Text variant="caption">-{snapshot.notesRemoved}</Text>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
+                  {/* イベント（初期スナップショットは表示しない） */}
+                  {snapshot.trigger !== 'initial' && events && (
+                    <div className="cluster-evolution__snapshot-events">
+                      {events.map((event) => (
+                        <Badge key={event.id} variant={getEventVariant(event.eventType)}>
+                          {getEventLabel(event.eventType)}
+                        </Badge>
+                      ))}
+                      {events.length === 0 && (
+                        <Text variant="caption">イベントなし</Text>
+                      )}
+                    </div>
+                  )}
+                  {snapshot.trigger === 'initial' && (
+                    <div className="cluster-evolution__snapshot-events">
+                      <Text variant="caption">初期構築（{snapshot.k}クラスタ）</Text>
+                    </div>
+                  )}
+
+                  {/* ノート増減 */}
+                  {(snapshot.notesAdded > 0 || snapshot.notesRemoved > 0) && (
+                    <div className="cluster-evolution__snapshot-changes">
+                      {snapshot.notesAdded > 0 && (
+                        <Text variant="caption">+{snapshot.notesAdded}</Text>
+                      )}
+                      {snapshot.notesRemoved > 0 && (
+                        <Text variant="caption">-{snapshot.notesRemoved}</Text>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
             {snapshots.length === 0 && (
               <div className="cluster-evolution__empty">
                 <Text variant="caption">まだスナップショットがありません</Text>
