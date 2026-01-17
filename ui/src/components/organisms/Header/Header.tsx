@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { UserButton } from '@clerk/clerk-react'
 import { Text } from '../../atoms/Text'
 import { PTMIndicator } from '../../molecules/PTMIndicator'
+import { ViewModeToggle } from '../../molecules/ViewModeToggle'
 import { useTheme } from '../../../hooks/useTheme'
 import { usePTM } from '../../../hooks/usePTM'
 import './Header.css'
@@ -79,6 +80,7 @@ export const Header = ({ title = 'Brain Cabinet' }: HeaderProps) => {
         </nav>
 
         <div className="header__actions">
+          <ViewModeToggle compact />
           <PTMIndicator ptm={ptm} loading={ptmLoading} />
           <a
             href="/ui/system"

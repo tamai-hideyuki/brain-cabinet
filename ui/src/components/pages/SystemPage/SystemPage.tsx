@@ -34,6 +34,26 @@ const formatUptime = (seconds: number): string => {
   return `${seconds}秒`
 }
 
+const getPhaseLabel = (phase: string | null): string => {
+  if (!phase) return '-'
+  const labels: Record<string, string> = {
+    creation: '創造',
+    destruction: '収束',
+    neutral: '安定',
+  }
+  return labels[phase] || phase
+}
+
+const getPhaseIcon = (phase: string | null): string => {
+  if (!phase) return ''
+  const icons: Record<string, string> = {
+    creation: '🌱',
+    destruction: '🔥',
+    neutral: '⚖️',
+  }
+  return icons[phase] || ''
+}
+
 export const SystemPage = () => {
   const {
     stats,
@@ -41,6 +61,7 @@ export const SystemPage = () => {
     metrics,
     voiceEvaluations,
     voiceSummary,
+    v75Stats,
     loading,
     healthLoading,
     error,
@@ -200,6 +221,79 @@ export const SystemPage = () => {
                 <Text variant="body">ヘルスチェックを実行中...</Text>
               </div>
             )}
+          </div>
+        )}
+
+        {/* v7.5 統計 */}
+        {!loading && v75Stats && (
+          <div className="system-page__section" id="v75-stats">
+            <div className="system-page__section-header">
+              <Text variant="subtitle">v7.5 思考フェーズ統計</Text>
+            </div>
+
+            <div className="system-page__summary">
+              <div className="system-page__summary-card">
+                <Text variant="caption">今日のフェーズ</Text>
+                <Text variant="title">
+                  {getPhaseIcon(v75Stats.drift.todayPhase)} {getPhaseLabel(v75Stats.drift.todayPhase)}
+                </Text>
+              </div>
+              <div className="system-page__summary-card">
+                <Text variant="caption">現在のEMA</Text>
+                <Text variant="title">{(v75Stats.drift.currentEma * 100).toFixed(1)}%</Text>
+              </div>
+              <div className="system-page__summary-card">
+                <Text variant="caption">平均ドリフト</Text>
+                <Text variant="title">{(v75Stats.drift.averageDrift * 100).toFixed(1)}%</Text>
+              </div>
+              <div className="system-page__summary-card">
+                <Text variant="caption">計測日数</Text>
+                <Text variant="title">{v75Stats.drift.totalDays}日</Text>
+              </div>
+            </div>
+
+            <div className="system-page__metrics-section">
+              <span className="system-page__metrics-label">フェーズ分布（30日間）</span>
+              <div className="system-page__phase-distribution">
+                {(['creation', 'destruction', 'neutral'] as const).map((phase) => {
+                  const count = v75Stats.drift.phaseCounts[phase] || 0
+                  const percentage = v75Stats.drift.totalDays > 0 ? (count / v75Stats.drift.totalDays) * 100 : 0
+                  return (
+                    <div key={phase} className="system-page__phase-item">
+                      <div className="system-page__phase-info">
+                        <span>{getPhaseIcon(phase)}</span>
+                        <span>{getPhaseLabel(phase)}</span>
+                        <span>{count}日</span>
+                      </div>
+                      <div className="system-page__phase-bar-track">
+                        <div
+                          className={`system-page__phase-bar-fill system-page__phase-bar-fill--${phase}`}
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="system-page__metrics-section">
+              <span className="system-page__metrics-label">クラスタ人格化</span>
+              <div className="system-page__summary">
+                <div className="system-page__summary-card">
+                  <Text variant="caption">評価済みクラスタ</Text>
+                  <Text variant="title">{v75Stats.personalization.evaluatedClusters}件</Text>
+                </div>
+                <div className="system-page__summary-card">
+                  <Text variant="caption">平均断定率</Text>
+                  <Text variant="title">{v75Stats.personalization.avgAssertionRate}%</Text>
+                </div>
+                <div className="system-page__summary-card">
+                  <Text variant="caption">平均因果率</Text>
+                  <Text variant="title">{v75Stats.personalization.avgCausalRate}%</Text>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
