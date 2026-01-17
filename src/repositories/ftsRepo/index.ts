@@ -121,7 +121,7 @@ export const searchFTS = async (
 
 /**
  * FTS5テーブルを再構築（全データを再インデックス）
- * トランザクション内で全削除→全追加を原子的に実行
+ * テーブルが存在しない場合は作成してから再構築
  */
 export const rebuildFTS = async (
   notes: Array<{
@@ -132,6 +132,12 @@ export const rebuildFTS = async (
     headings: string | null;
   }>
 ) => {
+  // テーブルが存在しない場合は作成
+  const exists = await checkFTSTableExists();
+  if (!exists) {
+    await createFTSTable();
+  }
+
   await db.transaction(async (tx) => {
     // 全削除
     await tx.run(sql`DELETE FROM notes_fts`);
