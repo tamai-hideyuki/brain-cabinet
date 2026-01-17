@@ -8,8 +8,10 @@ import {
   calcGrowthAngle,
   calcDriftForecast,
   detectWarning,
+  detectExtendedWarning,
   generateDriftInsight,
 } from "../../services/drift/driftCore";
+import { getDailyPhases } from "../../services/drift/driftService";
 import {
   analyzeDriftDirection,
   analyzeDriftDirectionByHistoryId,
@@ -317,6 +319,10 @@ function getForecastInterpretation(
  * Warning System（警告システム）を取得
  *
  * C. 過熱・停滞の検出
+ *
+ * v7.4: extendedWarning を追加（phase と組み合わせた詳細な警告）
+ * - isCreativeOverheat: 創造的な過熱かどうか
+ * - extendedType: 詳細な警告タイプ
  */
 driftRoute.get("/warning", async (c) => {
   const rangeParam = c.req.query("range") ?? "30d";
@@ -326,9 +332,26 @@ driftRoute.get("/warning", async (c) => {
   const data = await getDailyDriftData(rangeDays);
   const warning = detectWarning(data);
 
+  // v7.4: 今日のphaseを取得して拡張警告を計算
+  const today = data.length > 0 ? data[data.length - 1] : null;
+  let extendedWarning = null;
+
+  if (today) {
+    try {
+      const phases = await getDailyPhases(7);
+      const todayPhase = phases.get(today.date) ?? null;
+      extendedWarning = detectExtendedWarning(warning, todayPhase);
+    } catch {
+      extendedWarning = detectExtendedWarning(warning, null);
+    }
+  } else {
+    extendedWarning = detectExtendedWarning(warning, null);
+  }
+
   return c.json({
     range: `${rangeDays}d`,
     ...warning,
+    extendedWarning,
   });
 });
 

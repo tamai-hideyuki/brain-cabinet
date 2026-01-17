@@ -8,19 +8,23 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const {
   mockBuildDriftTimeline,
   mockGetStateDescription,
+  mockGetDailyPhases,
   mockGetDailyDriftData,
   mockCalcGrowthAngle,
   mockCalcDriftForecast,
   mockDetectWarning,
+  mockDetectExtendedWarning,
   mockGenerateDriftInsight,
   mockDbAll,
 } = vi.hoisted(() => ({
   mockBuildDriftTimeline: vi.fn(),
   mockGetStateDescription: vi.fn(),
+  mockGetDailyPhases: vi.fn(),
   mockGetDailyDriftData: vi.fn(),
   mockCalcGrowthAngle: vi.fn(),
   mockCalcDriftForecast: vi.fn(),
   mockDetectWarning: vi.fn(),
+  mockDetectExtendedWarning: vi.fn(),
   mockGenerateDriftInsight: vi.fn(),
   mockDbAll: vi.fn(),
 }));
@@ -29,6 +33,7 @@ const {
 vi.mock("../../services/drift/driftService", () => ({
   buildDriftTimeline: mockBuildDriftTimeline,
   getStateDescription: mockGetStateDescription,
+  getDailyPhases: mockGetDailyPhases,
 }));
 
 vi.mock("../../services/drift/driftCore", () => ({
@@ -36,6 +41,7 @@ vi.mock("../../services/drift/driftCore", () => ({
   calcGrowthAngle: mockCalcGrowthAngle,
   calcDriftForecast: mockCalcDriftForecast,
   detectWarning: mockDetectWarning,
+  detectExtendedWarning: mockDetectExtendedWarning,
   generateDriftInsight: mockGenerateDriftInsight,
 }));
 
@@ -265,18 +271,61 @@ describe("driftRoute", () => {
 
   describe("GET /warning", () => {
     it("警告情報を返す", async () => {
-      mockGetDailyDriftData.mockResolvedValue([]);
+      mockGetDailyDriftData.mockResolvedValue([
+        { date: "2024-01-15", drift: 0.5, ema: 0.45 },
+      ]);
       mockDetectWarning.mockReturnValue({
-        hasWarning: false,
-        type: null,
-        message: null,
+        state: "stable",
+        severity: "none",
+        recommendation: "安定した成長リズムです。",
+      });
+      mockGetDailyPhases.mockResolvedValue(new Map([["2024-01-15", "neutral"]]));
+      mockDetectExtendedWarning.mockReturnValue({
+        baseState: "stable",
+        extendedType: "stable",
+        phase: "neutral",
+        severity: "none",
+        isCreativeOverheat: false,
+        recommendation: "安定した成長リズムです。",
+        insight: "安定した成長リズムを維持しています。",
       });
 
       const res = await driftRoute.request("/warning");
       const json = await res.json();
 
       expect(res.status).toBe(200);
-      expect(json.hasWarning).toBe(false);
+      expect(json.state).toBe("stable");
+      expect(json.extendedWarning).toBeDefined();
+      expect(json.extendedWarning.isCreativeOverheat).toBe(false);
+    });
+
+    it("creative overheatを検出する (v7.4)", async () => {
+      mockGetDailyDriftData.mockResolvedValue([
+        { date: "2024-01-15", drift: 2.5, ema: 2.3 },
+      ]);
+      mockDetectWarning.mockReturnValue({
+        state: "overheat",
+        severity: "mid",
+        recommendation: "知的活動が過剰です。",
+      });
+      mockGetDailyPhases.mockResolvedValue(new Map([["2024-01-15", "creation"]]));
+      mockDetectExtendedWarning.mockReturnValue({
+        baseState: "overheat",
+        extendedType: "creative_overheat",
+        phase: "creation",
+        severity: "mid",
+        isCreativeOverheat: true,
+        recommendation: "創造的な活動が活発です！",
+        insight: "新しいアイデアや発見が多い「創造的過熱」状態です。",
+      });
+
+      const res = await driftRoute.request("/warning");
+      const json = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(json.state).toBe("overheat");
+      expect(json.extendedWarning.isCreativeOverheat).toBe(true);
+      expect(json.extendedWarning.extendedType).toBe("creative_overheat");
     });
   });
 
