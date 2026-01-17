@@ -32,7 +32,7 @@ export const driftRoute = new Hono();
  *
  * Response:
  * - range: "90d"
- * - days: [{ date, drift, ema }]
+ * - days: [{ date, drift, ema, phase }]  // v7.2: phase追加 (creation/destruction/neutral)
  * - summary: { todayDrift, todayEMA, state, trend, mean, stdDev }
  * - description: 状態の日本語説明
  */

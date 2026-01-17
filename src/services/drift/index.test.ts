@@ -740,3 +740,88 @@ describe("driftCore", () => {
     });
   });
 });
+
+// ============================================================
+// v7.2: Drift Phase のテスト
+// ============================================================
+
+describe("DriftPhase (v7.2)", () => {
+  describe("trajectoryからphaseへのマッピング", () => {
+    type Trajectory = "expansion" | "contraction" | "pivot" | "lateral" | "stable";
+    type DriftPhase = "creation" | "destruction" | "neutral";
+
+    const mapTrajectoryToPhase = (trajectory: Trajectory): DriftPhase => {
+      if (trajectory === "expansion" || trajectory === "pivot") {
+        return "creation";
+      }
+      if (trajectory === "contraction") {
+        return "destruction";
+      }
+      return "neutral";
+    };
+
+    it("expansion は creation にマップ", () => {
+      expect(mapTrajectoryToPhase("expansion")).toBe("creation");
+    });
+
+    it("pivot は creation にマップ", () => {
+      expect(mapTrajectoryToPhase("pivot")).toBe("creation");
+    });
+
+    it("contraction は destruction にマップ", () => {
+      expect(mapTrajectoryToPhase("contraction")).toBe("destruction");
+    });
+
+    it("lateral は neutral にマップ", () => {
+      expect(mapTrajectoryToPhase("lateral")).toBe("neutral");
+    });
+
+    it("stable は neutral にマップ", () => {
+      expect(mapTrajectoryToPhase("stable")).toBe("neutral");
+    });
+  });
+
+  describe("日別の最多phaseの決定", () => {
+    type DriftPhase = "creation" | "destruction" | "neutral";
+
+    const determineDailyPhase = (counts: {
+      creation: number;
+      destruction: number;
+      neutral: number;
+    }): DriftPhase => {
+      const { creation, destruction, neutral } = counts;
+      const max = Math.max(creation, destruction, neutral);
+
+      if (max === 0) return "neutral";
+      if (creation === max) return "creation";
+      if (destruction === max) return "destruction";
+      return "neutral";
+    };
+
+    it("creationが最多ならcreation", () => {
+      expect(determineDailyPhase({ creation: 5, destruction: 2, neutral: 1 })).toBe("creation");
+    });
+
+    it("destructionが最多ならdestruction", () => {
+      expect(determineDailyPhase({ creation: 1, destruction: 5, neutral: 2 })).toBe("destruction");
+    });
+
+    it("neutralが最多ならneutral", () => {
+      expect(determineDailyPhase({ creation: 1, destruction: 2, neutral: 5 })).toBe("neutral");
+    });
+
+    it("すべて0ならneutral", () => {
+      expect(determineDailyPhase({ creation: 0, destruction: 0, neutral: 0 })).toBe("neutral");
+    });
+
+    it("同数の場合はcreationが優先", () => {
+      // creation === destruction の場合、creationを返す
+      expect(determineDailyPhase({ creation: 3, destruction: 3, neutral: 1 })).toBe("creation");
+    });
+
+    it("destruction と neutral が同数の場合は neutral を返す", () => {
+      // creation より destruction/neutral が多い場合
+      expect(determineDailyPhase({ creation: 1, destruction: 3, neutral: 3 })).toBe("destruction");
+    });
+  });
+});

@@ -10,6 +10,7 @@
 
 import { db } from "../../db/client";
 import { sql } from "drizzle-orm";
+import { bufferToFloat32Array, cosineSimilarity } from "../../utils/math";
 
 // EMA の平滑化係数（0.3 = 変化に敏感すぎず鈍感すぎない）
 const EMA_ALPHA = 0.3;
@@ -24,10 +25,19 @@ export type DailyDriftRaw = {
   count: number;
 };
 
+/**
+ * Drift Phase (v7.2)
+ * - creation: 思考の拡大・新規探索（expansion, pivot）
+ * - destruction: 思考の縮小・収束（contraction）
+ * - neutral: 安定・横方向の移動（lateral, stable）
+ */
+export type DriftPhase = "creation" | "destruction" | "neutral";
+
 export type DailyDriftWithEMA = {
   date: string;
   drift: number; // 日別の合計 drift
   ema: number; // EMA
+  phase?: DriftPhase; // v7.2: 日別のドリフトフェーズ
 };
 
 export type DriftState = "stable" | "overheat" | "stagnation";
@@ -169,6 +179,147 @@ export function classifyTrend(
 }
 
 /**
+ * 日別のドリフトフェーズを計算 (v7.2)
+ *
+ * note_history から日別の trajectory を集計し、
+ * 最も多い trajectory タイプに基づいて phase を決定
+ */
+export async function getDailyPhases(
+  rangeDays: number = 90
+): Promise<Map<string, DriftPhase>> {
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - rangeDays);
+  const startTimestamp = Math.floor(startDate.getTime() / 1000);
+
+  // 日別に履歴を取得し、各履歴のtrajectoryを判定
+  const rows = await db.all<{
+    date: string;
+    old_embedding: Buffer | null;
+    new_embedding: Buffer | null;
+    old_cluster_id: number | null;
+    new_cluster_id: number | null;
+    semantic_diff: string | null;
+  }>(sql`
+    SELECT
+      date(nh.created_at, 'unixepoch') as date,
+      nh.old_embedding,
+      ne.embedding as new_embedding,
+      nh.old_cluster_id,
+      n.cluster_id as new_cluster_id,
+      nh.semantic_diff
+    FROM note_history nh
+    JOIN notes n ON nh.note_id = n.id
+    LEFT JOIN note_embeddings ne ON nh.note_id = ne.note_id
+    WHERE nh.semantic_diff IS NOT NULL
+      AND nh.created_at >= ${startTimestamp}
+      AND nh.old_embedding IS NOT NULL
+      AND ne.embedding IS NOT NULL
+    ORDER BY nh.created_at ASC
+  `);
+
+  // クラスターセントロイドを取得
+  const centroidRows = await db.all<{
+    cluster_id: number;
+    centroid: Buffer;
+  }>(sql`
+    SELECT cluster_id, centroid
+    FROM cluster_dynamics
+    WHERE date = (SELECT MAX(date) FROM cluster_dynamics)
+  `);
+
+  const centroids = new Map<number, number[]>();
+  for (const row of centroidRows) {
+    const centroid = bufferToFloat32Array(row.centroid);
+    if (centroid.length > 0) {
+      centroids.set(row.cluster_id, centroid);
+    }
+  }
+
+  // 日別にtrajectoryを集計
+  const dailyTrajectories = new Map<string, { creation: number; destruction: number; neutral: number }>();
+
+  for (const row of rows) {
+    if (!row.old_embedding || !row.new_embedding) continue;
+
+    const oldEmb = bufferToFloat32Array(row.old_embedding);
+    const newEmb = bufferToFloat32Array(row.new_embedding);
+
+    if (oldEmb.length === 0 || newEmb.length === 0) continue;
+
+    // ドリフトベクトルを計算
+    const diff = newEmb.map((v, i) => v - oldEmb[i]);
+    const magnitude = Math.sqrt(diff.reduce((sum, v) => sum + v * v, 0));
+
+    if (magnitude === 0) continue;
+
+    const driftVector = diff.map((v) => v / magnitude);
+    const semanticDiff = row.semantic_diff ? parseFloat(row.semantic_diff) : 0;
+    const clusterChanged = row.old_cluster_id !== null &&
+      row.new_cluster_id !== null &&
+      row.old_cluster_id !== row.new_cluster_id;
+
+    // trajectoryを判定
+    let trajectory: "expansion" | "contraction" | "pivot" | "lateral" | "stable";
+
+    if (semanticDiff < 0.15 || magnitude < 0.05) {
+      trajectory = "stable";
+    } else if (clusterChanged) {
+      trajectory = "pivot";
+    } else {
+      // 最も高いアラインメントを計算
+      let maxAlignment = 0;
+      for (const [, centroid] of centroids) {
+        const alignment = cosineSimilarity(driftVector, centroid);
+        if (Math.abs(alignment) > Math.abs(maxAlignment)) {
+          maxAlignment = alignment;
+        }
+      }
+
+      if (maxAlignment > 0.3) {
+        trajectory = "expansion";
+      } else if (maxAlignment < -0.3) {
+        trajectory = "contraction";
+      } else {
+        trajectory = "lateral";
+      }
+    }
+
+    // trajectoryをphaseにマッピングして集計
+    const counts = dailyTrajectories.get(row.date) ?? { creation: 0, destruction: 0, neutral: 0 };
+
+    if (trajectory === "expansion" || trajectory === "pivot") {
+      counts.creation++;
+    } else if (trajectory === "contraction") {
+      counts.destruction++;
+    } else {
+      counts.neutral++;
+    }
+
+    dailyTrajectories.set(row.date, counts);
+  }
+
+  // 日別の最多phaseを決定
+  const result = new Map<string, DriftPhase>();
+
+  for (const [date, counts] of dailyTrajectories) {
+    const { creation, destruction, neutral } = counts;
+    const max = Math.max(creation, destruction, neutral);
+
+    if (max === 0) {
+      result.set(date, "neutral");
+    } else if (creation === max) {
+      result.set(date, "creation");
+    } else if (destruction === max) {
+      result.set(date, "destruction");
+    } else {
+      result.set(date, "neutral");
+    }
+  }
+
+  return result;
+}
+
+/**
  * Drift Timeline を構築
  */
 export async function buildDriftTimeline(
@@ -178,14 +329,23 @@ export async function buildDriftTimeline(
   const rawData = await getDailyDriftRaw(rangeDays);
 
   // 2. EMA 計算
-  const days = calculateEMA(rawData);
+  const daysWithEMA = calculateEMA(rawData);
 
-  // 3. 統計計算（過去30日分）
+  // 3. 日別 phase を取得 (v7.2)
+  const dailyPhases = await getDailyPhases(rangeDays);
+
+  // 4. phase を days に付与
+  const days: DailyDriftWithEMA[] = daysWithEMA.map((d) => ({
+    ...d,
+    phase: dailyPhases.get(d.date) ?? "neutral",
+  }));
+
+  // 5. 統計計算（過去30日分）
   const recentDays = days.slice(-30);
   const emaValues = recentDays.map((d) => d.ema);
   const { mean, stdDev } = calculateStats(emaValues);
 
-  // 4. 今日の状態を判定
+  // 6. 今日の状態を判定
   const today = days.length > 0 ? days[days.length - 1] : null;
   const todayDrift = today?.drift ?? 0;
   const todayEMA = today?.ema ?? 0;
