@@ -10,7 +10,6 @@
 
 import { db } from "../../db/client";
 import { sql } from "drizzle-orm";
-import { bufferToFloat32Array, cosineSimilarity } from "../../utils/math";
 
 // EMA の平滑化係数（0.3 = 変化に敏感すぎず鈍感すぎない）
 const EMA_ALPHA = 0.3;
@@ -196,96 +195,55 @@ export async function getDailyPhases(
   const startTimestamp = Math.floor(startDate.getTime() / 1000);
 
   // 日別に履歴を取得し、各履歴のtrajectoryを判定
+  // Note: note_historyにはembeddingが保存されていないため、
+  // semantic_diffとクラスタIDの変化のみで判定する
   const rows = await db.all<{
     date: string;
-    old_embedding: Buffer | null;
-    new_embedding: Buffer | null;
-    old_cluster_id: number | null;
+    prev_cluster_id: number | null;
     new_cluster_id: number | null;
     semantic_diff: string | null;
+    embedding: Buffer | null;
   }>(sql`
     SELECT
       date(nh.created_at, 'unixepoch') as date,
-      nh.old_embedding,
-      ne.embedding as new_embedding,
-      nh.old_cluster_id,
-      n.cluster_id as new_cluster_id,
-      nh.semantic_diff
+      nh.prev_cluster_id,
+      nh.new_cluster_id,
+      nh.semantic_diff,
+      ne.embedding
     FROM note_history nh
     JOIN notes n ON nh.note_id = n.id
     LEFT JOIN note_embeddings ne ON nh.note_id = ne.note_id
     WHERE nh.semantic_diff IS NOT NULL
       AND nh.created_at >= ${startTimestamp}
-      AND nh.old_embedding IS NOT NULL
-      AND ne.embedding IS NOT NULL
     ORDER BY nh.created_at ASC
   `);
-
-  // クラスターセントロイドを取得
-  const centroidRows = await db.all<{
-    cluster_id: number;
-    centroid: Buffer;
-  }>(sql`
-    SELECT cluster_id, centroid
-    FROM cluster_dynamics
-    WHERE date = (SELECT MAX(date) FROM cluster_dynamics)
-  `);
-
-  const centroids = new Map<number, number[]>();
-  for (const row of centroidRows) {
-    const centroid = bufferToFloat32Array(row.centroid);
-    if (centroid.length > 0) {
-      centroids.set(row.cluster_id, centroid);
-    }
-  }
 
   // 日別にtrajectoryを集計
   const dailyTrajectories = new Map<string, { creation: number; destruction: number; neutral: number }>();
 
   for (const row of rows) {
-    if (!row.old_embedding || !row.new_embedding) continue;
-
-    const oldEmb = bufferToFloat32Array(row.old_embedding);
-    const newEmb = bufferToFloat32Array(row.new_embedding);
-
-    if (oldEmb.length === 0 || newEmb.length === 0) continue;
-
-    // ドリフトベクトルを計算
-    const diff = newEmb.map((v, i) => v - oldEmb[i]);
-    const magnitude = Math.sqrt(diff.reduce((sum, v) => sum + v * v, 0));
-
-    if (magnitude === 0) continue;
-
-    const driftVector = diff.map((v) => v / magnitude);
     const semanticDiff = row.semantic_diff ? parseFloat(row.semantic_diff) : 0;
-    const clusterChanged = row.old_cluster_id !== null &&
+    const clusterChanged = row.prev_cluster_id !== null &&
       row.new_cluster_id !== null &&
-      row.old_cluster_id !== row.new_cluster_id;
+      row.prev_cluster_id !== row.new_cluster_id;
 
-    // trajectoryを判定
+    // trajectoryを判定（embeddingベクトル比較なしの簡易版）
+    // semantic_diffとクラスタ変化から推定
     let trajectory: "expansion" | "contraction" | "pivot" | "lateral" | "stable";
 
-    if (semanticDiff < 0.15 || magnitude < 0.05) {
+    if (semanticDiff < 0.15) {
       trajectory = "stable";
     } else if (clusterChanged) {
       trajectory = "pivot";
+    } else if (semanticDiff > 0.5) {
+      // 大きな意味変化 = expansion（新しい概念への拡張）
+      trajectory = "expansion";
+    } else if (semanticDiff > 0.3) {
+      // 中程度の変化 = lateral（横方向の移動）
+      trajectory = "lateral";
     } else {
-      // 最も高いアラインメントを計算
-      let maxAlignment = 0;
-      for (const [, centroid] of centroids) {
-        const alignment = cosineSimilarity(driftVector, centroid);
-        if (Math.abs(alignment) > Math.abs(maxAlignment)) {
-          maxAlignment = alignment;
-        }
-      }
-
-      if (maxAlignment > 0.3) {
-        trajectory = "expansion";
-      } else if (maxAlignment < -0.3) {
-        trajectory = "contraction";
-      } else {
-        trajectory = "lateral";
-      }
+      // 小さな変化 = contraction（収束・洗練）
+      trajectory = "contraction";
     }
 
     // trajectoryをphaseにマッピングして集計
