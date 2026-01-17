@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { UserButton } from '@clerk/clerk-react'
-import { Text } from '../../atoms/Text'
 import { PTMIndicator } from '../../molecules/PTMIndicator'
 import { ViewModeToggle } from '../../molecules/ViewModeToggle'
 import { useTheme } from '../../../hooks/useTheme'
@@ -63,7 +62,8 @@ export const Header = ({ title = 'Brain Cabinet' }: HeaderProps) => {
     <>
       <header className="header">
         <a href="/ui/" className="header__logo">
-          <Text variant="subtitle">{title}</Text>
+          <span className="header__logo-full">{title}</span>
+          <span className="header__logo-short">BC</span>
         </a>
 
         {/* デスクトップナビゲーション */}

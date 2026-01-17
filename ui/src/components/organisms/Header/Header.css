@@ -22,6 +22,22 @@
   opacity: 0.8;
 }
 
+/* モバイルでは短縮ロゴを表示 */
+.header__logo-full,
+.header__logo-short {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.header__logo-full {
+  display: none;
+}
+
+.header__logo-short {
+  display: block;
+}
+
 /* デスクトップナビゲーション（モバイルでは非表示） */
 .header__nav--desktop {
   display: none;
@@ -222,6 +238,19 @@
   .header {
     height: 56px;
     padding: 0 1.5rem;
+  }
+
+  .header__logo-full,
+  .header__logo-short {
+    font-size: 1rem;
+  }
+
+  .header__logo-full {
+    display: block;
+  }
+
+  .header__logo-short {
+    display: none;
   }
 
   .header__nav--desktop {
