@@ -182,6 +182,28 @@ export const driftEvents = sqliteTable("drift_events", {
   resolvedAt: integer("resolved_at"),                    // 解消日時（NULLなら未解消）
 });
 
+// v7.3: ドリフトアノテーション（ユーザーの主観ラベル）
+export const DRIFT_ANNOTATION_LABELS = [
+  "breakthrough",   // 突破・飛躍
+  "exploration",    // 探索・発散
+  "deepening",      // 深化・収束
+  "confusion",      // 混乱・迷走
+  "rest",           // 休息・停滞
+  "routine",        // 日常・維持
+] as const;
+
+export type DriftAnnotationLabel = (typeof DRIFT_ANNOTATION_LABELS)[number];
+
+export const driftAnnotations = sqliteTable("drift_annotations", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  date: text("date").notNull().unique(),                 // ISO日付 'YYYY-MM-DD'（1日1件）
+  label: text("label").notNull(),                        // DriftAnnotationLabel
+  note: text("note"),                                    // ユーザーのメモ（任意）
+  autoPhase: text("auto_phase"),                         // v7.2で自動計算されたphase（比較用）
+  createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
+  updatedAt: integer("updated_at").notNull().default(sql`(strftime('%s','now'))`),
+});
+
 // ノート間の影響グラフ（Concept Influence Graph - C モデル）
 export const noteInfluenceEdges = sqliteTable("note_influence_edges", {
   id: integer("id").primaryKey({ autoIncrement: true }),

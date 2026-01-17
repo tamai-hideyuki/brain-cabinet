@@ -38,6 +38,10 @@ export type DailyDriftWithEMA = {
   drift: number; // 日別の合計 drift
   ema: number; // EMA
   phase?: DriftPhase; // v7.2: 日別のドリフトフェーズ
+  annotation?: {
+    label: string;
+    note: string | null;
+  }; // v7.3: ユーザーアノテーション（オプション）
 };
 
 export type DriftState = "stable" | "overheat" | "stagnation";
@@ -321,9 +325,13 @@ export async function getDailyPhases(
 
 /**
  * Drift Timeline を構築
+ *
+ * @param rangeDays - 取得する日数（デフォルト: 90日）
+ * @param includeAnnotations - アノテーションを含めるか（デフォルト: false）
  */
 export async function buildDriftTimeline(
-  rangeDays: number = 90
+  rangeDays: number = 90,
+  includeAnnotations: boolean = false
 ): Promise<DriftTimelineResponse> {
   // 1. Raw データ取得
   const rawData = await getDailyDriftRaw(rangeDays);
@@ -334,18 +342,40 @@ export async function buildDriftTimeline(
   // 3. 日別 phase を取得 (v7.2)
   const dailyPhases = await getDailyPhases(rangeDays);
 
-  // 4. phase を days に付与
-  const days: DailyDriftWithEMA[] = daysWithEMA.map((d) => ({
-    ...d,
-    phase: dailyPhases.get(d.date) ?? "neutral",
-  }));
+  // 4. アノテーションを取得 (v7.3)
+  let annotationsMap: Map<string, { label: string; note: string | null }> | null = null;
+  if (includeAnnotations) {
+    const { getAnnotationsAsMap } = await import("./driftAnnotation");
+    const annotations = await getAnnotationsAsMap(rangeDays);
+    annotationsMap = new Map();
+    for (const [date, ann] of annotations) {
+      annotationsMap.set(date, { label: ann.label, note: ann.note });
+    }
+  }
 
-  // 5. 統計計算（過去30日分）
+  // 5. phase と annotation を days に付与
+  const days: DailyDriftWithEMA[] = daysWithEMA.map((d) => {
+    const day: DailyDriftWithEMA = {
+      ...d,
+      phase: dailyPhases.get(d.date) ?? "neutral",
+    };
+
+    if (annotationsMap) {
+      const annotation = annotationsMap.get(d.date);
+      if (annotation) {
+        day.annotation = annotation;
+      }
+    }
+
+    return day;
+  });
+
+  // 6. 統計計算（過去30日分）
   const recentDays = days.slice(-30);
   const emaValues = recentDays.map((d) => d.ema);
   const { mean, stdDev } = calculateStats(emaValues);
 
-  // 6. 今日の状態を判定
+  // 7. 今日の状態を判定
   const today = days.length > 0 ? days[days.length - 1] : null;
   const todayDrift = today?.drift ?? 0;
   const todayEMA = today?.ema ?? 0;

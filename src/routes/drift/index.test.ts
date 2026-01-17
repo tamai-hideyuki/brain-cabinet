@@ -45,11 +45,40 @@ vi.mock("../../db/client", () => ({
   },
 }));
 
+// v7.3 アノテーション関連のモック
+const {
+  mockUpsertAnnotation,
+  mockGetAnnotationByDate,
+  mockGetRecentAnnotations,
+  mockDeleteAnnotationByDate,
+  mockGetAnnotationStats,
+  mockIsValidLabel,
+} = vi.hoisted(() => ({
+  mockUpsertAnnotation: vi.fn(),
+  mockGetAnnotationByDate: vi.fn(),
+  mockGetRecentAnnotations: vi.fn(),
+  mockDeleteAnnotationByDate: vi.fn(),
+  mockGetAnnotationStats: vi.fn(),
+  mockIsValidLabel: vi.fn(),
+}));
+
+vi.mock("../../services/drift/driftAnnotation", () => ({
+  upsertAnnotation: mockUpsertAnnotation,
+  getAnnotationByDate: mockGetAnnotationByDate,
+  getRecentAnnotations: mockGetRecentAnnotations,
+  deleteAnnotation: vi.fn(),
+  deleteAnnotationByDate: mockDeleteAnnotationByDate,
+  getAnnotationStats: mockGetAnnotationStats,
+  isValidLabel: mockIsValidLabel,
+}));
+
 import { driftRoute } from "./index";
 
 describe("driftRoute", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // デフォルトでisValidLabelはtrueを返す
+    mockIsValidLabel.mockReturnValue(true);
   });
 
   describe("GET /timeline", () => {
@@ -88,7 +117,7 @@ describe("driftRoute", () => {
 
       await driftRoute.request("/timeline?range=30d");
 
-      expect(mockBuildDriftTimeline).toHaveBeenCalledWith(30);
+      expect(mockBuildDriftTimeline).toHaveBeenCalledWith(30, false);
     });
 
     it("無効なrangeで400を返す", async () => {
@@ -97,6 +126,38 @@ describe("driftRoute", () => {
 
       expect(res.status).toBe(400);
       expect(json.error).toContain("Invalid range");
+    });
+
+    it("annotationsパラメータを処理する", async () => {
+      mockBuildDriftTimeline.mockResolvedValue({
+        range: "90d",
+        days: [{ date: "2024-01-01", drift: 0.5, ema: 0.45, phase: "creation" }],
+        summary: { state: "normal", trend: "stable" },
+      });
+      mockGetStateDescription.mockReturnValue("OK");
+
+      await driftRoute.request("/timeline?annotations=true");
+
+      expect(mockBuildDriftTimeline).toHaveBeenCalledWith(90, true);
+    });
+
+    it("phaseフィールドを含む", async () => {
+      mockBuildDriftTimeline.mockResolvedValue({
+        range: "90d",
+        days: [
+          { date: "2024-01-01", drift: 0.5, ema: 0.45, phase: "creation" },
+          { date: "2024-01-02", drift: 0.3, ema: 0.40, phase: "neutral" },
+        ],
+        summary: { state: "normal", trend: "stable" },
+      });
+      mockGetStateDescription.mockReturnValue("OK");
+
+      const res = await driftRoute.request("/timeline");
+      const json = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(json.days[0].phase).toBe("creation");
+      expect(json.days[1].phase).toBe("neutral");
     });
   });
 
@@ -235,6 +296,225 @@ describe("driftRoute", () => {
       expect(res.status).toBe(200);
       expect(json.mode).toBe("exploration");
       expect(json.advice).toBeDefined();
+    });
+  });
+
+  // ============================================================
+  // v7.3 アノテーション API のテスト
+  // ============================================================
+
+  describe("GET /annotation/labels", () => {
+    it("ラベル一覧を返す", async () => {
+      const res = await driftRoute.request("/annotation/labels");
+      const json = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(json.labels).toBeDefined();
+      expect(json.labels).toHaveLength(6);
+      expect(json.labels[0]).toHaveProperty("value");
+      expect(json.labels[0]).toHaveProperty("description");
+    });
+  });
+
+  describe("GET /annotation/:date", () => {
+    it("アノテーションを返す", async () => {
+      mockGetAnnotationByDate.mockResolvedValue({
+        id: 1,
+        date: "2024-01-15",
+        label: "breakthrough",
+        note: "良い発見があった",
+        autoPhase: "creation",
+        createdAt: 1705312800,
+        updatedAt: 1705312800,
+      });
+
+      const res = await driftRoute.request("/annotation/2024-01-15");
+      const json = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(json.annotation).toBeDefined();
+      expect(json.annotation.label).toBe("breakthrough");
+    });
+
+    it("存在しない場合はnullを返す", async () => {
+      mockGetAnnotationByDate.mockResolvedValue(null);
+
+      const res = await driftRoute.request("/annotation/2024-01-15");
+      const json = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(json.annotation).toBeNull();
+    });
+  });
+
+  describe("GET /annotations", () => {
+    it("アノテーション一覧を返す", async () => {
+      mockGetRecentAnnotations.mockResolvedValue([
+        { id: 1, date: "2024-01-15", label: "breakthrough", note: null },
+        { id: 2, date: "2024-01-14", label: "routine", note: null },
+      ]);
+
+      const res = await driftRoute.request("/annotations");
+      const json = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(json.annotations).toHaveLength(2);
+      expect(json.count).toBe(2);
+    });
+
+    it("daysパラメータを処理する", async () => {
+      mockGetRecentAnnotations.mockResolvedValue([]);
+
+      await driftRoute.request("/annotations?days=60");
+
+      expect(mockGetRecentAnnotations).toHaveBeenCalledWith(60);
+    });
+
+    it("無効なdaysで400を返す", async () => {
+      const res = await driftRoute.request("/annotations?days=500");
+      const json = await res.json();
+
+      expect(res.status).toBe(400);
+      expect(json.error).toContain("Invalid days");
+    });
+  });
+
+  describe("POST /annotation", () => {
+    it("アノテーションを作成する", async () => {
+      mockUpsertAnnotation.mockResolvedValue({
+        id: 1,
+        date: "2024-01-15",
+        label: "breakthrough",
+        note: "素晴らしい発見",
+        autoPhase: "creation",
+        createdAt: 1705312800,
+        updatedAt: 1705312800,
+      });
+
+      const res = await driftRoute.request("/annotation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: "2024-01-15",
+          label: "breakthrough",
+          note: "素晴らしい発見",
+          autoPhase: "creation",
+        }),
+      });
+      const json = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(json.annotation.label).toBe("breakthrough");
+    });
+
+    it("dateが必須", async () => {
+      const res = await driftRoute.request("/annotation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ label: "breakthrough" }),
+      });
+      const json = await res.json();
+
+      expect(res.status).toBe(400);
+      expect(json.error).toContain("date and label are required");
+    });
+
+    it("labelが必須", async () => {
+      const res = await driftRoute.request("/annotation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: "2024-01-15" }),
+      });
+      const json = await res.json();
+
+      expect(res.status).toBe(400);
+      expect(json.error).toContain("date and label are required");
+    });
+
+    it("無効なlabelで400を返す", async () => {
+      mockIsValidLabel.mockReturnValue(false);
+
+      const res = await driftRoute.request("/annotation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: "2024-01-15", label: "invalid" }),
+      });
+      const json = await res.json();
+
+      expect(res.status).toBe(400);
+      expect(json.error).toContain("Invalid label");
+    });
+  });
+
+  describe("DELETE /annotation/:date", () => {
+    it("アノテーションを削除する", async () => {
+      mockDeleteAnnotationByDate.mockResolvedValue(true);
+
+      const res = await driftRoute.request("/annotation/2024-01-15", {
+        method: "DELETE",
+      });
+      const json = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(json.success).toBe(true);
+      expect(json.date).toBe("2024-01-15");
+    });
+
+    it("存在しない場合は404を返す", async () => {
+      mockDeleteAnnotationByDate.mockResolvedValue(false);
+
+      const res = await driftRoute.request("/annotation/2024-01-15", {
+        method: "DELETE",
+      });
+      const json = await res.json();
+
+      expect(res.status).toBe(404);
+      expect(json.error).toContain("not found");
+    });
+  });
+
+  describe("GET /annotation/stats", () => {
+    it("統計を返す", async () => {
+      mockGetAnnotationStats.mockResolvedValue({
+        total: 30,
+        byLabel: {
+          breakthrough: 5,
+          exploration: 8,
+          deepening: 6,
+          confusion: 3,
+          rest: 4,
+          routine: 4,
+        },
+        phaseMatch: { matched: 20, mismatched: 5, unknown: 5 },
+      });
+
+      const res = await driftRoute.request("/annotation/stats");
+      const json = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(json.total).toBe(30);
+      expect(json.byLabel).toBeDefined();
+      expect(json.phaseMatch.matched).toBe(20);
+    });
+
+    it("daysパラメータを処理する", async () => {
+      mockGetAnnotationStats.mockResolvedValue({
+        total: 0,
+        byLabel: {},
+        phaseMatch: { matched: 0, mismatched: 0, unknown: 0 },
+      });
+
+      await driftRoute.request("/annotation/stats?days=60");
+
+      expect(mockGetAnnotationStats).toHaveBeenCalledWith(60);
+    });
+
+    it("無効なdaysで400を返す", async () => {
+      const res = await driftRoute.request("/annotation/stats?days=500");
+      const json = await res.json();
+
+      expect(res.status).toBe(400);
+      expect(json.error).toContain("Invalid days");
     });
   });
 });
