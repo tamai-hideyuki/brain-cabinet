@@ -6,6 +6,7 @@
 
 import {
   searchDecisions,
+  searchDecisionsWithContext,
   getDecisionContext,
   getPromotionCandidates,
   compareDecisions,
@@ -36,6 +37,7 @@ type DecisionSearchPayload = {
   intent?: Intent;
   minConfidence?: number;
   limit?: number;
+  includeClusterContext?: boolean; // v7.5
 };
 
 type DecisionContextPayload = {
@@ -72,6 +74,8 @@ type DeleteCounterevidencelPayload = {
 export const decisionDispatcher = {
   /**
    * decision.search - 判断ノートを優先した検索
+   *
+   * v7.5: includeClusterContext=true でクラスタペルソナ情報を含む
    */
   async search(payload: unknown) {
     const p = payload as DecisionSearchPayload | undefined;
@@ -83,11 +87,43 @@ export const decisionDispatcher = {
         ? Math.max(0, Math.min(1, p.minConfidence))
         : 0.4;
     const limit = validateLimitAllowAll(p?.limit, LIMITS.LIMIT_DEFAULT);
+    const includeClusterContext = p?.includeClusterContext ?? false;
+
+    // v7.5: クラスタコンテキストが要求された場合は拡張版を使用
+    if (includeClusterContext) {
+      return searchDecisionsWithContext(query, {
+        intent: intent ?? undefined,
+        minConfidence,
+        limit: limit === 0 ? undefined : limit,
+        includeClusterContext: true,
+      });
+    }
 
     return searchDecisions(query, {
       intent: intent ?? undefined,
       minConfidence,
       limit: limit === 0 ? undefined : limit,
+    });
+  },
+
+  /**
+   * decision.searchWithContext - クラスタペルソナ情報付き判断検索 (v7.5)
+   */
+  async searchWithContext(payload: unknown) {
+    const p = payload as DecisionSearchPayload | undefined;
+    const query = validateQuery(p?.query);
+    const intent = validateOptionalEnum(p?.intent, "intent", INTENTS);
+    const minConfidence =
+      typeof p?.minConfidence === "number"
+        ? Math.max(0, Math.min(1, p.minConfidence))
+        : 0.4;
+    const limit = validateLimitAllowAll(p?.limit, LIMITS.LIMIT_DEFAULT);
+
+    return searchDecisionsWithContext(query, {
+      intent: intent ?? undefined,
+      minConfidence,
+      limit: limit === 0 ? undefined : limit,
+      includeClusterContext: true,
     });
   },
 
