@@ -740,3 +740,236 @@ describe("driftCore", () => {
     });
   });
 });
+
+// ============================================================
+// v7.2: Drift Phase のテスト
+// ============================================================
+
+describe("DriftPhase (v7.2)", () => {
+  describe("trajectoryからphaseへのマッピング", () => {
+    type Trajectory = "expansion" | "contraction" | "pivot" | "lateral" | "stable";
+    type DriftPhase = "creation" | "destruction" | "neutral";
+
+    const mapTrajectoryToPhase = (trajectory: Trajectory): DriftPhase => {
+      if (trajectory === "expansion" || trajectory === "pivot") {
+        return "creation";
+      }
+      if (trajectory === "contraction") {
+        return "destruction";
+      }
+      return "neutral";
+    };
+
+    it("expansion は creation にマップ", () => {
+      expect(mapTrajectoryToPhase("expansion")).toBe("creation");
+    });
+
+    it("pivot は creation にマップ", () => {
+      expect(mapTrajectoryToPhase("pivot")).toBe("creation");
+    });
+
+    it("contraction は destruction にマップ", () => {
+      expect(mapTrajectoryToPhase("contraction")).toBe("destruction");
+    });
+
+    it("lateral は neutral にマップ", () => {
+      expect(mapTrajectoryToPhase("lateral")).toBe("neutral");
+    });
+
+    it("stable は neutral にマップ", () => {
+      expect(mapTrajectoryToPhase("stable")).toBe("neutral");
+    });
+  });
+
+  describe("日別の最多phaseの決定", () => {
+    type DriftPhase = "creation" | "destruction" | "neutral";
+
+    const determineDailyPhase = (counts: {
+      creation: number;
+      destruction: number;
+      neutral: number;
+    }): DriftPhase => {
+      const { creation, destruction, neutral } = counts;
+      const max = Math.max(creation, destruction, neutral);
+
+      if (max === 0) return "neutral";
+      if (creation === max) return "creation";
+      if (destruction === max) return "destruction";
+      return "neutral";
+    };
+
+    it("creationが最多ならcreation", () => {
+      expect(determineDailyPhase({ creation: 5, destruction: 2, neutral: 1 })).toBe("creation");
+    });
+
+    it("destructionが最多ならdestruction", () => {
+      expect(determineDailyPhase({ creation: 1, destruction: 5, neutral: 2 })).toBe("destruction");
+    });
+
+    it("neutralが最多ならneutral", () => {
+      expect(determineDailyPhase({ creation: 1, destruction: 2, neutral: 5 })).toBe("neutral");
+    });
+
+    it("すべて0ならneutral", () => {
+      expect(determineDailyPhase({ creation: 0, destruction: 0, neutral: 0 })).toBe("neutral");
+    });
+
+    it("同数の場合はcreationが優先", () => {
+      // creation === destruction の場合、creationを返す
+      expect(determineDailyPhase({ creation: 3, destruction: 3, neutral: 1 })).toBe("creation");
+    });
+
+    it("destruction と neutral が同数の場合は neutral を返す", () => {
+      // creation より destruction/neutral が多い場合
+      expect(determineDailyPhase({ creation: 1, destruction: 3, neutral: 3 })).toBe("destruction");
+    });
+  });
+});
+
+// ============================================================
+// v7.4: Extended Warning のテスト
+// ============================================================
+
+describe("ExtendedWarning (v7.4)", () => {
+  type DriftPhase = "creation" | "destruction" | "neutral";
+  type BaseState = "stable" | "overheat" | "stagnation";
+  type ExtendedWarningType =
+    | "creative_overheat"
+    | "destructive_overheat"
+    | "neutral_overheat"
+    | "exploratory_stagnation"
+    | "rest_stagnation"
+    | "deepening_stagnation"
+    | "stable";
+
+  type DriftWarning = {
+    state: BaseState;
+    severity: "none" | "low" | "mid" | "high";
+    recommendation: string;
+  };
+
+  // detectExtendedWarning のロジックを再現
+  const detectExtendedWarning = (
+    warning: DriftWarning,
+    phase: DriftPhase | null
+  ): { extendedType: ExtendedWarningType; isCreativeOverheat: boolean } => {
+    const baseState = warning.state;
+
+    if (baseState === "stable") {
+      return { extendedType: "stable", isCreativeOverheat: false };
+    }
+
+    if (baseState === "overheat") {
+      if (phase === "creation") {
+        return { extendedType: "creative_overheat", isCreativeOverheat: true };
+      } else if (phase === "destruction") {
+        return { extendedType: "destructive_overheat", isCreativeOverheat: false };
+      } else {
+        return { extendedType: "neutral_overheat", isCreativeOverheat: false };
+      }
+    }
+
+    if (baseState === "stagnation") {
+      if (phase === "creation") {
+        return { extendedType: "exploratory_stagnation", isCreativeOverheat: false };
+      } else if (phase === "destruction") {
+        return { extendedType: "deepening_stagnation", isCreativeOverheat: false };
+      } else {
+        return { extendedType: "rest_stagnation", isCreativeOverheat: false };
+      }
+    }
+
+    return { extendedType: "stable", isCreativeOverheat: false };
+  };
+
+  describe("Overheat + Phase の組み合わせ", () => {
+    const overheatWarning: DriftWarning = {
+      state: "overheat",
+      severity: "mid",
+      recommendation: "知的活動が過剰です。",
+    };
+
+    it("overheat + creation = creative_overheat", () => {
+      const result = detectExtendedWarning(overheatWarning, "creation");
+      expect(result.extendedType).toBe("creative_overheat");
+      expect(result.isCreativeOverheat).toBe(true);
+    });
+
+    it("overheat + destruction = destructive_overheat", () => {
+      const result = detectExtendedWarning(overheatWarning, "destruction");
+      expect(result.extendedType).toBe("destructive_overheat");
+      expect(result.isCreativeOverheat).toBe(false);
+    });
+
+    it("overheat + neutral = neutral_overheat", () => {
+      const result = detectExtendedWarning(overheatWarning, "neutral");
+      expect(result.extendedType).toBe("neutral_overheat");
+      expect(result.isCreativeOverheat).toBe(false);
+    });
+
+    it("overheat + null = neutral_overheat", () => {
+      const result = detectExtendedWarning(overheatWarning, null);
+      expect(result.extendedType).toBe("neutral_overheat");
+      expect(result.isCreativeOverheat).toBe(false);
+    });
+  });
+
+  describe("Stagnation + Phase の組み合わせ", () => {
+    const stagnationWarning: DriftWarning = {
+      state: "stagnation",
+      severity: "low",
+      recommendation: "思考活動が停滞しています。",
+    };
+
+    it("stagnation + creation = exploratory_stagnation", () => {
+      const result = detectExtendedWarning(stagnationWarning, "creation");
+      expect(result.extendedType).toBe("exploratory_stagnation");
+    });
+
+    it("stagnation + destruction = deepening_stagnation", () => {
+      const result = detectExtendedWarning(stagnationWarning, "destruction");
+      expect(result.extendedType).toBe("deepening_stagnation");
+    });
+
+    it("stagnation + neutral = rest_stagnation", () => {
+      const result = detectExtendedWarning(stagnationWarning, "neutral");
+      expect(result.extendedType).toBe("rest_stagnation");
+    });
+  });
+
+  describe("Stable の場合", () => {
+    const stableWarning: DriftWarning = {
+      state: "stable",
+      severity: "none",
+      recommendation: "安定した成長リズムです。",
+    };
+
+    it("stable + 任意のphase = stable", () => {
+      expect(detectExtendedWarning(stableWarning, "creation").extendedType).toBe("stable");
+      expect(detectExtendedWarning(stableWarning, "destruction").extendedType).toBe("stable");
+      expect(detectExtendedWarning(stableWarning, "neutral").extendedType).toBe("stable");
+      expect(detectExtendedWarning(stableWarning, null).extendedType).toBe("stable");
+    });
+
+    it("stable では isCreativeOverheat は常に false", () => {
+      expect(detectExtendedWarning(stableWarning, "creation").isCreativeOverheat).toBe(false);
+    });
+  });
+
+  describe("Creative Overheat の判定条件", () => {
+    it("creative overheat は overheat + creation の場合のみ true", () => {
+      const overheat: DriftWarning = { state: "overheat", severity: "mid", recommendation: "" };
+      const stagnation: DriftWarning = { state: "stagnation", severity: "mid", recommendation: "" };
+      const stable: DriftWarning = { state: "stable", severity: "none", recommendation: "" };
+
+      // overheat + creation のみ true
+      expect(detectExtendedWarning(overheat, "creation").isCreativeOverheat).toBe(true);
+
+      // それ以外は false
+      expect(detectExtendedWarning(overheat, "destruction").isCreativeOverheat).toBe(false);
+      expect(detectExtendedWarning(overheat, "neutral").isCreativeOverheat).toBe(false);
+      expect(detectExtendedWarning(stagnation, "creation").isCreativeOverheat).toBe(false);
+      expect(detectExtendedWarning(stable, "creation").isCreativeOverheat).toBe(false);
+    });
+  });
+});

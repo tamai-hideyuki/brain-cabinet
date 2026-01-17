@@ -6,6 +6,7 @@ import type {
   EvaluationListItem,
   EvaluationSummary,
   MetricsSummary,
+  V75Stats,
 } from '../../adapters/systemAdapter'
 import { useDataChangeSubscription } from '../useDataChangeSubscription'
 
@@ -15,24 +16,27 @@ export const useSystemInfo = () => {
   const [metrics, setMetrics] = useState<MetricsSummary | null>(null)
   const [voiceEvaluations, setVoiceEvaluations] = useState<EvaluationListItem[]>([])
   const [voiceSummary, setVoiceSummary] = useState<EvaluationSummary | null>(null)
+  const [v75Stats, setV75Stats] = useState<V75Stats | null>(null)
   const [loading, setLoading] = useState(true)
   const [healthLoading, setHealthLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const loadData = useCallback(async () => {
     try {
-      const [storageData, metricsData, voiceData, summaryData, healthData] = await Promise.all([
+      const [storageData, metricsData, voiceData, summaryData, healthData, v75Data] = await Promise.all([
         systemAdapter.getStorageStats(),
         systemAdapter.getMetrics(),
         systemAdapter.getVoiceEvaluations(20),
         systemAdapter.getVoiceSummary(),
         systemAdapter.getHealth(),
+        systemAdapter.getV75Stats().catch(() => null),
       ])
       setStats(storageData)
       setMetrics(metricsData)
       setVoiceEvaluations(voiceData.evaluations)
       setVoiceSummary(summaryData)
       setHealth(healthData)
+      setV75Stats(v75Data)
       setError(null)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'データ取得に失敗しました')
@@ -91,6 +95,7 @@ export const useSystemInfo = () => {
     metrics,
     voiceEvaluations,
     voiceSummary,
+    v75Stats,
     loading,
     healthLoading,
     error,

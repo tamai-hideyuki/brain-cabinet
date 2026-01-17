@@ -14,6 +14,8 @@ import { ThinkingTrendSection } from '../ThinkingTrendSection'
 import { InfluenceMapSection } from '../InfluenceMapSection'
 import { NetworkHealthSection } from '../NetworkHealthSection'
 import { ActivityCalendarSection } from '../ActivityCalendarSection'
+import { DriftDashboard } from '../DriftDashboard'
+import { useViewMode } from '../../../hooks/useViewMode'
 import './Dashboard.css'
 
 type DashboardProps = {
@@ -57,6 +59,7 @@ const getStateVariant = (state: string): 'default' | 'decision' | 'learning' => 
 }
 
 export const Dashboard = ({ onNoteClick, onReviewClick }: DashboardProps) => {
+  const { isDecisionMode, priorityCategories } = useViewMode()
   const [notes, setNotes] = useState<Note[]>([])
   const [totalNotes, setTotalNotes] = useState<number>(0)
   const [ptm, setPtm] = useState<PtmSummary | null>(null)
@@ -109,19 +112,35 @@ export const Dashboard = ({ onNoteClick, onReviewClick }: DashboardProps) => {
   const today = new Date()
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
 
+  // モードに応じてノートを優先度でソート
+  const sortByPriority = (noteList: Note[]) => {
+    return [...noteList].sort((a, b) => {
+      const aPriority = priorityCategories.indexOf(a.category || '')
+      const bPriority = priorityCategories.indexOf(b.category || '')
+      // 優先カテゴリにない場合は後ろに
+      const aScore = aPriority === -1 ? 999 : aPriority
+      const bScore = bPriority === -1 ? 999 : bPriority
+      // 優先度が同じ場合は更新日時でソート
+      if (aScore === bScore) {
+        return b.updatedAt - a.updatedAt
+      }
+      return aScore - bScore
+    })
+  }
+
   // 今日更新されたノート（ローカルタイムゾーンで比較）
-  const todayNotes = notes.filter((note) => {
-    const noteDate = new Date(note.updatedAt * 1000)
-    const noteDateStr = `${noteDate.getFullYear()}-${String(noteDate.getMonth() + 1).padStart(2, '0')}-${String(noteDate.getDate()).padStart(2, '0')}`
-    return noteDateStr === todayStr
-  })
+  const todayNotes = sortByPriority(
+    notes.filter((note) => {
+      const noteDate = new Date(note.updatedAt * 1000)
+      const noteDateStr = `${noteDate.getFullYear()}-${String(noteDate.getMonth() + 1).padStart(2, '0')}-${String(noteDate.getDate()).padStart(2, '0')}`
+      return noteDateStr === todayStr
+    })
+  )
 
-  // 最近更新されたノート（上位5件）
-  const recentNotes = [...notes]
-    .sort((a, b) => b.updatedAt - a.updatedAt)
-    .slice(0, 5)
+  // 最近更新されたノート（上位5件）- モードに応じて優先カテゴリを上位に
+  const recentNotes = sortByPriority(notes).slice(0, 5)
 
-  // レビュー待ち（scratchカテゴリのノート）
+  // レビュー待ち（scratchカテゴリのノート）- 実行モードでのみ表示
   const reviewNotes = notes.filter(
     (note) => note.category === 'scratch' || note.category === '一時メモ'
   )
@@ -175,6 +194,9 @@ export const Dashboard = ({ onNoteClick, onReviewClick }: DashboardProps) => {
       {/* 思考トレンド */}
       <ThinkingTrendSection range="7d" />
 
+      {/* ドリフトダッシュボード (v7.5) */}
+      <DriftDashboard rangeDays={14} />
+
       {/* 影響マップ */}
       <InfluenceMapSection onNoteClick={onNoteClick} />
 
@@ -222,43 +244,45 @@ export const Dashboard = ({ onNoteClick, onReviewClick }: DashboardProps) => {
         )}
       </div>
 
-      {/* レビュー待ち */}
-      <div className="dashboard__section">
-        <div className="dashboard__section-header">
-          <Text variant="subtitle">レビュー待ち</Text>
-          <Button variant="secondary" size="sm" onClick={onReviewClick}>
-            全て見る
-          </Button>
+      {/* レビュー待ち - 実行モードでのみ表示 */}
+      {!isDecisionMode && (
+        <div className="dashboard__section">
+          <div className="dashboard__section-header">
+            <Text variant="subtitle">レビュー待ち</Text>
+            <Button variant="secondary" size="sm" onClick={onReviewClick}>
+              全て見る
+            </Button>
+          </div>
+          {reviewNotes.length > 0 ? (
+            <div className="dashboard__note-list">
+              {reviewNotes.slice(0, 3).map((note) => (
+                <button
+                  key={note.id}
+                  className="dashboard__note-item"
+                  onClick={() => onNoteClick?.(note.id)}
+                >
+                  <Text variant="body" truncate>
+                    {note.title}
+                  </Text>
+                  <Text variant="caption">
+                    {new Date(note.updatedAt * 1000).toLocaleDateString('ja-JP')}
+                  </Text>
+                </button>
+              ))}
+              {reviewNotes.length > 3 && (
+                <Text variant="caption">他 {reviewNotes.length - 3}件</Text>
+              )}
+            </div>
+          ) : (
+            <div className="dashboard__empty">
+              <Text variant="caption">レビュー待ちのノートはありません</Text>
+            </div>
+          )}
         </div>
-        {reviewNotes.length > 0 ? (
-          <div className="dashboard__note-list">
-            {reviewNotes.slice(0, 3).map((note) => (
-              <button
-                key={note.id}
-                className="dashboard__note-item"
-                onClick={() => onNoteClick?.(note.id)}
-              >
-                <Text variant="body" truncate>
-                  {note.title}
-                </Text>
-                <Text variant="caption">
-                  {new Date(note.updatedAt * 1000).toLocaleDateString('ja-JP')}
-                </Text>
-              </button>
-            ))}
-            {reviewNotes.length > 3 && (
-              <Text variant="caption">他 {reviewNotes.length - 3}件</Text>
-            )}
-          </div>
-        ) : (
-          <div className="dashboard__empty">
-            <Text variant="caption">レビュー待ちのノートはありません</Text>
-          </div>
-        )}
-      </div>
+      )}
 
-      {/* 昇格候補 */}
-      {candidates.length > 0 && (
+      {/* 昇格候補 - 判断モードでのみ表示 */}
+      {isDecisionMode && candidates.length > 0 && (
         <div className="dashboard__section">
           <div className="dashboard__section-header">
             <Text variant="subtitle">昇格候補</Text>

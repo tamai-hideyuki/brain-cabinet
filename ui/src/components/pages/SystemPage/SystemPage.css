@@ -312,6 +312,57 @@
   font-family: 'SF Mono', 'Monaco', monospace;
 }
 
+/* v7.5 Phase Distribution */
+.system-page__phase-distribution {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.system-page__phase-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.system-page__phase-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.system-page__phase-info span:last-child {
+  margin-left: auto;
+  font-family: 'SF Mono', 'Monaco', monospace;
+  color: var(--color-text-muted);
+}
+
+.system-page__phase-bar-track {
+  height: 8px;
+  background: var(--color-bg-muted);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.system-page__phase-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.system-page__phase-bar-fill--creation {
+  background: linear-gradient(90deg, #22c55e, #4ade80);
+}
+
+.system-page__phase-bar-fill--destruction {
+  background: linear-gradient(90deg, #f97316, #fb923c);
+}
+
+.system-page__phase-bar-fill--neutral {
+  background: linear-gradient(90deg, #6b7280, #9ca3af);
+}
+
 @media (max-width: 640px) {
   .system-page {
     padding: 1rem;

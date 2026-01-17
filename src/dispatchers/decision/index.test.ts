@@ -7,6 +7,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // モック
 vi.mock("../../services/decision", () => ({
   searchDecisions: vi.fn(),
+  searchDecisionsWithContext: vi.fn(),
   getDecisionContext: vi.fn(),
   getPromotionCandidates: vi.fn(),
   compareDecisions: vi.fn(),
@@ -112,6 +113,97 @@ describe("decisionDispatcher", () => {
         minConfidence: 0.4,
         limit: undefined,
       });
+    });
+
+    // v7.5: クラスタコンテキスト付き検索
+    it("includeClusterContext=trueでsearchDecisionsWithContextを呼び出す", async () => {
+      vi.mocked(decisionService.searchDecisionsWithContext).mockResolvedValue({
+        results: [],
+        clusterSummary: [],
+        totalCount: 0,
+      });
+
+      await decisionDispatcher.search({ query: "test", includeClusterContext: true });
+
+      expect(decisionService.searchDecisionsWithContext).toHaveBeenCalledWith("test", {
+        intent: undefined,
+        minConfidence: 0.4,
+        limit: 50,
+        includeClusterContext: true,
+      });
+    });
+
+    it("includeClusterContext=falseでsearchDecisionsを呼び出す", async () => {
+      vi.mocked(decisionService.searchDecisions).mockResolvedValue([]);
+
+      await decisionDispatcher.search({ query: "test", includeClusterContext: false });
+
+      expect(decisionService.searchDecisions).toHaveBeenCalledWith("test", {
+        intent: undefined,
+        minConfidence: 0.4,
+        limit: 50,
+      });
+    });
+  });
+
+  // v7.5: searchWithContext
+  describe("searchWithContext", () => {
+    it("queryが空の場合エラーを投げる", async () => {
+      await expect(decisionDispatcher.searchWithContext({ query: "" })).rejects.toThrow();
+    });
+
+    it("searchDecisionsWithContextを呼び出す", async () => {
+      vi.mocked(decisionService.searchDecisionsWithContext).mockResolvedValue({
+        results: [],
+        clusterSummary: [],
+        totalCount: 0,
+      });
+
+      await decisionDispatcher.searchWithContext({ query: "test" });
+
+      expect(decisionService.searchDecisionsWithContext).toHaveBeenCalledWith("test", {
+        intent: undefined,
+        minConfidence: 0.4,
+        limit: 50,
+        includeClusterContext: true,
+      });
+    });
+
+    it("クラスタサマリーを含む結果を返す", async () => {
+      const mockResult = {
+        results: [
+          {
+            noteId: "note-1",
+            title: "Test Decision",
+            clusterId: 1,
+            clusterContext: {
+              clusterId: 1,
+              keywords: ["test", "keyword"],
+              noteCount: 10,
+              cohesion: 0.8,
+              role: "driver" as const,
+              drift: { contribution: 0.4, trend: "rising" as const },
+              influence: { hubness: 0.5, authority: 0.5 },
+            },
+          },
+        ],
+        clusterSummary: [
+          {
+            clusterId: 1,
+            keywords: ["test", "keyword"],
+            decisionCount: 1,
+            avgConfidence: 0.7,
+          },
+        ],
+        totalCount: 1,
+      };
+      vi.mocked(decisionService.searchDecisionsWithContext).mockResolvedValue(mockResult as any);
+
+      const result = await decisionDispatcher.searchWithContext({ query: "test" });
+
+      expect(result.clusterSummary).toHaveLength(1);
+      expect(result.clusterSummary[0].clusterId).toBe(1);
+      expect(result.results[0].clusterContext?.role).toBe("driver");
     });
   });
 

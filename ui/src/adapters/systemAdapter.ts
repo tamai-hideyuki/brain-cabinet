@@ -20,6 +20,11 @@ import {
   clearMetrics,
   type MetricsSummary,
 } from '../stores/metricsStore'
+import {
+  getDriftTimeline,
+  getPhaseCounts,
+  type DriftPhase,
+} from './driftAdapter'
 
 // 型をre-export
 export type {
@@ -28,6 +33,22 @@ export type {
   EvaluationListItem,
   EvaluationSummary,
   MetricsSummary,
+}
+
+// v7.5 統計型
+export type V75Stats = {
+  drift: {
+    totalDays: number
+    phaseCounts: Record<DriftPhase, number>
+    todayPhase: DriftPhase | null
+    averageDrift: number
+    currentEma: number
+  }
+  personalization: {
+    evaluatedClusters: number
+    avgAssertionRate: number
+    avgCausalRate: number
+  }
 }
 
 /**
@@ -89,4 +110,34 @@ export const getVoiceSummary = async (): Promise<EvaluationSummary> => {
  */
 export const resetVoiceEvaluations = async (): Promise<void> => {
   await clearVoiceEvaluations()
+}
+
+/**
+ * v7.5 統計を取得
+ */
+export const getV75Stats = async (): Promise<V75Stats> => {
+  const [driftData, voiceSummary] = await Promise.all([
+    getDriftTimeline(30),
+    getVoiceEvaluationSummary(),
+  ])
+
+  const phaseCounts = getPhaseCounts(driftData.days)
+  const todayPhase = driftData.days.length > 0
+    ? driftData.days[driftData.days.length - 1].phase ?? null
+    : null
+
+  return {
+    drift: {
+      totalDays: driftData.days.length,
+      phaseCounts,
+      todayPhase,
+      averageDrift: driftData.summary.mean,
+      currentEma: driftData.summary.todayEMA,
+    },
+    personalization: {
+      evaluatedClusters: voiceSummary.totalEvaluations,
+      avgAssertionRate: voiceSummary.avgAssertionRate,
+      avgCausalRate: voiceSummary.avgCausalRate,
+    },
+  }
 }

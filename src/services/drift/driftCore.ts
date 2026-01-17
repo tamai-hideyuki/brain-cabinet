@@ -48,6 +48,34 @@ export type DriftWarning = {
   recommendation: string;
 };
 
+/**
+ * v7.4: Extended Warning with Phase Context
+ *
+ * phaseと組み合わせて、過熱/停滞の質を判定
+ * - creative_overheat: 創造的な過熱（良い状態）
+ * - destructive_overheat: 消耗的な過熱（注意が必要）
+ * - exploratory_stagnation: 探索中の停滞
+ * - rest_stagnation: 休息中の停滞
+ */
+export type ExtendedWarningType =
+  | "creative_overheat"
+  | "destructive_overheat"
+  | "neutral_overheat"
+  | "exploratory_stagnation"
+  | "rest_stagnation"
+  | "deepening_stagnation"
+  | "stable";
+
+export type ExtendedWarning = {
+  baseState: "stable" | "overheat" | "stagnation";
+  extendedType: ExtendedWarningType;
+  phase: "creation" | "destruction" | "neutral" | null;
+  severity: "none" | "low" | "mid" | "high";
+  isCreativeOverheat: boolean;
+  recommendation: string;
+  insight: string;
+};
+
 export type DriftMode =
   | "exploration" // 探索フェーズ
   | "consolidation" // 統合フェーズ
@@ -58,6 +86,7 @@ export type DriftInsight = {
   angle: GrowthAngle;
   forecast: DriftForecast;
   warning: DriftWarning;
+  extendedWarning?: ExtendedWarning; // v7.4
   mode: DriftMode;
   advice: string;
   todayDrift: number;
@@ -275,6 +304,130 @@ export function detectWarning(data: DailyDrift[]): DriftWarning {
 }
 
 /**
+ * v7.4: Extended Warning（拡張警告）を検出
+ *
+ * 基本の warning と phase を組み合わせて、過熱/停滞の質を判定
+ */
+export function detectExtendedWarning(
+  warning: DriftWarning,
+  phase: "creation" | "destruction" | "neutral" | null
+): ExtendedWarning {
+  const baseState = warning.state;
+
+  // Stable の場合
+  if (baseState === "stable") {
+    return {
+      baseState: "stable",
+      extendedType: "stable",
+      phase,
+      severity: "none",
+      isCreativeOverheat: false,
+      recommendation: warning.recommendation,
+      insight: "安定した成長リズムを維持しています。",
+    };
+  }
+
+  // Overheat の場合
+  if (baseState === "overheat") {
+    if (phase === "creation") {
+      // Creative Overheat: 創造的な過熱（良い状態だが持続不可能）
+      return {
+        baseState: "overheat",
+        extendedType: "creative_overheat",
+        phase,
+        severity: warning.severity,
+        isCreativeOverheat: true,
+        recommendation:
+          "創造的な活動が活発です！この勢いを活かしつつ、適度な休息も取り入れましょう。",
+        insight:
+          "新しいアイデアや発見が多い「創造的過熱」状態です。燃え尽きないよう、成果を記録しながら進みましょう。",
+      };
+    } else if (phase === "destruction") {
+      // Destructive Overheat: 消耗的な過熱（注意が必要）
+      return {
+        baseState: "overheat",
+        extendedType: "destructive_overheat",
+        phase,
+        severity: warning.severity,
+        isCreativeOverheat: false,
+        recommendation:
+          "思考が収束方向に過剰に働いています。一度離れて、新しい視点を取り入れましょう。",
+        insight:
+          "既存の知識を整理・削減する活動が過剰な「消耗的過熱」状態です。インプットを増やすことをお勧めします。",
+      };
+    } else {
+      // Neutral Overheat: 中立的な過熱
+      return {
+        baseState: "overheat",
+        extendedType: "neutral_overheat",
+        phase,
+        severity: warning.severity,
+        isCreativeOverheat: false,
+        recommendation:
+          "活動量が多い状態です。方向性を確認し、創造か統合かを意識してみましょう。",
+        insight:
+          "活動量は多いが方向性が定まっていない状態です。目的を明確にすると効果的です。",
+      };
+    }
+  }
+
+  // Stagnation の場合
+  if (baseState === "stagnation") {
+    if (phase === "creation") {
+      // Exploratory Stagnation: 探索中の停滞
+      return {
+        baseState: "stagnation",
+        extendedType: "exploratory_stagnation",
+        phase,
+        severity: warning.severity,
+        isCreativeOverheat: false,
+        recommendation:
+          "新しいことを探索しようとしていますが、ペースが落ちています。小さなステップから始めましょう。",
+        insight:
+          "探索意欲はあるが行動が伴っていない状態です。ハードルを下げて小さく始めることをお勧めします。",
+      };
+    } else if (phase === "destruction") {
+      // Deepening Stagnation: 深化中の停滞
+      return {
+        baseState: "stagnation",
+        extendedType: "deepening_stagnation",
+        phase,
+        severity: warning.severity,
+        isCreativeOverheat: false,
+        recommendation:
+          "既存知識の整理が停滞しています。異なる分野との接点を探してみましょう。",
+        insight:
+          "収束・整理のフェーズで停滞しています。新しい刺激を取り入れると活性化します。",
+      };
+    } else {
+      // Rest Stagnation: 休息中の停滞
+      return {
+        baseState: "stagnation",
+        extendedType: "rest_stagnation",
+        phase,
+        severity: warning.severity,
+        isCreativeOverheat: false,
+        recommendation:
+          "休息期間が続いています。無理せず、興味のあることから少しずつ再開しましょう。",
+        insight:
+          "思考活動が休息状態です。これは自然なサイクルの一部かもしれません。",
+      };
+    }
+  }
+
+  // Fallback
+  return {
+    baseState,
+    extendedType: "stable",
+    phase,
+    severity: warning.severity,
+    isCreativeOverheat: false,
+    recommendation: warning.recommendation,
+    insight: "状態を分析中です。",
+  };
+}
+
+/**
  * Drift Mode（成長モード）を判定
  */
 export function detectDriftMode(
@@ -307,9 +460,13 @@ export function detectDriftMode(
 
 /**
  * 統合 Insight を生成
+ *
+ * @param rangeDays - 取得する日数（デフォルト: 30日）
+ * @param todayPhase - 今日のphase（v7.4: ExtendedWarning計算用）
  */
 export async function generateDriftInsight(
-  rangeDays: number = 30
+  rangeDays: number = 30,
+  todayPhase?: "creation" | "destruction" | "neutral" | null
 ): Promise<DriftInsight> {
   const data = await getDailyDriftData(rangeDays);
   const angle = calcGrowthAngle(data);
@@ -318,12 +475,33 @@ export async function generateDriftInsight(
   const mode = detectDriftMode(angle, warning);
 
   const today = data.length > 0 ? data[data.length - 1] : null;
-  const advice = generateAdvice(angle, warning, mode);
+
+  // v7.4: phaseが渡されていない場合は、driftServiceから今日のphaseを取得
+  let phase = todayPhase;
+  if (phase === undefined && today) {
+    try {
+      const { getDailyPhases } = await import("./driftService");
+      const phases = await getDailyPhases(7); // 直近7日分
+      phase = phases.get(today.date) ?? null;
+    } catch {
+      phase = null;
+    }
+  }
+
+  // v7.4: Extended Warning を計算
+  const extendedWarning = detectExtendedWarning(warning, phase ?? null);
+
+  // アドバイスは拡張警告のものを優先
+  const advice =
+    warning.state !== "stable"
+      ? extendedWarning.recommendation
+      : generateAdvice(angle, warning, mode);
 
   return {
     angle,
     forecast,
     warning,
+    extendedWarning,
     mode,
     advice,
     todayDrift: today?.drift ?? 0,

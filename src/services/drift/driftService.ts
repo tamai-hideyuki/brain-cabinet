@@ -24,10 +24,23 @@ export type DailyDriftRaw = {
   count: number;
 };
 
+/**
+ * Drift Phase (v7.2)
+ * - creation: 思考の拡大・新規探索（expansion, pivot）
+ * - destruction: 思考の縮小・収束（contraction）
+ * - neutral: 安定・横方向の移動（lateral, stable）
+ */
+export type DriftPhase = "creation" | "destruction" | "neutral";
+
 export type DailyDriftWithEMA = {
   date: string;
   drift: number; // 日別の合計 drift
   ema: number; // EMA
+  phase?: DriftPhase; // v7.2: 日別のドリフトフェーズ
+  annotation?: {
+    label: string;
+    note: string | null;
+  }; // v7.3: ユーザーアノテーション（オプション）
 };
 
 export type DriftState = "stable" | "overheat" | "stagnation";
@@ -169,23 +182,158 @@ export function classifyTrend(
 }
 
 /**
+ * 日別のドリフトフェーズを計算 (v7.2)
+ *
+ * note_history から日別の trajectory を集計し、
+ * 最も多い trajectory タイプに基づいて phase を決定
+ */
+export async function getDailyPhases(
+  rangeDays: number = 90
+): Promise<Map<string, DriftPhase>> {
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - rangeDays);
+  const startTimestamp = Math.floor(startDate.getTime() / 1000);
+
+  // 日別に履歴を取得し、各履歴のtrajectoryを判定
+  // Note: note_historyにはembeddingが保存されていないため、
+  // semantic_diffとクラスタIDの変化のみで判定する
+  const rows = await db.all<{
+    date: string;
+    prev_cluster_id: number | null;
+    new_cluster_id: number | null;
+    semantic_diff: string | null;
+    embedding: Buffer | null;
+  }>(sql`
+    SELECT
+      date(nh.created_at, 'unixepoch') as date,
+      nh.prev_cluster_id,
+      nh.new_cluster_id,
+      nh.semantic_diff,
+      ne.embedding
+    FROM note_history nh
+    JOIN notes n ON nh.note_id = n.id
+    LEFT JOIN note_embeddings ne ON nh.note_id = ne.note_id
+    WHERE nh.semantic_diff IS NOT NULL
+      AND nh.created_at >= ${startTimestamp}
+    ORDER BY nh.created_at ASC
+  `);
+
+  // 日別にtrajectoryを集計
+  const dailyTrajectories = new Map<string, { creation: number; destruction: number; neutral: number }>();
+
+  for (const row of rows) {
+    const semanticDiff = row.semantic_diff ? parseFloat(row.semantic_diff) : 0;
+    const clusterChanged = row.prev_cluster_id !== null &&
+      row.new_cluster_id !== null &&
+      row.prev_cluster_id !== row.new_cluster_id;
+
+    // trajectoryを判定（embeddingベクトル比較なしの簡易版）
+    // semantic_diffとクラスタ変化から推定
+    let trajectory: "expansion" | "contraction" | "pivot" | "lateral" | "stable";
+
+    if (semanticDiff < 0.15) {
+      trajectory = "stable";
+    } else if (clusterChanged) {
+      trajectory = "pivot";
+    } else if (semanticDiff > 0.5) {
+      // 大きな意味変化 = expansion（新しい概念への拡張）
+      trajectory = "expansion";
+    } else if (semanticDiff > 0.3) {
+      // 中程度の変化 = lateral（横方向の移動）
+      trajectory = "lateral";
+    } else {
+      // 小さな変化 = contraction（収束・洗練）
+      trajectory = "contraction";
+    }
+
+    // trajectoryをphaseにマッピングして集計
+    const counts = dailyTrajectories.get(row.date) ?? { creation: 0, destruction: 0, neutral: 0 };
+
+    if (trajectory === "expansion" || trajectory === "pivot") {
+      counts.creation++;
+    } else if (trajectory === "contraction") {
+      counts.destruction++;
+    } else {
+      counts.neutral++;
+    }
+
+    dailyTrajectories.set(row.date, counts);
+  }
+
+  // 日別の最多phaseを決定
+  const result = new Map<string, DriftPhase>();
+
+  for (const [date, counts] of dailyTrajectories) {
+    const { creation, destruction, neutral } = counts;
+    const max = Math.max(creation, destruction, neutral);
+
+    if (max === 0) {
+      result.set(date, "neutral");
+    } else if (creation === max) {
+      result.set(date, "creation");
+    } else if (destruction === max) {
+      result.set(date, "destruction");
+    } else {
+      result.set(date, "neutral");
+    }
+  }
+
+  return result;
+}
+
+/**
  * Drift Timeline を構築
+ *
+ * @param rangeDays - 取得する日数（デフォルト: 90日）
+ * @param includeAnnotations - アノテーションを含めるか（デフォルト: false）
  */
 export async function buildDriftTimeline(
-  rangeDays: number = 90
+  rangeDays: number = 90,
+  includeAnnotations: boolean = false
 ): Promise<DriftTimelineResponse> {
   // 1. Raw データ取得
   const rawData = await getDailyDriftRaw(rangeDays);
 
   // 2. EMA 計算
-  const days = calculateEMA(rawData);
+  const daysWithEMA = calculateEMA(rawData);
 
-  // 3. 統計計算（過去30日分）
+  // 3. 日別 phase を取得 (v7.2)
+  const dailyPhases = await getDailyPhases(rangeDays);
+
+  // 4. アノテーションを取得 (v7.3)
+  let annotationsMap: Map<string, { label: string; note: string | null }> | null = null;
+  if (includeAnnotations) {
+    const { getAnnotationsAsMap } = await import("./driftAnnotation");
+    const annotations = await getAnnotationsAsMap(rangeDays);
+    annotationsMap = new Map();
+    for (const [date, ann] of annotations) {
+      annotationsMap.set(date, { label: ann.label, note: ann.note });
+    }
+  }
+
+  // 5. phase と annotation を days に付与
+  const days: DailyDriftWithEMA[] = daysWithEMA.map((d) => {
+    const day: DailyDriftWithEMA = {
+      ...d,
+      phase: dailyPhases.get(d.date) ?? "neutral",
+    };
+
+    if (annotationsMap) {
+      const annotation = annotationsMap.get(d.date);
+      if (annotation) {
+        day.annotation = annotation;
+      }
+    }
+
+    return day;
+  });
+
+  // 6. 統計計算（過去30日分）
   const recentDays = days.slice(-30);
   const emaValues = recentDays.map((d) => d.ema);
   const { mean, stdDev } = calculateStats(emaValues);
 
-  // 4. 今日の状態を判定
+  // 7. 今日の状態を判定
   const today = days.length > 0 ? days[days.length - 1] : null;
   const todayDrift = today?.drift ?? 0;
   const todayEMA = today?.ema ?? 0;

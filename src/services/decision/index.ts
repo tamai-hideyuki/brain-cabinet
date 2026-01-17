@@ -6,6 +6,9 @@
  * - decision.context: 判断の詳細コンテキスト取得
  * - decision.promotionCandidates: 昇格候補の scratch 一覧
  * - decision.compare: 複数の判断を比較用に並べて取得
+ *
+ * v7.5: クラスタペルソナ統合
+ * - searchDecisionsWithContext: クラスタ情報を含む拡張検索
  */
 
 import { db } from "../../db/client";
@@ -24,6 +27,8 @@ import {
   type CounterevidencelItem,
   type CounterevidencelSummary,
 } from "../counterevidence";
+import { getClusterIdentity } from "../cluster/identity";
+import type { ClusterRole } from "../ptm/types";
 
 // -------------------------------------
 // 型定義
@@ -45,6 +50,41 @@ export type DecisionSearchResult = {
   excerpt: string;
   score: number;
   createdAt: number;
+  clusterId?: number | null; // v7.5: 所属クラスタID
+};
+
+// v7.5: クラスタペルソナコンテキスト
+export type ClusterContext = {
+  clusterId: number;
+  keywords: string[];
+  noteCount: number;
+  cohesion: number;
+  role: ClusterRole;
+  drift: {
+    contribution: number;
+    trend: "rising" | "falling" | "flat";
+  };
+  influence: {
+    hubness: number;
+    authority: number;
+  };
+};
+
+// v7.5: クラスタ情報を含む拡張検索結果
+export type DecisionSearchResultWithContext = DecisionSearchResult & {
+  clusterContext?: ClusterContext | null;
+};
+
+// v7.5: クラスタ別にグループ化された検索結果
+export type DecisionSearchWithClusterResponse = {
+  results: DecisionSearchResultWithContext[];
+  clusterSummary: {
+    clusterId: number;
+    keywords: string[];
+    decisionCount: number;
+    avgConfidence: number;
+  }[];
+  totalCount: number;
 };
 
 export type DecisionContext = {
@@ -180,6 +220,7 @@ export async function searchDecisions(
       content: string;
       createdAt: number;
       hybridScore?: number;
+      clusterId?: number | null; // v7.5
     };
     const noteId = noteData.id;
     const inference = await getLatestInference(noteId);
@@ -219,6 +260,7 @@ export async function searchDecisions(
       excerpt: makeExcerpt(noteData.content),
       score: Math.round(finalScore * 100) / 100,
       createdAt: noteData.createdAt,
+      clusterId: noteData.clusterId ?? null, // v7.5
     });
   }
 
@@ -226,6 +268,134 @@ export async function searchDecisions(
   return decisionResults
     .sort((a, b) => b.effectiveScore - a.effectiveScore)
     .slice(0, limit);
+}
+
+// -------------------------------------
+// v7.5: decision.searchWithContext
+// クラスタペルソナコンテキスト付き検索
+// -------------------------------------
+
+export type DecisionSearchWithContextOptions = DecisionSearchOptions & {
+  includeClusterContext?: boolean;
+};
+
+/**
+ * v7.5: クラスタペルソナコンテキスト付き判断検索
+ *
+ * 通常の判断検索に加えて、各判断が所属するクラスタの情報を付与する。
+ * これにより、判断がどのような思考領域から生まれたかがわかる。
+ */
+export async function searchDecisionsWithContext(
+  query: string,
+  options?: DecisionSearchWithContextOptions
+): Promise<DecisionSearchWithClusterResponse> {
+  const includeContext = options?.includeClusterContext ?? true;
+
+  // 通常の検索を実行
+  const baseResults = await searchDecisions(query, options);
+
+  // クラスタコンテキストを付与
+  const resultsWithContext: DecisionSearchResultWithContext[] = [];
+  const clusterMap = new Map<number, {
+    keywords: string[];
+    decisions: DecisionSearchResult[];
+  }>();
+
+  for (const result of baseResults) {
+    let clusterContext: ClusterContext | null = null;
+
+    if (includeContext && result.clusterId != null) {
+      const identity = await getClusterIdentity(result.clusterId);
+
+      if (identity) {
+        // クラスタの役割を判定（簡易版）
+        const role = determineClusterRoleSimple(identity);
+
+        clusterContext = {
+          clusterId: identity.clusterId,
+          keywords: identity.identity.keywords,
+          noteCount: identity.identity.noteCount,
+          cohesion: identity.identity.cohesion,
+          role,
+          drift: {
+            contribution: identity.identity.drift.contribution,
+            trend: identity.identity.drift.trend,
+          },
+          influence: {
+            hubness: identity.identity.influence.hubness,
+            authority: identity.identity.influence.authority,
+          },
+        };
+
+        // クラスタ別の集計用
+        if (!clusterMap.has(identity.clusterId)) {
+          clusterMap.set(identity.clusterId, {
+            keywords: identity.identity.keywords,
+            decisions: [],
+          });
+        }
+        clusterMap.get(identity.clusterId)!.decisions.push(result);
+      }
+    }
+
+    resultsWithContext.push({
+      ...result,
+      clusterContext,
+    });
+  }
+
+  // クラスタサマリーを生成
+  const clusterSummary = Array.from(clusterMap.entries()).map(
+    ([clusterId, data]) => ({
+      clusterId,
+      keywords: data.keywords,
+      decisionCount: data.decisions.length,
+      avgConfidence:
+        data.decisions.length > 0
+          ? Math.round(
+              (data.decisions.reduce((sum, d) => sum + d.confidence, 0) /
+                data.decisions.length) *
+                100
+            ) / 100
+          : 0,
+    })
+  );
+
+  // decisionCount順にソート
+  clusterSummary.sort((a, b) => b.decisionCount - a.decisionCount);
+
+  return {
+    results: resultsWithContext,
+    clusterSummary,
+    totalCount: resultsWithContext.length,
+  };
+}
+
+/**
+ * クラスタの役割を簡易判定
+ */
+function determineClusterRoleSimple(
+  identity: NonNullable<Awaited<ReturnType<typeof getClusterIdentity>>>
+): ClusterRole {
+  const { drift, influence, cohesion } = identity.identity;
+
+  // Driver: drift contribution が高い
+  if (drift.contribution > 0.3) {
+    return "driver";
+  }
+
+  // Stabilizer: cohesion が高く、drift が低い
+  if (cohesion > 0.8 && drift.contribution < 0.1 && influence.hubness > 0.5) {
+    return "stabilizer";
+  }
+
+  // Bridge: hubness と authority の両方が中程度
+  if (influence.hubness > 0.3 && influence.authority > 0.3) {
+    return "bridge";
+  }
+
+  // Isolated: デフォルト
+  return "isolated";
 }
 
 // -------------------------------------
