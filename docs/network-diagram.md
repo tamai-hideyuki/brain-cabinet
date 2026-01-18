@@ -1,5 +1,7 @@
 # Brain Cabinet ネットワーク構成図
 
+**v7.1.0**
+
 ## システム全体構成
 
 ```mermaid
@@ -13,6 +15,9 @@ flowchart TB
             GraphPage["GraphPage"]
             TimelinePage["TimelinePage"]
             BookmarkPage["BookmarkPage"]
+            SecretBoxPage["SecretBoxPage"]
+            CoachingPage["CoachingPage"]
+            LibraryPage["LibraryPage"]
         end
     end
 
@@ -31,26 +36,58 @@ flowchart TB
             ReviewRoute["/api/reviews"]
         end
 
-        subgraph Dispatchers["Dispatchers"]
-            NoteDisp["noteDispatcher"]
-            SearchDisp["searchDispatcher"]
-            ClusterDisp["clusterDispatcher"]
-            ReviewDisp["reviewDispatcher"]
-            DriftDisp["driftDispatcher"]
-            PTMDisp["ptmDispatcher"]
+        subgraph Dispatchers["Dispatchers (21)"]
+            NoteDisp["note"]
+            SearchDisp["search"]
+            ClusterDisp["cluster"]
+            ClusterDynDisp["clusterDynamics"]
+            ReviewDisp["review"]
+            DriftDisp["drift"]
+            PTMDisp["ptm"]
+            InfluenceDisp["influence"]
+            InsightDisp["insight"]
+            AnalyticsDisp["analytics"]
+            GPTDisp["gpt"]
+            SystemDisp["system"]
+            JobDisp["job"]
+            WorkflowDisp["workflow"]
+            RAGDisp["rag"]
+            DecisionDisp["decision"]
+            PromotionDisp["promotion"]
+            BookmarkDisp["bookmark"]
+            LLMInferenceDisp["llmInference"]
+            IsolationDisp["isolation"]
+            CoachingDisp["coaching"]
         end
 
-        subgraph Services["Service Layer"]
+        subgraph Services["Service Layer (27)"]
             NotesService["notesService"]
+            HistoryService["historyService"]
             SearchService["searchService"]
             EmbeddingService["embeddingService"]
-            ClusterService["clusterService"]
-            PTMService["PTM Engine"]
-            ReviewService["reviewService"]
-            InferenceService["inferenceService"]
-            DriftService["driftService"]
+            NoteImagesService["noteImages"]
+            ClusterService["cluster"]
+            PTMService["ptm"]
+            DriftService["drift"]
+            InfluenceService["influence"]
+            AnalyticsService["analytics"]
+            SemanticChangeService["semanticChange"]
+            IsolationService["isolation"]
+            CacheService["cache"]
+            InferenceService["inference"]
+            DecisionService["decision"]
+            PromotionService["promotion"]
+            CounterevService["counterevidence"]
+            TimeDecayService["timeDecay"]
+            ReviewService["review"]
             GPTService["gptService"]
-            AnalyticsService["analyticsService"]
+            BookmarkService["bookmark"]
+            SecretBoxService["secretBox"]
+            CoachingService["coachingService"]
+            VoiceEvalService["voiceEvaluation"]
+            ThinkingReportService["thinkingReport"]
+            HealthService["health"]
+            JobsService["jobs"]
         end
 
         subgraph Repositories["Repository Layer"]
@@ -60,24 +97,18 @@ flowchart TB
             ReviewRepo["reviewRepo"]
             SearchRepo["searchRepo"]
             InfluenceRepo["influenceRepo"]
+            HistoryRepo["historyRepo"]
         end
     end
 
     subgraph External["外部サービス"]
         OpenAI["OpenAI API<br/>(GPT-4)"]
+        Ollama["Ollama<br/>(Qwen2.5:3b)<br/>ローカルLLM"]
         Xenova["Xenova ML<br/>(MiniLM-L6-v2)<br/>ローカル実行"]
     end
 
     subgraph Database["データベース層"]
-        SQLite[("SQLite<br/>(data.db)<br/>WAL Mode")]
-        subgraph Tables["主要テーブル"]
-            NotesTable["notes"]
-            EmbeddingsTable["note_embeddings"]
-            ClustersTable["clusters"]
-            ReviewTable["review_schedules"]
-            PTMTable["ptm_snapshots"]
-            DriftTable["drift_events"]
-        end
+        SQLite[("SQLite<br/>(data.db)<br/>WAL Mode<br/>38 tables")]
     end
 
     %% クライアント接続
@@ -89,37 +120,83 @@ flowchart TB
     Routes --> Dispatchers
 
     %% ディスパッチャー → サービス
-    NoteDisp --> NotesService
-    SearchDisp --> SearchService
-    ClusterDisp --> ClusterService
-    ReviewDisp --> ReviewService
-    DriftDisp --> DriftService
-    PTMDisp --> PTMService
-
-    %% サービス間連携
-    NotesService --> InferenceService
-    NotesService --> EmbeddingService
-    SearchService --> EmbeddingService
-    ClusterService --> EmbeddingService
-    PTMService --> ClusterService
-    PTMService --> GPTService
-    ReviewService --> NotesService
+    Dispatchers --> Services
 
     %% サービス → リポジトリ
-    NotesService --> NotesRepo
-    EmbeddingService --> EmbeddingRepo
-    ClusterService --> ClusterRepo
-    ReviewService --> ReviewRepo
-    SearchService --> SearchRepo
-    DriftService --> InfluenceRepo
+    Services --> Repositories
 
     %% リポジトリ → データベース
     Repositories --> SQLite
-    SQLite --> Tables
 
     %% 外部サービス
     GPTService -->|"API Call"| OpenAI
+    InferenceService -->|"Local LLM"| Ollama
     EmbeddingService -->|"Local ML"| Xenova
+```
+
+## サービス層詳細
+
+```mermaid
+flowchart TD
+    subgraph Core["コアサービス (5)"]
+        Notes["notesService"]
+        History["historyService"]
+        Search["searchService"]
+        Embedding["embeddingService"]
+        NoteImages["noteImages"]
+    end
+
+    subgraph Analysis["分析サービス (8)"]
+        Cluster["cluster"]
+        PTM["ptm"]
+        Drift["drift"]
+        Influence["influence"]
+        Analytics["analytics"]
+        SemanticChange["semanticChange"]
+        Isolation["isolation"]
+        Cache["cache"]
+    end
+
+    subgraph Inference["推論サービス (5)"]
+        InferenceS["inference"]
+        Decision["decision"]
+        Promotion["promotion"]
+        Counterev["counterevidence"]
+        TimeDecay["timeDecay"]
+    end
+
+    subgraph Learning["学習サービス (1)"]
+        Review["review"]
+    end
+
+    subgraph AI["AI連携 (1)"]
+        GPT["gptService"]
+    end
+
+    subgraph Additional["追加機能 (5)"]
+        Bookmark["bookmark"]
+        SecretBox["secretBox"]
+        Coaching["coachingService"]
+        VoiceEval["voiceEvaluation"]
+        ThinkingReport["thinkingReport"]
+    end
+
+    subgraph Ops["運用 (2)"]
+        Health["health"]
+        Jobs["jobs"]
+    end
+
+    %% 依存関係
+    Notes --> Embedding
+    Notes --> InferenceS
+    Search --> Embedding
+    Cluster --> Embedding
+    PTM --> Cluster
+    PTM --> GPT
+    Drift --> Embedding
+    Influence --> Embedding
+    Review --> Notes
+    Coaching --> GPT
 ```
 
 ## データフロー詳細
@@ -135,6 +212,7 @@ sequenceDiagram
     participant Service as Services
     participant Repo as Repository
     participant DB as SQLite
+    participant LLM as Ollama
 
     User->>UI: ノート作成
     UI->>API: POST /api/v1<br/>{action: "note.create"}
@@ -145,6 +223,8 @@ sequenceDiagram
     Repo->>DB: INSERT notes
 
     Service->>Service: inferenceService<br/>(タイプ推論)
+    Service->>LLM: ローカルLLM推論
+    LLM-->>Service: 推論結果
     Service->>Repo: inferenceRepo.save()
     Repo->>DB: INSERT note_inferences
 
@@ -160,39 +240,36 @@ sequenceDiagram
     UI-->>User: 表示更新
 ```
 
-### 検索フロー
+### Temporal Clustering フロー (v7)
 
 ```mermaid
 sequenceDiagram
-    participant User as ユーザー
-    participant UI as React UI
-    participant API as Search API
-    participant Service as searchService
+    participant Job as Job Worker
+    participant Cluster as clusterService
     participant Embed as embeddingService
-    participant Repo as Repositories
+    participant Repo as Repository
     participant DB as SQLite
-    participant ML as Xenova ML
 
-    User->>UI: 検索クエリ入力
-    UI->>API: GET /api/search?query=...&mode=semantic
-    API->>Service: searchService.search()
+    Job->>Cluster: rebuildClusters()
+    Cluster->>Embed: getAllEmbeddings()
+    Embed->>DB: SELECT embeddings
+    DB-->>Embed: embeddings[]
 
-    alt セマンティック検索
-        Service->>Embed: generateEmbedding(query)
-        Embed->>ML: ベクトル生成
-        ML-->>Embed: 384次元ベクトル
-        Service->>Repo: embeddingRepo.searchSimilar()
-        Repo->>DB: コサイン類似度検索
-    else キーワード検索
-        Service->>Repo: searchRepo.search()
-        Repo->>DB: FTS5検索
-    end
+    Cluster->>Cluster: K-Means clustering
 
-    DB-->>Repo: 検索結果
-    Repo-->>Service: ランク付け結果
-    Service-->>API: SearchResult[]
-    API-->>UI: JSON Response
-    UI-->>User: 結果表示
+    Cluster->>Repo: createSnapshot()
+    Repo->>DB: INSERT clusteringSnapshots
+
+    Cluster->>Repo: saveSnapshotClusters()
+    Repo->>DB: INSERT snapshotClusters
+
+    Cluster->>Repo: computeLineage()
+    Repo->>DB: INSERT clusterLineage
+
+    Cluster->>Repo: detectEvents()
+    Repo->>DB: INSERT clusterEvents<br/>(split/merge/extinct/emerge)
+
+    Cluster-->>Job: 完了
 ```
 
 ## レイヤー構成
@@ -208,8 +285,8 @@ flowchart LR
     subgraph Application["アプリケーション層"]
         direction TB
         A1["Routes"]
-        A2["Dispatchers"]
-        A3["Services"]
+        A2["Dispatchers (21)"]
+        A3["Services (27)"]
     end
 
     subgraph Domain["ドメイン層"]
@@ -220,9 +297,10 @@ flowchart LR
 
     subgraph Infrastructure["インフラ層"]
         direction TB
-        I1["SQLite / Drizzle ORM"]
-        I2["External APIs"]
-        I3["Local ML Models"]
+        I1["SQLite / Drizzle ORM<br/>(38 tables)"]
+        I2["External APIs<br/>(OpenAI)"]
+        I3["Local LLM<br/>(Ollama)"]
+        I4["Local ML<br/>(Xenova)"]
     end
 
     Presentation --> Application
@@ -230,124 +308,43 @@ flowchart LR
     Domain --> Infrastructure
 ```
 
-## コンポーネント依存関係
+## ディスパッチャー一覧（21個）
 
-```mermaid
-flowchart TD
-    subgraph Core["コアサービス"]
-        Notes["notesService"]
-        Embedding["embeddingService"]
-        Search["searchService"]
-    end
+| ディスパッチャー | 主要アクション |
+|-----------------|----------------|
+| note | create, get, update, delete, list |
+| search | query, categories, byTitle |
+| cluster | list, get, rebuild |
+| clusterDynamics | get |
+| drift | getTimeline, getState |
+| ptm | latest, history |
+| influence | graph, topInfluencers |
+| insight | overview, growth |
+| analytics | summary |
+| gpt | search, context, coachDecision |
+| system | health, embed, rebuildFts |
+| job | getStatus, list |
+| workflow | reconstruct |
+| rag | query |
+| decision | search, context, compare |
+| promotion | getCandidates, dismiss, promote |
+| review | queue, start, submit, schedule |
+| bookmark | list, create, update, delete |
+| llmInference | run, get, list |
+| isolation | detect, list |
+| coaching | start, message, end |
 
-    subgraph Analysis["分析サービス"]
-        Cluster["clusterService"]
-        PTM["PTM Engine"]
-        Drift["driftService"]
-        Influence["influenceService"]
-    end
+## サービス一覧（27個）
 
-    subgraph Learning["学習サービス"]
-        Review["reviewService"]
-        Question["questionGenerator"]
-        SM2["SM-2 Algorithm"]
-    end
-
-    subgraph AI["AI連携"]
-        GPT["gptService"]
-        Xenova["Xenova Embedding"]
-    end
-
-    Notes --> Embedding
-    Notes --> Search
-    Search --> Embedding
-
-    Cluster --> Embedding
-    PTM --> Cluster
-    PTM --> GPT
-    Drift --> Embedding
-    Influence --> Embedding
-
-    Review --> Notes
-    Review --> Question
-    Question --> SM2
-
-    Embedding --> Xenova
-```
-
-## 主要テーブル関係
-
-```mermaid
-erDiagram
-    notes ||--o{ note_history : "バージョン管理"
-    notes ||--o| note_embeddings : "ベクトル"
-    notes ||--o| note_inferences : "タイプ推論"
-    notes }o--|| clusters : "所属"
-    notes ||--o{ review_schedules : "復習予定"
-    notes ||--o{ recall_questions : "質問"
-
-    clusters ||--o{ cluster_dynamics : "日次スナップショット"
-    clusters ||--o{ concept_graph_edges : "クラスタ間影響"
-
-    notes ||--o{ note_influence_edges : "ノート間影響"
-    notes ||--o{ drift_events : "ドリフト検出"
-
-    ptm_snapshots ||--o{ clusters : "思考モデル"
-
-    notes {
-        string id PK
-        string title
-        string content
-        string type
-        string cluster_id FK
-        datetime created_at
-    }
-
-    clusters {
-        string id PK
-        string name
-        string persona
-        float cohesion
-    }
-
-    review_schedules {
-        string id PK
-        string note_id FK
-        datetime next_review_at
-        float easiness_factor
-        int interval
-    }
-```
-
-## デプロイ構成
-
-```mermaid
-flowchart TB
-    subgraph Local["ローカル環境"]
-        Dev["開発サーバー<br/>localhost:3000"]
-        DevDB[("data.db<br/>SQLite")]
-        Dev --> DevDB
-    end
-
-    subgraph Production["本番環境 (想定)"]
-        LB["Load Balancer"]
-        App1["App Server 1"]
-        App2["App Server 2"]
-        ProdDB[("SQLite / LibSQL<br/>WAL Mode")]
-
-        LB --> App1
-        LB --> App2
-        App1 --> ProdDB
-        App2 --> ProdDB
-    end
-
-    subgraph External["外部サービス"]
-        ClerkProd["Clerk Auth"]
-        OpenAIProd["OpenAI API"]
-    end
-
-    Production --> External
-```
+| カテゴリ | サービス |
+|---------|----------|
+| コア | notesService, historyService, searchService, embeddingService, noteImages |
+| 分析 | cluster, ptm, drift, influence, analytics, semanticChange, isolation, cache |
+| 推論 | inference, decision, promotion, counterevidence, timeDecay |
+| 学習 | review |
+| AI | gptService |
+| 追加機能 | bookmark, secretBox, coachingService, voiceEvaluation, thinkingReport |
+| 運用 | health, jobs |
 
 ---
 
@@ -357,9 +354,10 @@ flowchart TB
 |---------|------|
 | フロントエンド | React, TypeScript, TailwindCSS |
 | バックエンド | Hono (Node.js), TypeScript |
-| データベース | SQLite (Drizzle ORM), WAL Mode |
+| データベース | SQLite (Drizzle ORM), WAL Mode, 38 tables |
 | 認証 | Clerk (OAuth) |
-| ML/AI | Xenova/all-MiniLM-L6-v2 (ローカル), OpenAI API |
+| LLM | Ollama (ローカル), OpenAI API |
+| ML | Xenova/all-MiniLM-L6-v2 (ローカル) |
 | ビルド | Vite, esbuild |
 
 ## ポート構成
@@ -368,4 +366,9 @@ flowchart TB
 |---------|--------|------|
 | Backend API | 3000 | Hono サーバー |
 | Frontend Dev | 5173 | Vite 開発サーバー |
+| Ollama | 11434 | ローカルLLMサーバー |
 | SQLite | - | ファイルベース (data.db) |
+
+---
+
+最終更新: 2026-01-19

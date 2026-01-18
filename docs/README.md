@@ -1,64 +1,29 @@
 # Brain Cabinet ドキュメント
 
-> v5.3.0 統合 Command API による個人思考ログ管理システム
+> v7.1.0 統合 Command API による個人思考ログ管理システム
 
 ---
 
 ## ドキュメント一覧
 
-### アーキテクチャ・設計
-
 | ドキュメント | 説明 |
 |-------------|------|
-| [architecture.md](./architecture.md) | システム全体の設計書。レイヤー構成、依存関係、各コンポーネントの役割を詳細に解説 |
-| [functional-ddd-migration.md](./functional-ddd-migration.md) | 関数型DDD移行計画書。v6.0.0に向けたアーキテクチャ刷新ロードマップ |
-| [network-diagram.md](./network-diagram.md) | ネットワーク構成図。Mermaid形式でシステム全体構成、データフロー、コンポーネント依存関係を可視化 |
-| [security-diagram.md](./security-diagram.md) | セキュリティ構成図。認証フロー、アクセス制御、機密情報管理、脅威モデルを解説 |
-| [er-diagram.md](./er-diagram.md) | データベースER図。21テーブルの関係をMermaid形式で表現 |
-
-### 機能詳細
-
-| ドキュメント | 説明 |
-|-------------|------|
-| [secret-box.md](./secret-box.md) | シークレットBOXアーキテクチャ。画像・動画保存機能の設計と実装詳細 |
-| [spaced-review.md](./spaced-review.md) | 間隔反復学習（Spaced Review）とSM-2アルゴリズムの実装詳細 |
-| [reviewSchedule.md](./reviewSchedule.md) | レビュー評価と再学習スケジュールのクイックリファレンス |
-
-### UI・その他
-
-| ドキュメント | 説明 |
-|-------------|------|
-| [markdown-rendering.md](./markdown-rendering.md) | Markdownレンダリング実装マニュアル |
-| [suggestion.md](./suggestion.md) | UI機能提案書（Decision-First UIの設計概要） |
-| [template.md](./template.md) | ノート作成テンプレート集 |
-| [api-tools.json](./api-tools.json) | GPT Actions インポート用OpenAPI定義 |
+| [OVERVIEW.md](./OVERVIEW.md) | 機能概要・システム全体の説明 |
+| [architecture.md](./architecture.md) | システム設計書（38テーブル、21ディスパッチャー、27サービス） |
+| [er-diagram.md](./er-diagram.md) | データベースER図（Mermaid形式） |
+| [network-diagram.md](./network-diagram.md) | ネットワーク構成図・データフロー |
+| [security-diagram.md](./security-diagram.md) | セキュリティ構成図・認証フロー |
 
 ---
 
-## 目次（このドキュメント）
+## 目次
 
-1. [概要](#概要)
-2. [クイックスタート](#クイックスタート)
-3. [API リファレンス](#api-リファレンス)
-4. [エラーコード](#エラーコード)
-5. [GPT連携設定](#gpt連携設定)
-6. [同期コマンド](#同期コマンド)
-7. [テストガイド](#テストガイド)
-8. [バージョン履歴](#バージョン履歴)
-
----
-
-## 概要
-
-Brain Cabinet は、個人の思考ログ（ノート）を構造化し、GPT/AIエージェントと連携して再利用するためのナレッジ基盤です。
-
-### 主な機能
-
-- **統合 Command API**: 単一エンドポイント `/api/v1` ですべての操作を実行
-- **三層検索**: キーワード（FTS5）/ セマンティック（Embedding）/ ハイブリッド
-- **思考パターン分析**: PTM（Personal Thinking Model）による Drift・Influence・Dynamics 追跡
-- **クラスタリング**: K-Means によるトピック自動分類
-- **履歴管理**: Semantic Diff による意味的変化の追跡
+1. [クイックスタート](#クイックスタート)
+2. [API リファレンス](#api-リファレンス)
+3. [エラーコード](#エラーコード)
+4. [GPT連携設定](#gpt連携設定)
+5. [同期コマンド](#同期コマンド)
+6. [テストガイド](#テストガイド)
 
 ---
 
@@ -106,8 +71,7 @@ POST /api/v1
 Content-Type: application/json
 
 {
-  "domain": "note" | "search" | "cluster" | "gpt" | ...,
-  "action": "create" | "get" | "list" | ...,
+  "action": "domain.command",
   "payload": { ... }
 }
 ```
@@ -124,7 +88,9 @@ Content-Type: application/json
 
 ---
 
-### Note ドメイン
+### 主要ドメイン（21ディスパッチャー）
+
+#### Note ドメイン
 
 | Action | 説明 | Payload |
 |--------|------|---------|
@@ -137,38 +103,37 @@ Content-Type: application/json
 | `note.revert` | 履歴から復元 | `{ noteId, historyId }` |
 | `note.batchDelete` | 一括削除 | `{ ids[] }` |
 
----
-
-### Search ドメイン
+#### Search ドメイン
 
 | Action | 説明 | Payload |
 |--------|------|---------|
-| `search.query` | 検索（モード切替可能） | `{ query, mode?, category?, tags?, limit? }` |
-| `search.categories` | カテゴリ一覧取得 | - |
+| `search.query` | 検索 | `{ query, mode?, category?, tags?, limit? }` |
+| `search.categories` | カテゴリ一覧 | - |
 | `search.byTitle` | タイトル検索 | `{ title, exact?, limit? }` |
 
-#### search.query の mode パラメータ
+**mode パラメータ:**
+- `keyword` - キーワード検索（TF-IDF + FTS5）※デフォルト
+- `semantic` - セマンティック検索（Embedding類似度）
+- `hybrid` - ハイブリッド検索（keyword 60% + semantic 40%）
 
-| mode | 説明 |
-|------|------|
-| `keyword` | キーワード検索（TF-IDF + FTS5）※デフォルト |
-| `semantic` | セマンティック検索（Embedding類似度） |
-| `hybrid` | ハイブリッド検索（keyword 60% + semantic 40%） |
-
----
-
-### Cluster ドメイン
+#### Cluster ドメイン
 
 | Action | 説明 | Payload |
 |--------|------|---------|
 | `cluster.list` | クラスタ一覧 | - |
 | `cluster.get` | クラスタ詳細 | `{ id }` |
-| `cluster.build` | 再構築 | `{ k? }` |
-| `cluster.identity` | アイデンティティ | `{ id }` |
+| `cluster.rebuild` | 再構築 | `{ k? }` |
 
----
+#### Review ドメイン
 
-### GPT ドメイン
+| Action | 説明 | Payload |
+|--------|------|---------|
+| `review.queue` | レビュー待ち一覧 | - |
+| `review.start` | レビュー開始 | `{ noteId }` |
+| `review.submit` | レビュー結果送信 | `{ scheduleId, quality }` |
+| `review.schedule` | スケジュール作成 | `{ noteId }` |
+
+#### GPT ドメイン
 
 | Action | 説明 | Payload |
 |--------|------|---------|
@@ -176,27 +141,42 @@ Content-Type: application/json
 | `gpt.context` | コンテキスト取得 | `{ noteId }` |
 | `gpt.task` | タスク推奨 | - |
 | `gpt.overview` | 統計情報 | - |
+| `gpt.coachDecision` | 意思決定支援 | `{ question }` |
 
----
+#### LLM Inference ドメイン
 
-### PTM ドメイン（Personal Thinking Model）
+| Action | 説明 | Payload |
+|--------|------|---------|
+| `llmInference.run` | LLM推論実行 | `{ noteId }` |
+| `llmInference.get` | 推論結果取得 | `{ noteId }` |
+| `llmInference.list` | 推論結果一覧 | `{ limit? }` |
 
-| Action | 説明 |
-|--------|------|
-| `ptm.today` | 今日のスナップショット |
-| `ptm.insight` | インサイト |
-| `ptm.dynamics` | 動態メトリクス |
-| `ptm.stability` | 安定性メトリクス |
+#### Coaching ドメイン
 
----
+| Action | 説明 | Payload |
+|--------|------|---------|
+| `coaching.start` | セッション開始 | `{ goal? }` |
+| `coaching.message` | メッセージ送信 | `{ sessionId, content }` |
+| `coaching.end` | セッション終了 | `{ sessionId }` |
 
-### Insight ドメイン
+#### その他のドメイン
 
-| Action | 説明 |
-|--------|------|
-| `insight.lite` | GPT用簡潔版 |
-| `insight.full` | 全データ |
-| `insight.coach` | 今日の助言 |
+| ドメイン | 主要Action |
+|---------|-----------|
+| `clusterDynamics` | get |
+| `drift` | getTimeline, getState |
+| `ptm` | latest, history |
+| `influence` | graph, topInfluencers |
+| `insight` | overview, growth |
+| `analytics` | summary |
+| `bookmark` | list, create, update, delete |
+| `isolation` | detect, list |
+| `promotion` | getCandidates, dismiss, promote |
+| `decision` | search, context, compare |
+| `rag` | query |
+| `system` | health, embed, rebuildFts |
+| `job` | getStatus, list |
+| `workflow` | reconstruct |
 
 ---
 
@@ -239,8 +219,8 @@ Content-Type: application/json
 ## 主要API
 - gpt.search: 検索（mode=hybrid 推奨）
 - gpt.context: ノート詳細
-- gpt.task: タスク推奨
-- insight.lite: 思考状態サマリー
+- gpt.coachDecision: 意思決定支援
+- insight.overview: 思考状態サマリー
 ```
 
 ### レスポンスフォーマット
@@ -249,7 +229,7 @@ Content-Type: application/json
 [回答本文]
 
 ---
-📚 参照ノート:
+参照ノート:
 - [ノートタイトル](ID: xxx) - 関連度: 高
 ```
 
@@ -314,53 +294,6 @@ src/utils/
 │   └── index.test.ts
 ```
 
-### テスト命名規則
-
-```typescript
-// 日本語・振る舞い駆動
-describe("slugify", () => {
-  it("スペースをハイフンに変換する", () => { ... });
-});
-```
-
----
-
-## バージョン履歴
-
-| バージョン | 主な変更 |
-|-----------|---------|
-| v5.3.0 | シークレットBOX（画像・動画保存）追加 |
-| v5.2.0 | ブックマーク機能追加 |
-| v4.8.0 | Decision-First + Spaced Review |
-| v4.6.0 | レビュー固定版機能 (fixRevision) |
-| v4.5.0 | Active Recall 質問自動生成 |
-| v3.0.0 | 統合 Command API 導入 |
-
-## v3 移行ガイド（レガシー）
-
-### v2 → v3 の変更点
-
-| v2 | v3+ |
-|----|-----|
-| `GET /api/notes` | `POST /api/v1 { action: "note.list" }` |
-| `GET /api/notes/:id` | `POST /api/v1 { action: "note.get", payload: { id } }` |
-| `POST /api/notes` | `POST /api/v1 { action: "note.create", payload: { ... } }` |
-| `GET /api/search?q=...` | `POST /api/v1 { action: "search.query", payload: { query, mode: "hybrid" } }` |
-
-### 移行チェックリスト
-
-- [ ] API呼び出しを `/api/v1` に変更
-- [ ] レスポンス処理を `ok` フラグベースに変更
-- [ ] エラーハンドリングを統一形式に対応
-
----
-
-## 関連ファイル
-
-| ファイル | 説明 |
-|----------|------|
-| [api-tools.json](./api-tools.json) | GPT Actions インポート用JSON |
-
 ---
 
 ## 技術スタック
@@ -372,9 +305,10 @@ describe("slugify", () => {
 | ORM | Drizzle ORM |
 | 全文検索 | SQLite FTS5 |
 | Embedding | ローカル MiniLM |
+| LLM | Ollama / OpenAI API |
 | 日本語NLP | TinySegmenter |
 | ロギング | Pino |
 
 ---
 
-**Brain Cabinet** - Your External Brain for AI
+最終更新: 2026-01-19
