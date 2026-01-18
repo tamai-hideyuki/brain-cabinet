@@ -2,6 +2,8 @@
  * GPT ドメイン ディスパッチャー
  */
 
+import * as fs from "node:fs";
+import * as path from "node:path";
 import * as gptService from "../../services/gptService";
 import { getGptContext } from "../../services/gptService/context/gptContext";
 import * as searchService from "../../services/searchService";
@@ -119,5 +121,46 @@ export const gptDispatcher = {
       maxPriorities: p?.maxPriorities,
       maxRecommendations: p?.maxRecommendations,
     });
+  },
+
+  async docs(payload: unknown) {
+    const p = payload as { name?: string } | undefined;
+    const docsDir = path.resolve(process.cwd(), "docs");
+
+    // 利用可能なドキュメント一覧
+    const availableDocs = [
+      { name: "README", file: "README.md", description: "APIリファレンス・開発ガイド" },
+      { name: "OVERVIEW", file: "OVERVIEW.md", description: "機能概要・システム全体の説明" },
+      { name: "architecture", file: "architecture.md", description: "システム設計書（38テーブル、21ディスパッチャー、27サービス）" },
+      { name: "er-diagram", file: "er-diagram.md", description: "データベースER図（Mermaid形式）" },
+      { name: "network-diagram", file: "network-diagram.md", description: "ネットワーク構成図・データフロー" },
+      { name: "security-diagram", file: "security-diagram.md", description: "セキュリティ構成図・認証フロー" },
+    ];
+
+    // nameが指定されていない場合は一覧を返す
+    if (!p?.name) {
+      return {
+        message: "利用可能なドキュメント一覧です。name パラメータで取得したいドキュメントを指定してください。",
+        available: availableDocs,
+      };
+    }
+
+    // 指定されたドキュメントを検索
+    const doc = availableDocs.find(d => d.name.toLowerCase() === p.name!.toLowerCase());
+    if (!doc) {
+      throw new AppError(ErrorCodes.VALIDATION_INVALID_ENUM, `Unknown document: ${p.name}. Available: ${availableDocs.map(d => d.name).join(", ")}`, { field: "name" });
+    }
+
+    const filePath = path.join(docsDir, doc.file);
+    if (!fs.existsSync(filePath)) {
+      throw new AppError(ErrorCodes.INTERNAL, `Document file not found: ${doc.file}`, { field: "name" });
+    }
+
+    const content = fs.readFileSync(filePath, "utf-8");
+    return {
+      name: doc.name,
+      description: doc.description,
+      content,
+    };
   },
 };
