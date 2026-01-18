@@ -2,6 +2,8 @@
 
 **個人の思考を構造化し、AIと連携して成長を支援する統合知識管理システム**
 
+**v7.1.0**
+
 ---
 
 ## コンセプト
@@ -19,7 +21,9 @@ Brain Cabinetは単なるメモアプリではなく、個人の思考を構造�
 | 作成・編集・削除 | Markdownベースのノート管理 |
 | 履歴管理 | 変更履歴の追跡、任意のバージョンへのロールバック |
 | 画像埋め込み | ドラッグ&ドロップでノートに画像を直接埋め込み |
+| ソフトデリート | 削除したノートの復元が可能 |
 | 一括操作 | 複数ノートの一括削除・カテゴリ変更 |
+| 視点タグ | engineer/po/user/cto/team/stakeholder |
 
 ### 2. 高度な検索
 
@@ -48,7 +52,9 @@ Brain Cabinetは単なるメモアプリではなく、個人の思考を構造�
 
 - **K-Means**: Embeddingベースの自動トピック分類
 - **Temporal Clustering (v7)**: 思考系譜の時系列追跡
-  - クラスタの分裂・統合・消滅イベント検出
+  - クラスタの分裂・統合・消滅・出現イベント検出
+  - クラスタ継承関係の追跡（lineage）
+  - 論理クラスタID（clusterIdentities）による永続識別
   - 思考の進化を可視化
 
 ### 5. Spaced Review（間隔反復学習）
@@ -65,6 +71,7 @@ Brain Cabinetは単なるメモアプリではなく、個人の思考を構造�
 - **フォルダ**: 整理用の入れ物
 - **ノート参照**: 既存ノートへのショートカット
 - **外部リンク**: URLの保存
+- **3D空間位置**: libraryPosition/libraryColor（実験的）
 
 ### 7. シークレットBOX
 
@@ -72,6 +79,25 @@ Brain Cabinetは単なるメモアプリではなく、個人の思考を構造�
 - ドラッグ&ドロップでアップロード
 - サムネイル自動生成
 - フォルダ整理
+
+### 8. コーチング機能
+
+苫米地式コーチングに基づくセッション：
+- **goal_setting**: 目標設定
+- **abstraction**: 抽象化
+- **self_talk**: セルフトーク
+- **integration**: 統合
+
+### 9. ポモドーロタイマー
+
+- セッション履歴の記録
+- タイマー状態管理
+
+### 10. Voice Evaluation（v7.3）
+
+観測者ルールに基づくノート評価：
+- ルール別スコアリング
+- フィードバック生成
 
 ---
 
@@ -89,6 +115,7 @@ Brain Cabinetは単なるメモアプリではなく、個人の思考を構造�
 | **Bookmark** | ブックマーク階層構造管理 |
 | **Secret Box** | メディアファイル管理 |
 | **Library** | 3D空間でノートを探索（実験的） |
+| **Coaching** | コーチングセッション |
 | **System** | ジョブ状態、ストレージ統計 |
 
 ---
@@ -103,7 +130,7 @@ Brain Cabinetは単なるメモアプリではなく、個人の思考を構造�
 ノート保存 → LLM推論 → 結果保存
               ↓
         confidence 判定
-        ├─ ≥ 0.85: 自動反映
+        ├─ >= 0.85: 自動反映
         ├─ 0.7-0.85: 週次通知
         └─ < 0.7: 保留（手動確認）
 ```
@@ -134,28 +161,27 @@ GPT（ChatGPT等）からBrain Cabinetにアクセス可能：
 | **Drift分析** | 思考活動の偏り・異常を検出 |
 | **Influence分析** | ノート間の因果関係を推定 |
 | **Isolation検出** | 孤立したノートを発見、統合を提案 |
+| **Semantic Change検出** | ノートの意味的変化を追跡 |
 
 ---
 
 ## データ構造
 
-### 主要テーブル
+### テーブル概要（全38テーブル）
 
-| テーブル | 説明 |
-|----------|------|
-| `notes` | ノート本体（タイトル、本文、タグ、カテゴリ） |
-| `note_history` | 変更履歴スナップショット |
-| `note_embeddings` | 1536次元ベクトル |
-| `note_inferences` | 推論結果（タイプ、Intent、確信度） |
-| `llm_inference_results` | LLM推論結果と承認状態 |
-| `clusteringSnapshots` | クラスタリングスナップショット |
-| `clusterIdentities` | クラスタの論理的アイデンティティ |
-| `review_schedules` | Spaced Reviewスケジュール |
-| `recall_questions` | Active Recall用の質問 |
-| `bookmark_nodes` | ブックマーク階層構造 |
-| `secret_box_items` | メディアファイル |
-
-**合計23テーブル**
+| カテゴリ | テーブル数 | 主要テーブル |
+|----------|-----------|--------------|
+| コア | 5 | notes, noteHistory, noteEmbeddings, noteRelations, noteImages |
+| クラスタリング（Legacy） | 3 | clusters, clusterHistory, clusterDynamics |
+| Temporal Clustering (v7) | 6 | clusteringSnapshots, snapshotClusters, clusterLineage, clusterEvents, clusterIdentities, snapshotNoteAssignments |
+| グラフ & 分析 | 6 | conceptGraphEdges, noteInfluenceEdges, driftEvents, driftAnnotations, metricsTimeSeries, analysisCache |
+| 推論 & 判断 | 4 | noteInferences, llmInferenceResults, promotionNotifications, decisionCounterevidences |
+| Spaced Review | 3 | reviewSchedules, recallQuestions, reviewSessions |
+| ワークフロー & ジョブ | 3 | workflowStatus, jobStatuses, ptmSnapshots |
+| ブックマーク & Secret Box | 3 | bookmarkNodes, secretBoxFolders, secretBoxItems |
+| コーチング | 2 | coachingSessions, coachingMessages |
+| ポモドーロ | 2 | pomodoroSessions, pomodoroTimerState |
+| Voice Evaluation | 1 | voiceEvaluationLogs |
 
 ---
 
@@ -171,21 +197,31 @@ POST /api/v1
 }
 ```
 
-### 主要ドメイン
+### 主要ドメイン（21ディスパッチャー）
 
 | ドメイン | コマンド例 |
 |----------|-----------|
 | `note` | create, get, update, delete, list, history |
 | `search` | query, categories, byTitle |
-| `cluster` | list, get, evolution, events |
+| `cluster` | list, get, rebuild |
+| `clusterDynamics` | get |
 | `review` | queue, start, submit, schedule |
-| `llmInference` | execute, approve, override, weeklySummary |
+| `llmInference` | run, get, list |
 | `gpt` | search, context, coachDecision |
-| `ptm` | today, insight, influence |
-| `drift` | timeline, warning, forecast |
-| `bookmark` | list, create, move, reorder |
-
-**100+ APIアクション**が利用可能
+| `ptm` | latest, history |
+| `drift` | getTimeline, getState |
+| `influence` | graph, topInfluencers |
+| `insight` | overview, growth |
+| `analytics` | summary |
+| `bookmark` | list, create, update, delete |
+| `isolation` | detect, list |
+| `coaching` | start, message, end |
+| `promotion` | getCandidates, dismiss, promote |
+| `decision` | search, context, compare |
+| `rag` | query |
+| `system` | health, embed, rebuildFts |
+| `job` | getStatus, list |
+| `workflow` | reconstruct |
 
 ---
 
@@ -198,7 +234,7 @@ POST /api/v1
 | UI | React + Vite |
 | データベース | SQLite (Drizzle ORM) |
 | 検索 | FTS5 + MiniLM Embedding |
-| LLM推論 | Ollama + Qwen2.5:3b |
+| LLM推論 | Ollama / OpenAI API |
 | 日本語処理 | TinySegmenter |
 
 ---
@@ -208,9 +244,13 @@ POST /api/v1
 | バージョン | 主要機能 |
 |------------|----------|
 | v4 | 判断ファースト（ノートタイプ分類、Intent） |
-| v5 | ブックマーク、シークレットBOX、Spaced Review |
+| v4.5 | Spaced Review + Active Recall |
+| v5 | ブックマーク、シークレットBOX |
+| v5.6 | セマンティック変化検出 |
 | v6 | ローカルLLM推論（Ollama統合） |
 | v7 | Temporal Clustering（思考系譜追跡） |
+| v7.1 | コーチング機能、ポモドーロタイマー |
+| v7.3 | Voice Evaluation（観測者ルール評価） |
 
 ---
 
@@ -218,11 +258,12 @@ POST /api/v1
 
 1. **完全ローカル動作**: すべてのデータはSQLiteに保存、オフラインで動作
 2. **APIコストゼロ**: ローカルLLM（Ollama）による推論
-3. **統一API設計**: 100+のアクションを単一エンドポイントで提供
-4. **多面的分析**: PTM/Drift/Influence/Isolationなど複数の分析レンズ
+3. **統一API設計**: 21ディスパッチャー、100+のアクションを単一エンドポイントで提供
+4. **多面的分析**: PTM/Drift/Influence/Isolation/SemanticChangeなど複数の分析レンズ
 5. **学習支援**: Spaced Review + Active Recallで知識定着を強化
 6. **思考の可視化**: ネットワークグラフ、タイムライン、クラスタ進化
+7. **コーチング統合**: 苫米地式コーチングによる目標達成支援
 
 ---
 
-*最終更新: 2026-01-03*
+*最終更新: 2026-01-19*
