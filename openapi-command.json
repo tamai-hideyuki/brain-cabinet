@@ -281,7 +281,7 @@
                       },
                       "name": {
                         "type": "string",
-                        "description": "画像のファイル名（note.uploadImage用）"
+                        "description": "名前（gpt.docs用: README/OVERVIEW/architecture/er-diagram/network-diagram/security-diagram を指定、note.uploadImage用: 画像ファイル名）"
                       },
                       "focus": {
                         "type": "string",
