@@ -5,6 +5,8 @@ import rehypeRaw from 'rehype-raw'
 import { remarkNoteLink } from './remarkNoteLink'
 import { NoteLink } from './NoteLink'
 import { AuthImage } from './AuthImage'
+import { CodeBlock } from './CodeBlock'
+import { MermaidDiagram } from './MermaidDiagram'
 import './MarkdownContent.css'
 
 type MarkdownContentProps = {
@@ -57,6 +59,24 @@ export const MarkdownContent = ({ content, className = '' }: MarkdownContentProp
                 loading="lazy"
               />
             )
+          },
+          code: ({ className, children }) => {
+            const match = /language-(\w+)/.exec(className || '')
+            const language = match ? match[1] : ''
+            const codeString = String(children).replace(/\n$/, '')
+
+            // インラインコードの場合
+            if (!match) {
+              return <code className={className}>{children}</code>
+            }
+
+            // Mermaid記法の場合
+            if (language === 'mermaid') {
+              return <MermaidDiagram chart={codeString} />
+            }
+
+            // その他のコードブロック
+            return <CodeBlock language={language}>{codeString}</CodeBlock>
           },
         }}
       >
