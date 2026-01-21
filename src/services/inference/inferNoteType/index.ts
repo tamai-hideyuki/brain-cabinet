@@ -2,8 +2,6 @@
  * inferNoteType - ルールベース版
  *
  * ノートの内容から type / intent / confidence を推論する
- * Phase 1: ルールベース（confidence 最大 0.6）
- * Phase 2: LLM再推論で confidence を 0.7+ に引き上げ（将来）
  *
  * v4.1: confidenceDetail による信頼度分解
  *   - structural: 構文パターン（言い切り・比較・断定）
@@ -14,6 +12,12 @@
  *   - stable: 原則・アーキテクチャ判断（長寿命）
  *   - exploratory: 技術選定・試行（中寿命）
  *   - situational: その場の判断（短寿命）
+ *
+ * v5.0: confidence設計の改善
+ *   - baseConfidence係数を修正（0.55上限問題の解消）
+ *   - 0.6キャップを撤廃（0.95まで可能に）
+ *   - 条件付きブーストで「誤分類しにくい0.75超え」を実現
+ *   - 長文バイアス対策（パターンマッチ上限）
  */
 
 import type { NoteType, Intent, ConfidenceDetail, DecayProfile } from "../../../db/schema";
@@ -174,7 +178,19 @@ const INTENT_KEYWORDS: Record<Intent, RegExp[]> = {
   unknown: [],
 };
 
+/**
+ * パターンマッチ数をカウント（長文バイアス対策で上限2）
+ */
 function countMatches(content: string, patterns: RegExp[]): number {
+  const count = patterns.filter((p) => p.test(content)).length;
+  // 長文バイアス対策: 同一カテゴリで3件以上マッチしても2扱い
+  return Math.min(2, count);
+}
+
+/**
+ * パターンマッチ数をカウント（上限なし版 - structural計算用）
+ */
+function countMatchesRaw(content: string, patterns: RegExp[]): number {
   return patterns.filter((p) => p.test(content)).length;
 }
 
@@ -231,9 +247,10 @@ const REASONING_PATTERNS = [
 ];
 
 function calculateStructural(content: string): number {
-  const assertionCount = countMatches(content, ASSERTION_PATTERNS);
-  const comparisonCount = countMatches(content, COMPARISON_PATTERNS);
-  const reasoningCount = countMatches(content, REASONING_PATTERNS);
+  // structural計算は上限なしでカウント（より正確な構造判定のため）
+  const assertionCount = countMatchesRaw(content, ASSERTION_PATTERNS);
+  const comparisonCount = countMatchesRaw(content, COMPARISON_PATTERNS);
+  const reasoningCount = countMatchesRaw(content, REASONING_PATTERNS);
 
   // 各要素を重み付けして合計（最大1.0）
   const rawScore =
@@ -243,6 +260,12 @@ function calculateStructural(content: string): number {
 
   return Math.min(1.0, Math.round(rawScore * 100) / 100);
 }
+
+// ===================================================
+// v5.0 learning向けの構造パターン（定義・列挙・対比）
+// ===================================================
+const DEFINITION_PATTERNS = [/とは/, /である/, /という概念/, /要するに/];
+const STRUCTURE_PATTERNS = [/^-\s/m, /^\d+\.\s/m, /^##\s/m, /^\*\s/m]; // 箇条書き・番号・見出し
 
 // ===================================================
 // v4.1 経験的信頼度（experiential）
@@ -360,24 +383,52 @@ export function inferNoteType(content: string): InferenceResult {
     temporal,
   };
 
-  // 総合 confidence 計算
-  // structural が主要（現フェーズ）、将来は experiential/temporal も貢献
+  // ===================================================
+  // v5.0 confidence 計算（改善版）
+  // ===================================================
   const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
   let baseConfidence: number;
+  let dominance = 0;
+  let gap = 0;
 
   if (totalScore === 0) {
     baseConfidence = 0.3;
   } else {
-    const dominance = topScore / totalScore;
-    const gap = (topScore - secondScore) / totalScore;
-    baseConfidence = 0.3 + dominance * 0.15 + gap * 0.1;
+    dominance = topScore / totalScore;
+    gap = (topScore - secondScore) / totalScore;
+    // v5.0: 係数を修正（旧: 0.3 + 0.15 + 0.1 = 0.55上限 → 新: 0.25 + 0.45 + 0.25 = 0.95上限）
+    baseConfidence = 0.25 + dominance * 0.45 + gap * 0.25;
   }
 
-  // confidenceDetail による補正（structural の影響を加える）
-  const confidence = Math.min(
-    0.6, // ルールベース最大
-    baseConfidence + structural * 0.1
-  );
+  // v5.0: structural の寄与を増加（0.1 → 0.2）
+  let confidence = baseConfidence + structural * 0.2;
+
+  // ===================================================
+  // v5.0 条件付きブースト（誤分類しにくい時だけ上げる）
+  // ===================================================
+  const hasAssert = countMatchesRaw(content, ASSERTION_PATTERNS) > 0;
+  const hasReason = countMatchesRaw(content, REASONING_PATTERNS) > 0;
+  const hasCompare = countMatchesRaw(content, COMPARISON_PATTERNS) > 0;
+  const hasDefinition = countMatchesRaw(content, DEFINITION_PATTERNS) > 0;
+  const hasStructure = countMatchesRaw(content, STRUCTURE_PATTERNS) > 0;
+
+  // log: 強いルールがあれば一気に0.85まで上げる（誤分類しにくい）
+  if (type === "log" && logScore >= 2) {
+    confidence = Math.max(confidence, 0.85);
+  }
+
+  // decision: 複合条件で0.75超えを狙う
+  if (type === "decision" && dominance >= 0.65 && gap >= 0.25 && hasAssert && (hasReason || hasCompare)) {
+    confidence += 0.18;
+  }
+
+  // learning: 定義 + 構造化で0.75超えを狙う
+  if (type === "learning" && dominance >= 0.6 && gap >= 0.2 && hasDefinition && (hasStructure || hasCompare)) {
+    confidence += 0.18;
+  }
+
+  // v5.0: キャップを0.95に変更（旧: 0.6）
+  confidence = Math.min(0.95, confidence);
 
   // intent 推論
   const intent = detectIntent(content);

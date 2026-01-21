@@ -205,7 +205,7 @@ async function processCandidate(
 
       type = ruleResult.type;
       intent = ruleResult.intent;
-      confidence = Math.min(ruleResult.confidence, 0.6); // ルールベースは最大0.6
+      confidence = ruleResult.confidence; // v5.0: キャップ撤廃（inferNoteTypeで0.95上限）
       confidenceDetail = {
         structural: ruleResult.confidenceDetail.structural,
         semantic: ruleResult.confidenceDetail.experiential,

@@ -153,11 +153,11 @@ describe("inferNoteType", () => {
       expect(highMatch.confidence).toBeGreaterThan(lowMatch.confidence);
     });
 
-    it("confidence は最大 0.6", () => {
+    it("confidence は最大 0.95（v5.0改修）", () => {
       const result = inferNoteType(
         "方針として採用にした。結論としてこれを選ぶ。なぜならこれが最適だから。"
       );
-      expect(result.confidence).toBeLessThanOrEqual(0.6);
+      expect(result.confidence).toBeLessThanOrEqual(0.95);
     });
 
     it("パターンなしでも最低 0.3", () => {
