@@ -55,11 +55,12 @@ export function classify(inference: InferenceResult): FinalClassification {
     };
   }
 
-  // Rule 4: learning + scratch 混合（confidence < 0.6）
+  // Rule 4: learning 候補（confidence < 0.6）
+  // v5.0: primaryTypeをlearningのまま保持（scratch降格を撤廃）
   if (type === "learning" && confidence >= 0.4) {
     return {
-      primaryType: "scratch",
-      secondaryTypes: ["learning"],
+      primaryType: "learning",
+      secondaryTypes: [],
       reliability: "mid",
     };
   }

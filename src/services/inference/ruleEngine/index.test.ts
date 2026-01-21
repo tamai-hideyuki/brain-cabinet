@@ -62,12 +62,12 @@ describe("classify", () => {
       expect(result.reliability).toBe("high");
     });
 
-    it("0.4 <= confidence < 0.6 で scratch 主体 + learning 副次", () => {
+    it("0.4 <= confidence < 0.6 で learning 主体（v5.0改修: scratch降格撤廃）", () => {
       const inference = createInference({ type: "learning", confidence: 0.5 });
       const result = classify(inference);
 
-      expect(result.primaryType).toBe("scratch");
-      expect(result.secondaryTypes).toContain("learning");
+      expect(result.primaryType).toBe("learning");
+      expect(result.secondaryTypes).toEqual([]);
       expect(result.reliability).toBe("mid");
     });
 
