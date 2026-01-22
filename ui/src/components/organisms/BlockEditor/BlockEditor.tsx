@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useBlockEditor } from './hooks/useBlockEditor'
 import { useSlashCommand } from './hooks/useSlashCommand'
@@ -99,13 +99,23 @@ export const BlockEditor = ({
     [selection, actions]
   )
 
-  // Notify parent of changes
+  // Notify parent of changes (skip initial render)
+  const isFirstRenderRef = useRef(true)
+  const onChangeRef = useRef(onChange)
   useEffect(() => {
-    if (onChange) {
+    onChangeRef.current = onChange
+  }, [onChange])
+
+  useEffect(() => {
+    if (onChangeRef.current) {
+      if (isFirstRenderRef.current) {
+        isFirstRenderRef.current = false
+        return
+      }
       const markdown = toMarkdown()
-      onChange(markdown)
+      onChangeRef.current(markdown)
     }
-  }, [state.blocks, onChange, toMarkdown])
+  }, [state.blocks, toMarkdown])
 
   // Handle save shortcut (Cmd/Ctrl + S)
   useEffect(() => {
