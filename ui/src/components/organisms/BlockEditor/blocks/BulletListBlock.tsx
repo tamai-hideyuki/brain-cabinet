@@ -9,7 +9,7 @@ type BulletListBlockProps = {
 }
 
 export const BulletListBlock = ({ block }: BulletListBlockProps) => {
-  const { state, actions, registerBlockRef, isSlashMenuOpen } = useBlockEditorContext()
+  const { state, actions, registerBlockRef, isSlashMenuOpen, onLinkClick } = useBlockEditorContext()
   const editableRef = useRef<BlockEditableRef>(null)
   const isFocused = state.focusedBlockId === block.id
 
@@ -122,6 +122,7 @@ export const BulletListBlock = ({ block }: BulletListBlockProps) => {
         onContentChange={handleContentChange}
         onKeyDown={handleKeyDown}
         onFocus={handleFocus}
+        onLinkClick={onLinkClick}
       />
     </div>
   )

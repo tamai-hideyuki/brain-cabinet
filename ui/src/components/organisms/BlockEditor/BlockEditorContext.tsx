@@ -9,6 +9,7 @@ export interface BlockEditorContextValue {
   getBlockRef: (id: string) => HTMLElement | null
   noteId?: string // For image uploads
   isSlashMenuOpen: boolean // To prevent arrow key navigation when menu is open
+  onLinkClick: (href: string) => void
 }
 
 export const BlockEditorContext = createContext<BlockEditorContextValue | null>(null)

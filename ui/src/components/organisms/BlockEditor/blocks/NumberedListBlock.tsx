@@ -10,7 +10,7 @@ type NumberedListBlockProps = {
 }
 
 export const NumberedListBlock = ({ block, number }: NumberedListBlockProps) => {
-  const { state, actions, registerBlockRef, isSlashMenuOpen } = useBlockEditorContext()
+  const { state, actions, registerBlockRef, isSlashMenuOpen, onLinkClick } = useBlockEditorContext()
   const editableRef = useRef<BlockEditableRef>(null)
   const isFocused = state.focusedBlockId === block.id
 
@@ -117,6 +117,7 @@ export const NumberedListBlock = ({ block, number }: NumberedListBlockProps) => 
         onContentChange={handleContentChange}
         onKeyDown={handleKeyDown}
         onFocus={handleFocus}
+        onLinkClick={onLinkClick}
       />
     </div>
   )
