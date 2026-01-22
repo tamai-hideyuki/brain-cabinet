@@ -1,0 +1,103 @@
+.block-editor {
+  min-height: 200px;
+  padding: 0.5rem;
+  cursor: text;
+}
+
+.block-editor__block-wrapper {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.25rem;
+  padding-left: 1.5rem;
+  margin-left: -1.5rem;
+  border-radius: 4px;
+  transition: opacity 0.15s;
+}
+
+.block-editor__block-wrapper:hover .block-editor__drag-handle {
+  opacity: 1;
+}
+
+.block-editor__block-wrapper--dragging {
+  opacity: 0.5;
+}
+
+.block-editor__block-wrapper--drop-target::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--color-primary);
+  border-radius: 2px;
+}
+
+.block-editor__drag-handle {
+  position: absolute;
+  left: 0;
+  top: 0.25rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  cursor: grab;
+  color: var(--color-text-subtle);
+  border-radius: 4px;
+  transition: opacity 0.15s, background-color 0.15s;
+}
+
+.block-editor__drag-handle:hover {
+  background: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+}
+
+.block-editor__drag-handle:active {
+  cursor: grabbing;
+}
+
+.block-editor__block-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.block-editor__end-drop-zone {
+  height: 2rem;
+  margin-top: 0.5rem;
+  border-radius: 4px;
+  transition: background-color 0.15s;
+}
+
+.block-editor__end-drop-zone--active {
+  background: var(--color-primary-light);
+  border: 2px dashed var(--color-primary);
+}
+
+/* Add block button */
+.block-editor__add-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.block-editor__add-button:hover {
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+}
+
+/* Focus ring for keyboard navigation */
+.block-editor:focus-within {
+  outline: none;
+}

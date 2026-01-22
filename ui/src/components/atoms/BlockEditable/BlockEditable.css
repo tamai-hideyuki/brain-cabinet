@@ -1,0 +1,40 @@
+.block-editable {
+  outline: none;
+  min-height: 1.5em;
+  line-height: 1.5;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+.block-editable:empty::before {
+  content: attr(data-placeholder);
+  color: var(--color-text-disabled);
+  pointer-events: none;
+}
+
+.block-editable:focus {
+  outline: none;
+}
+
+/* Inline formatting styles */
+.block-editable strong {
+  font-weight: 600;
+}
+
+.block-editable em {
+  font-style: italic;
+}
+
+.block-editable code {
+  background: var(--color-bg-muted);
+  padding: 0.125rem 0.25rem;
+  border-radius: 3px;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-size: 0.875em;
+}
+
+.block-editable__link {
+  color: var(--color-link);
+  text-decoration: underline;
+  text-decoration-color: var(--color-border);
+}
