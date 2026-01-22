@@ -2,10 +2,13 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { Text } from '../../atoms/Text'
 import { Button } from '../../atoms/Button'
 import { Spinner } from '../../atoms/Spinner'
+import { BlockEditor } from '../BlockEditor'
 import { updateNote } from '../../../api/notesApi'
 import { uploadNoteImage } from '../../../api/noteImagesApi'
 import type { Note } from '../../../types/note'
 import './EditNoteModal.css'
+
+type EditorMode = 'block' | 'markdown'
 
 type EditNoteModalProps = {
   note: Note
@@ -20,6 +23,7 @@ export const EditNoteModal = ({ note, onClose, onUpdated }: EditNoteModalProps) 
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
+  const [editorMode, setEditorMode] = useState<EditorMode>('block')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -30,7 +34,12 @@ export const EditNoteModal = ({ note, onClose, onUpdated }: EditNoteModalProps) 
 
   const hasChanges = title !== note.title || content !== note.content
 
-  // 画像アップロード処理
+  // BlockEditorからのコンテンツ変更
+  const handleBlockEditorChange = useCallback((markdown: string) => {
+    setContent(markdown)
+  }, [])
+
+  // 画像アップロード処理（Markdownモード用）
   const handleImageUpload = useCallback(async (files: FileList) => {
     const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'))
     if (imageFiles.length === 0) return
@@ -70,7 +79,7 @@ export const EditNoteModal = ({ note, onClose, onUpdated }: EditNoteModalProps) 
     }
   }, [note.id, content])
 
-  // ドラッグ&ドロップイベント
+  // ドラッグ&ドロップイベント（Markdownモード用）
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -94,7 +103,7 @@ export const EditNoteModal = ({ note, onClose, onUpdated }: EditNoteModalProps) 
     }
   }, [handleImageUpload])
 
-  // ペーストイベント（クリップボードからの画像）
+  // ペーストイベント（Markdownモード用）
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     const items = e.clipboardData.items
     const imageItems = Array.from(items).filter(item => item.type.startsWith('image/'))
@@ -119,7 +128,6 @@ export const EditNoteModal = ({ note, onClose, onUpdated }: EditNoteModalProps) 
     if (files && files.length > 0) {
       handleImageUpload(files)
     }
-    // 同じファイルを再選択できるようにリセット
     e.target.value = ''
   }, [handleImageUpload])
 
@@ -164,22 +172,47 @@ export const EditNoteModal = ({ note, onClose, onUpdated }: EditNoteModalProps) 
     }
   }
 
+  const toggleEditorMode = useCallback(() => {
+    setEditorMode(prev => prev === 'block' ? 'markdown' : 'block')
+  }, [])
+
   return (
     <div className="edit-note-modal__backdrop" onClick={handleBackdropClick}>
       <div className="edit-note-modal">
         <header className="edit-note-modal__header">
           <Text variant="subtitle">ノートを編集</Text>
-          <button
-            className="edit-note-modal__close"
-            onClick={onClose}
-            aria-label="閉じる"
-            disabled={saving}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
+          <div className="edit-note-modal__header-actions">
+            <button
+              type="button"
+              className="edit-note-modal__mode-toggle"
+              onClick={toggleEditorMode}
+              title={editorMode === 'block' ? 'Markdownモードに切り替え' : 'ブロックモードに切り替え'}
+            >
+              {editorMode === 'block' ? (
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M2 3h12M2 6h8M2 9h10M2 12h6" strokeLinecap="round" />
+                </svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <rect x="2" y="2" width="5" height="5" rx="1" />
+                  <rect x="9" y="2" width="5" height="5" rx="1" />
+                  <rect x="2" y="9" width="5" height="5" rx="1" />
+                  <rect x="9" y="9" width="5" height="5" rx="1" />
+                </svg>
+              )}
+            </button>
+            <button
+              className="edit-note-modal__close"
+              onClick={onClose}
+              aria-label="閉じる"
+              disabled={saving}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
         </header>
 
         <form className="edit-note-modal__form" onSubmit={handleSubmit}>
@@ -205,57 +238,78 @@ export const EditNoteModal = ({ note, onClose, onUpdated }: EditNoteModalProps) 
             />
           </div>
 
-          <div
-            className={`edit-note-modal__field edit-note-modal__field--content ${isDragging ? 'edit-note-modal__field--dragging' : ''}`}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-          >
-            <div className="edit-note-modal__label-row">
-              <label htmlFor="edit-note-content" className="edit-note-modal__label">
-                内容
-                {uploading && <Spinner size="sm" />}
-              </label>
-              <button
-                type="button"
-                className="edit-note-modal__image-button"
-                onClick={handleImageButtonClick}
-                disabled={saving || uploading}
-                aria-label="画像を追加"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                  <circle cx="8.5" cy="8.5" r="1.5" />
-                  <polyline points="21 15 16 10 5 21" />
-                </svg>
-                <span className="edit-note-modal__image-button-text">画像</span>
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleFileSelect}
-                className="edit-note-modal__file-input"
-              />
-            </div>
-            <textarea
-              ref={textareaRef}
-              id="edit-note-content"
-              className="edit-note-modal__textarea"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              onPaste={handlePaste}
-              placeholder="ノートの内容を入力...（画像をドラッグ&ドロップまたは貼り付け可能）"
-              rows={12}
-              disabled={saving || uploading}
-            />
-            {isDragging && (
-              <div className="edit-note-modal__drop-overlay">
-                <Text variant="body">画像をドロップしてアップロード</Text>
+          {editorMode === 'block' ? (
+            <div className="edit-note-modal__field edit-note-modal__field--content edit-note-modal__field--block-editor">
+              <div className="edit-note-modal__label-row">
+                <label className="edit-note-modal__label">
+                  内容
+                  {uploading && <Spinner size="sm" />}
+                </label>
+                <span className="edit-note-modal__mode-hint">
+                  / でブロック追加
+                </span>
               </div>
-            )}
-          </div>
+              <div className="edit-note-modal__block-editor-container">
+                <BlockEditor
+                  initialMarkdown={content}
+                  noteId={note.id}
+                  onChange={handleBlockEditorChange}
+                />
+              </div>
+            </div>
+          ) : (
+            <div
+              className={`edit-note-modal__field edit-note-modal__field--content ${isDragging ? 'edit-note-modal__field--dragging' : ''}`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
+              <div className="edit-note-modal__label-row">
+                <label htmlFor="edit-note-content" className="edit-note-modal__label">
+                  内容
+                  {uploading && <Spinner size="sm" />}
+                </label>
+                <button
+                  type="button"
+                  className="edit-note-modal__image-button"
+                  onClick={handleImageButtonClick}
+                  disabled={saving || uploading}
+                  aria-label="画像を追加"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <polyline points="21 15 16 10 5 21" />
+                  </svg>
+                  <span className="edit-note-modal__image-button-text">画像</span>
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleFileSelect}
+                  className="edit-note-modal__file-input"
+                />
+              </div>
+              <textarea
+                ref={textareaRef}
+                id="edit-note-content"
+                className="edit-note-modal__textarea"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                onPaste={handlePaste}
+                placeholder="ノートの内容を入力...（画像をドラッグ&ドロップまたは貼り付け可能）"
+                rows={12}
+                disabled={saving || uploading}
+              />
+              {isDragging && (
+                <div className="edit-note-modal__drop-overlay">
+                  <Text variant="body">画像をドロップしてアップロード</Text>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="edit-note-modal__actions">
             <Button

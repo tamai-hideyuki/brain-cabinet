@@ -1,12 +1,13 @@
-import { useState } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { Text } from '../../atoms/Text'
 import { Badge } from '../../atoms/Badge'
 import { Button } from '../../atoms/Button'
 import { TagList } from '../../molecules/TagList'
 import { Spinner } from '../../atoms/Spinner'
-import { MarkdownContent } from '../../atoms/MarkdownContent'
 import { DiffView } from '../../atoms/DiffView'
 import { InfluenceSection } from '../../molecules/InfluenceSection'
+import { BlockEditor } from '../BlockEditor'
+import { updateNote } from '../../../api/notesApi'
 import type { Note, NoteHistory } from '../../../types/note'
 import type { NoteInfluence } from '../../../types/influence'
 import './NoteDetail.css'
@@ -56,6 +57,65 @@ export const NoteDetail = ({
 }: NoteDetailProps) => {
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null)
   const [historyLoaded, setHistoryLoaded] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const pendingContentRef = useRef<string | null>(null)
+  const saveTimeoutRef = useRef<number | null>(null)
+  const lastSavedContentRef = useRef<string | null>(null)
+
+  // Initialize last saved content when note loads
+  useEffect(() => {
+    if (note) {
+      lastSavedContentRef.current = note.content
+    }
+  }, [note?.id]) // Only reset when note ID changes
+
+  // Auto-save with debounce
+  const handleContentChange = useCallback(
+    (markdown: string) => {
+      if (!note) return
+
+      // Skip if content hasn't actually changed from last saved
+      if (markdown === lastSavedContentRef.current) {
+        return
+      }
+
+      pendingContentRef.current = markdown
+
+      // Clear existing timeout
+      if (saveTimeoutRef.current) {
+        window.clearTimeout(saveTimeoutRef.current)
+      }
+
+      // Set new timeout for auto-save (1.5 seconds debounce)
+      saveTimeoutRef.current = window.setTimeout(async () => {
+        if (pendingContentRef.current === null) return
+        if (pendingContentRef.current === lastSavedContentRef.current) return
+
+        setSaveStatus('saving')
+        try {
+          await updateNote(note.id, note.title, pendingContentRef.current)
+          lastSavedContentRef.current = pendingContentRef.current
+          setSaveStatus('saved')
+          // Don't call onContentUpdated here to avoid page reload and scroll reset
+          // Reset status after 2 seconds
+          setTimeout(() => setSaveStatus('idle'), 2000)
+        } catch (err) {
+          console.error('Failed to save note:', err)
+          setSaveStatus('error')
+        }
+      }, 1500)
+    },
+    [note]
+  )
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        window.clearTimeout(saveTimeoutRef.current)
+      }
+    }
+  }, [])
 
   if (loading) {
     return (
@@ -120,7 +180,7 @@ export const NoteDetail = ({
               </Button>
             )}
             <Button variant="secondary" size="sm" onClick={onEdit}>
-              編集
+              Markdown編集
             </Button>
             {onDelete && (
               <Button
@@ -145,9 +205,20 @@ export const NoteDetail = ({
           <Text variant="caption">作成: {formatDate(note.createdAt)}</Text>
         </div>
         {note.tags.length > 0 && <TagList tags={note.tags} />}
+        {saveStatus !== 'idle' && (
+          <div className={`note-detail__save-status note-detail__save-status--${saveStatus}`}>
+            {saveStatus === 'saving' && '保存中...'}
+            {saveStatus === 'saved' && '保存しました'}
+            {saveStatus === 'error' && '保存に失敗しました'}
+          </div>
+        )}
       </header>
       <div className="note-detail__content">
-        <MarkdownContent content={note.content} />
+        <BlockEditor
+          initialMarkdown={note.content}
+          noteId={note.id}
+          onChange={handleContentChange}
+        />
       </div>
 
       <section className="note-detail__history">

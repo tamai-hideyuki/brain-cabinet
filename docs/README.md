@@ -13,6 +13,7 @@
 | [er-diagram.md](./er-diagram.md) | データベースER図（Mermaid形式） |
 | [network-diagram.md](./network-diagram.md) | ネットワーク構成図・データフロー |
 | [security-diagram.md](./security-diagram.md) | セキュリティ構成図・認証フロー |
+| [block-editor.md](./block-editor.md) | Notionライクブロックエディタ仕様 |
 
 ---
 

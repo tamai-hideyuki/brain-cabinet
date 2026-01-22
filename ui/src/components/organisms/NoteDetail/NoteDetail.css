@@ -40,6 +40,29 @@
   gap: 0.5rem;
 }
 
+/* Save status indicator */
+.note-detail__save-status {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: opacity 0.2s;
+}
+
+.note-detail__save-status--saving {
+  color: var(--color-text-muted);
+  background: var(--color-bg-muted);
+}
+
+.note-detail__save-status--saved {
+  color: var(--color-success-text);
+  background: var(--color-success-light);
+}
+
+.note-detail__save-status--error {
+  color: var(--color-error);
+  background: var(--color-error-light);
+}
+
 .note-detail__content {
   line-height: 1.7;
 }
