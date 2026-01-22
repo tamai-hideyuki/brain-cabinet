@@ -101,16 +101,21 @@ export const BlockEditor = ({
 
   // Notify parent of changes (skip initial render)
   const isFirstRenderRef = useRef(true)
+  const onChangeRef = useRef(onChange)
   useEffect(() => {
-    if (onChange) {
+    onChangeRef.current = onChange
+  }, [onChange])
+
+  useEffect(() => {
+    if (onChangeRef.current) {
       if (isFirstRenderRef.current) {
         isFirstRenderRef.current = false
         return
       }
       const markdown = toMarkdown()
-      onChange(markdown)
+      onChangeRef.current(markdown)
     }
-  }, [state.blocks, onChange, toMarkdown])
+  }, [state.blocks, toMarkdown])
 
   // Handle save shortcut (Cmd/Ctrl + S)
   useEffect(() => {
