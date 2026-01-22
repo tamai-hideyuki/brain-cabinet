@@ -9,7 +9,7 @@ type ToggleBlockProps = {
 }
 
 export const ToggleBlock = ({ block }: ToggleBlockProps) => {
-  const { state, actions, registerBlockRef, isSlashMenuOpen } = useBlockEditorContext()
+  const { state, actions, registerBlockRef, isSlashMenuOpen, onLinkClick } = useBlockEditorContext()
   const editableRef = useRef<BlockEditableRef>(null)
   const contentTextareaRef = useRef<HTMLTextAreaElement>(null)
   const isFocused = state.focusedBlockId === block.id
@@ -179,6 +179,7 @@ export const ToggleBlock = ({ block }: ToggleBlockProps) => {
           onContentChange={handleContentChange}
           onKeyDown={handleKeyDown}
           onFocus={handleFocus}
+          onLinkClick={onLinkClick}
         />
       </div>
       {block.isOpen && (

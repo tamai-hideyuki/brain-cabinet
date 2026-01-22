@@ -211,6 +211,13 @@ export const TableBlock = ({ block }: TableBlockProps) => {
           <button type="button" className="block__table-add-button" onClick={addColumn}>
             + 列を追加
           </button>
+          <button
+            type="button"
+            className="block__table-delete-button"
+            onClick={() => actions.deleteBlock(block.id)}
+          >
+            テーブルを削除
+          </button>
         </div>
       )}
     </div>

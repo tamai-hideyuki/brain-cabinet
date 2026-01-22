@@ -85,6 +85,7 @@ export interface BlockEditableProps {
   onFocus?: () => void
   onBlur?: () => void
   onPaste?: (e: React.ClipboardEvent<HTMLDivElement>) => void
+  onLinkClick?: (href: string) => void
 }
 
 export interface BlockEditableRef {
@@ -113,6 +114,7 @@ export const BlockEditable = forwardRef<BlockEditableRef, BlockEditableProps>(
       onFocus,
       onBlur,
       onPaste,
+      onLinkClick,
     },
     ref
   ) => {
@@ -320,6 +322,18 @@ export const BlockEditable = forwardRef<BlockEditableRef, BlockEditableProps>(
       [onPaste, handleInput]
     )
 
+    const handleClick = useCallback(
+      (e: React.MouseEvent<HTMLDivElement>) => {
+        const target = e.target as HTMLElement
+        const anchor = target.closest('a')
+        if (anchor && anchor.href) {
+          e.preventDefault()
+          onLinkClick?.(anchor.getAttribute('href') || '')
+        }
+      },
+      [onLinkClick]
+    )
+
     return (
       <div
         ref={editableRef}
@@ -334,6 +348,7 @@ export const BlockEditable = forwardRef<BlockEditableRef, BlockEditableProps>(
         onPaste={handlePasteInternal}
         onCompositionStart={handleCompositionStart}
         onCompositionEnd={handleCompositionEnd}
+        onClick={handleClick}
         spellCheck={false}
       />
     )

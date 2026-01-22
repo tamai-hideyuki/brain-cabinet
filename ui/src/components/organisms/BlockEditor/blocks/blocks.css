@@ -446,3 +446,18 @@
   border-color: var(--color-primary);
   color: var(--color-primary);
 }
+
+.block__table-delete-button {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--color-error-light);
+  background: transparent;
+  color: var(--color-error);
+  font-size: 0.75rem;
+  cursor: pointer;
+  border-radius: 4px;
+  margin-left: auto;
+}
+
+.block__table-delete-button:hover {
+  background: var(--color-error-light);
+}

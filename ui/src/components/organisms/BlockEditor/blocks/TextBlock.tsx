@@ -9,7 +9,7 @@ type TextBlockProps = {
 }
 
 export const TextBlock = ({ block }: TextBlockProps) => {
-  const { state, actions, registerBlockRef, isSlashMenuOpen } = useBlockEditorContext()
+  const { state, actions, registerBlockRef, isSlashMenuOpen, onLinkClick } = useBlockEditorContext()
   const editableRef = useRef<BlockEditableRef>(null)
   const isFocused = state.focusedBlockId === block.id
 
@@ -109,6 +109,7 @@ export const TextBlock = ({ block }: TextBlockProps) => {
         onContentChange={handleContentChange}
         onKeyDown={handleKeyDown}
         onFocus={handleFocus}
+        onLinkClick={onLinkClick}
       />
     </div>
   )

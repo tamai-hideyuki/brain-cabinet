@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useBlockEditor } from './hooks/useBlockEditor'
 import { useSlashCommand } from './hooks/useSlashCommand'
 import { useBlockDragDrop } from './hooks/useBlockDragDrop'
@@ -23,6 +24,7 @@ export const BlockEditor = ({
   onChange,
   onSave,
 }: BlockEditorProps) => {
+  const navigate = useNavigate()
   const {
     state,
     actions,
@@ -148,6 +150,18 @@ export const BlockEditor = ({
     [state.blocks, actions, editorRef]
   )
 
+  const handleLinkClick = useCallback(
+    (href: string) => {
+      if (href.startsWith('note://')) {
+        const uuid = href.replace('note://', '')
+        navigate(`/ui/notes/${uuid}`)
+      } else {
+        window.open(href, '_blank', 'noopener,noreferrer')
+      }
+    },
+    [navigate]
+  )
+
   return (
     <BlockEditorContext.Provider
       value={{
@@ -157,6 +171,7 @@ export const BlockEditor = ({
         getBlockRef,
         noteId,
         isSlashMenuOpen,
+        onLinkClick: handleLinkClick,
       }}
     >
       <div
