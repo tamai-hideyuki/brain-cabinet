@@ -67,6 +67,36 @@ staticRoutes.get("/favicon.ico", async (c) => {
   return c.body(icon, 200, { "Content-Type": "image/png" });
 });
 
+// ========== Knowledge API プロキシ ==========
+const KNOWLEDGE_API_URL = process.env.KNOWLEDGE_API_URL || "http://localhost:3002";
+
+staticRoutes.all("/knowledge/api/*", async (c) => {
+  const apiPath = c.req.path.replace("/knowledge/api", "/api");
+  const queryString = c.req.url.split("?")[1] || "";
+  const targetUrl = `${KNOWLEDGE_API_URL}${apiPath}${queryString ? "?" + queryString : ""}`;
+
+  const headers: Record<string, string> = {};
+  c.req.raw.headers.forEach((value, key) => {
+    if (key.toLowerCase() !== "host") {
+      headers[key] = value;
+    }
+  });
+
+  const response = await fetch(targetUrl, {
+    method: c.req.method,
+    headers,
+    body: c.req.method !== "GET" && c.req.method !== "HEAD" ? await c.req.raw.text() : undefined,
+  });
+
+  const responseHeaders: Record<string, string> = {};
+  response.headers.forEach((value, key) => {
+    responseHeaders[key] = value;
+  });
+
+  const body = await response.text();
+  return c.body(body, response.status as 200, responseHeaders);
+});
+
 // ========== Knowledge UI 静的ファイル配信 ==========
 const rewriteKnowledgePath = (p: string) => p.replace(/^\/knowledge/, "");
 

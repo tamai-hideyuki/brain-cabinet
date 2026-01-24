@@ -21,6 +21,7 @@ export const knowledgeNotes = sqliteTable("knowledge_notes", {
   // メタデータ
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
+  deletedAt: integer("deleted_at"),  // ソフトデリート用: 削除日時（NULLなら未削除）
 });
 
 /**
@@ -45,8 +46,21 @@ export const tags = sqliteTable("tags", {
   createdAt: integer("created_at").notNull(),
 });
 
+/**
+ * Embedding（ベクトル検索用）
+ */
+export const knowledgeEmbeddings = sqliteTable("knowledge_embeddings", {
+  noteId: text("note_id").primaryKey(),
+  embedding: text("embedding").notNull(), // JSON配列として保存
+  model: text("model").notNull(),
+  version: integer("version").notNull(),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+});
+
 // 型エクスポート
 export type KnowledgeNote = typeof knowledgeNotes.$inferSelect;
 export type NewKnowledgeNote = typeof knowledgeNotes.$inferInsert;
 export type Category = typeof categories.$inferSelect;
 export type Tag = typeof tags.$inferSelect;
+export type KnowledgeEmbedding = typeof knowledgeEmbeddings.$inferSelect;
