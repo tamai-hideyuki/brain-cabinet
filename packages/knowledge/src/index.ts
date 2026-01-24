@@ -3,8 +3,8 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { db } from "./db/client";
-import { knowledgeNotes, categories, tags } from "./db/schema";
-import { eq, desc, isNull, isNotNull, lt, and } from "drizzle-orm";
+import { knowledgeNotes, categories, tags, knowledgeBookmarkNodes } from "./db/schema";
+import { eq, desc, isNull, isNotNull, lt, and, count, asc } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import pino from "pino";
 import {
@@ -118,8 +118,15 @@ app.get("/api/notes", async (c) => {
   const query = c.req.query("q");
   const category = c.req.query("category");
   const tag = c.req.query("tag");
-  const limit = parseInt(c.req.query("limit") || "50");
+  const limit = parseInt(c.req.query("limit") || "30");
   const offset = parseInt(c.req.query("offset") || "0");
+
+  // 総件数を取得
+  const totalResult = await db
+    .select({ count: count() })
+    .from(knowledgeNotes)
+    .where(isNull(knowledgeNotes.deletedAt));
+  const total = totalResult[0]?.count || 0;
 
   let result = await db
     .select()
@@ -147,7 +154,7 @@ app.get("/api/notes", async (c) => {
     });
   }
 
-  return c.json({ notes: result, total: result.length });
+  return c.json({ notes: result, total, limit, offset });
 });
 
 // 単一取得
@@ -344,6 +351,225 @@ app.post("/api/categories", async (c) => {
 app.get("/api/tags", async (c) => {
   const result = await db.select().from(tags);
   return c.json(result);
+});
+
+// ========== Bookmarks API ==========
+
+// ブックマークツリー構築用のヘルパー関数
+type BookmarkNode = {
+  id: string;
+  parentId: string | null;
+  type: string;
+  name: string;
+  noteId: string | null;
+  url: string | null;
+  position: number;
+  isExpanded: boolean;
+  createdAt: number | null;
+  updatedAt: number | null;
+  note?: {
+    id: string;
+    title: string;
+    category: string | null;
+  };
+  children?: BookmarkNode[];
+};
+
+const buildTree = (nodes: BookmarkNode[], parentId: string | null = null): BookmarkNode[] => {
+  return nodes
+    .filter((node) => node.parentId === parentId)
+    .sort((a, b) => a.position - b.position)
+    .map((node) => ({
+      ...node,
+      children: buildTree(nodes, node.id),
+    }));
+};
+
+// ブックマークツリー取得
+app.get("/api/bookmarks", async (c) => {
+  const result = await db
+    .select({
+      id: knowledgeBookmarkNodes.id,
+      parentId: knowledgeBookmarkNodes.parentId,
+      type: knowledgeBookmarkNodes.type,
+      name: knowledgeBookmarkNodes.name,
+      noteId: knowledgeBookmarkNodes.noteId,
+      url: knowledgeBookmarkNodes.url,
+      position: knowledgeBookmarkNodes.position,
+      isExpanded: knowledgeBookmarkNodes.isExpanded,
+      createdAt: knowledgeBookmarkNodes.createdAt,
+      updatedAt: knowledgeBookmarkNodes.updatedAt,
+      noteTitle: knowledgeNotes.title,
+      noteCategory: knowledgeNotes.category,
+    })
+    .from(knowledgeBookmarkNodes)
+    .leftJoin(knowledgeNotes, eq(knowledgeBookmarkNodes.noteId, knowledgeNotes.id))
+    .orderBy(asc(knowledgeBookmarkNodes.position));
+
+  const nodes: BookmarkNode[] = result.map((row) => ({
+    id: row.id,
+    parentId: row.parentId,
+    type: row.type,
+    name: row.name,
+    noteId: row.noteId,
+    url: row.url,
+    position: row.position,
+    isExpanded: row.isExpanded === 1,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    note: row.noteId
+      ? {
+          id: row.noteId,
+          title: row.noteTitle || row.name,
+          category: row.noteCategory,
+        }
+      : undefined,
+  }));
+
+  const tree = buildTree(nodes);
+  return c.json({ tree, total: nodes.length });
+});
+
+// ブックマーク作成
+app.post("/api/bookmarks", async (c) => {
+  const body = await c.req.json();
+  const now = Date.now();
+  const id = uuidv4();
+
+  // 同一親内での最大position取得
+  const maxPosResult = await db
+    .select({ maxPos: knowledgeBookmarkNodes.position })
+    .from(knowledgeBookmarkNodes)
+    .where(
+      body.parentId
+        ? eq(knowledgeBookmarkNodes.parentId, body.parentId)
+        : isNull(knowledgeBookmarkNodes.parentId)
+    )
+    .orderBy(desc(knowledgeBookmarkNodes.position))
+    .limit(1);
+
+  const position = (maxPosResult[0]?.maxPos ?? -1) + 1;
+
+  await db.insert(knowledgeBookmarkNodes).values({
+    id,
+    parentId: body.parentId || null,
+    type: body.type || "note",
+    name: body.name,
+    noteId: body.noteId || null,
+    url: body.url || null,
+    position,
+    isExpanded: body.type === "folder" ? 1 : 0,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  log.info({ bookmarkId: id, type: body.type }, "Bookmark created");
+  return c.json({ id, position }, 201);
+});
+
+// ブックマーク更新
+app.put("/api/bookmarks/:id", async (c) => {
+  const id = c.req.param("id");
+  const body = await c.req.json();
+  const now = Date.now();
+
+  const updateData: Record<string, unknown> = { updatedAt: now };
+  if (body.name !== undefined) updateData.name = body.name;
+  if (body.isExpanded !== undefined) updateData.isExpanded = body.isExpanded ? 1 : 0;
+
+  await db
+    .update(knowledgeBookmarkNodes)
+    .set(updateData)
+    .where(eq(knowledgeBookmarkNodes.id, id));
+
+  return c.json({ success: true });
+});
+
+// ブックマーク削除（再帰的に子も削除）
+const deleteBookmarkRecursive = async (id: string) => {
+  // 子ノードを先に削除
+  const children = await db
+    .select({ id: knowledgeBookmarkNodes.id })
+    .from(knowledgeBookmarkNodes)
+    .where(eq(knowledgeBookmarkNodes.parentId, id));
+
+  for (const child of children) {
+    await deleteBookmarkRecursive(child.id);
+  }
+
+  await db.delete(knowledgeBookmarkNodes).where(eq(knowledgeBookmarkNodes.id, id));
+};
+
+app.delete("/api/bookmarks/:id", async (c) => {
+  const id = c.req.param("id");
+  await deleteBookmarkRecursive(id);
+  log.info({ bookmarkId: id }, "Bookmark deleted");
+  return c.json({ success: true });
+});
+
+// ブックマーク移動
+app.post("/api/bookmarks/:id/move", async (c) => {
+  const id = c.req.param("id");
+  const body = await c.req.json();
+  const now = Date.now();
+
+  // 循環参照チェック
+  const checkIsDescendant = async (nodeId: string, potentialParentId: string): Promise<boolean> => {
+    if (nodeId === potentialParentId) return true;
+    const [parent] = await db
+      .select({ parentId: knowledgeBookmarkNodes.parentId })
+      .from(knowledgeBookmarkNodes)
+      .where(eq(knowledgeBookmarkNodes.id, potentialParentId));
+    if (!parent || !parent.parentId) return false;
+    return checkIsDescendant(nodeId, parent.parentId);
+  };
+
+  if (body.newParentId && (await checkIsDescendant(id, body.newParentId))) {
+    return c.json({ error: "Cannot move node to its own descendant" }, 400);
+  }
+
+  // 新しい位置を計算
+  let newPosition = body.newPosition;
+  if (newPosition === undefined) {
+    const maxPosResult = await db
+      .select({ maxPos: knowledgeBookmarkNodes.position })
+      .from(knowledgeBookmarkNodes)
+      .where(
+        body.newParentId
+          ? eq(knowledgeBookmarkNodes.parentId, body.newParentId)
+          : isNull(knowledgeBookmarkNodes.parentId)
+      )
+      .orderBy(desc(knowledgeBookmarkNodes.position))
+      .limit(1);
+    newPosition = (maxPosResult[0]?.maxPos ?? -1) + 1;
+  }
+
+  await db
+    .update(knowledgeBookmarkNodes)
+    .set({
+      parentId: body.newParentId || null,
+      position: newPosition,
+      updatedAt: now,
+    })
+    .where(eq(knowledgeBookmarkNodes.id, id));
+
+  return c.json({ success: true });
+});
+
+// ブックマーク並べ替え
+app.post("/api/bookmarks/reorder", async (c) => {
+  const body = await c.req.json();
+  const now = Date.now();
+
+  // body.items = [{ id, position }]
+  for (const item of body.items) {
+    await db
+      .update(knowledgeBookmarkNodes)
+      .set({ position: item.position, updatedAt: now })
+      .where(eq(knowledgeBookmarkNodes.id, item.id));
+  }
+
+  return c.json({ success: true });
 });
 
 // ========== 自動削除機能 ==========

@@ -170,6 +170,43 @@ body {
   color: var(--color-text);
 }
 
+/* Bookmark Button */
+.header__bookmark-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: none;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-subtle);
+  font-size: 0.875rem;
+  padding: 0.375rem 0.625rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.header__bookmark-btn:hover {
+  background: var(--color-bg-muted);
+  color: #fbbf24;
+}
+
+.header__bookmark-btn--active {
+  background: var(--color-bg-muted);
+  color: #fbbf24;
+  border-color: #fbbf24;
+}
+
+.header__bookmark-count {
+  background: #fbbf24;
+  color: #0f0f0f;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 0.125rem 0.375rem;
+  border-radius: 10px;
+  min-width: 1rem;
+  text-align: center;
+}
+
 /* Main */
 .main {
   max-width: 1200px;
@@ -212,6 +249,220 @@ h1 {
 .empty-state p {
   color: var(--color-text-secondary);
   margin-bottom: 1.5rem;
+}
+
+.empty-state__hint {
+  font-size: 0.875rem;
+  color: var(--color-text-subtle);
+  margin-bottom: 0;
+}
+
+/* Bookmark Header */
+.bookmark-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.bookmark-header h1 {
+  margin-bottom: 0;
+}
+
+/* Bookmark Folder Form */
+.bookmark-folder-form {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.bookmark-folder-form__input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  outline: none;
+  transition: border-color 0.15s;
+  max-width: 300px;
+}
+
+.bookmark-folder-form__input:focus {
+  border-color: var(--color-primary);
+}
+
+.bookmark-folder-form__input::placeholder {
+  color: var(--color-text-subtle);
+}
+
+/* Bookmark Tree */
+.bookmark-tree {
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 0.5rem;
+}
+
+.bookmark-node__row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  transition: background-color 0.15s, border-color 0.15s;
+  cursor: grab;
+}
+
+.bookmark-node__row:active {
+  cursor: grabbing;
+}
+
+.bookmark-node__row:hover {
+  background: var(--color-bg-muted);
+}
+
+.bookmark-node__row--clickable {
+  cursor: pointer;
+}
+
+.bookmark-node__toggle {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--color-text-subtle);
+  font-size: 0.625rem;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.bookmark-node__toggle:hover {
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.bookmark-node__icon {
+  flex-shrink: 0;
+  font-size: 1rem;
+}
+
+.bookmark-node__name {
+  flex: 1;
+  font-size: 0.9375rem;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bookmark-node__row--clickable .bookmark-node__name:hover {
+  color: var(--color-primary);
+}
+
+.bookmark-node__edit-input {
+  flex: 1;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-primary);
+  border-radius: 4px;
+  outline: none;
+}
+
+.bookmark-node__category {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.bookmark-node__actions {
+  display: flex;
+  gap: 0.25rem;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.bookmark-node__row:hover .bookmark-node__actions {
+  opacity: 1;
+}
+
+.bookmark-node__action {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  font-size: 0.75rem;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.15s;
+}
+
+.bookmark-node__action:hover {
+  background: var(--color-bg);
+}
+
+.bookmark-node__action--danger:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+.bookmark-node__children {
+  margin-left: 0.5rem;
+}
+
+/* Bookmark Drag and Drop */
+.bookmark-node__row--dragging {
+  opacity: 0.5;
+  background: var(--color-bg-muted);
+}
+
+.bookmark-node__row--drag-over {
+  background: rgba(59, 130, 246, 0.2);
+  border: 2px dashed #3b82f6;
+  border-radius: 6px;
+}
+
+.bookmark-root-drop {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  border: 2px dashed var(--color-border);
+  border-radius: 6px;
+  text-align: center;
+  color: var(--color-text-subtle);
+  font-size: 0.875rem;
+  transition: all 0.15s;
+}
+
+.bookmark-root-drop--active {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: #3b82f6;
+  color: #3b82f6;
+}
+
+/* Ghost Button */
+.btn--ghost {
+  background: transparent;
+  color: var(--color-text-subtle);
+  border: 1px solid var(--color-border);
+}
+
+.btn--ghost:hover {
+  background: var(--color-bg-muted);
+  color: var(--color-text);
 }
 
 /* Button */
@@ -361,6 +612,124 @@ h1 {
   margin-top: 0.75rem;
   padding-top: 0.75rem;
   border-top: 1px solid var(--color-border);
+}
+
+/* Countdown */
+.note-card--expiring {
+  border-color: var(--color-error, #ef4444);
+  opacity: 1;
+}
+
+.note-card__countdown {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.note-card__countdown-label {
+  color: var(--color-text-subtle);
+}
+
+.note-card__countdown-time {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-secondary);
+}
+
+.note-card__countdown-time--warning {
+  color: var(--color-error, #ef4444);
+  font-weight: 600;
+  animation: countdown-pulse 1s ease-in-out infinite;
+}
+
+@keyframes countdown-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+
+.pagination__info {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  padding: 0 0.5rem;
+}
+
+@media (max-width: 640px) {
+  .pagination {
+    gap: 0.5rem;
+  }
+
+  .pagination__info {
+    order: -1;
+    width: 100%;
+    text-align: center;
+    margin-bottom: 0.5rem;
+  }
+}
+
+/* Confirm Modal */
+.confirm-modal__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 1rem;
+}
+
+.confirm-modal {
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.confirm-modal__header {
+  padding: 1.25rem 1.5rem 0;
+}
+
+.confirm-modal__header h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.confirm-modal__body {
+  padding: 1rem 1.5rem;
+}
+
+.confirm-modal__body p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+.confirm-modal__actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  padding: 1rem 1.5rem 1.25rem;
 }
 
 /* Modal */
@@ -771,6 +1140,25 @@ h1 {
 
 .note-link:hover {
   text-decoration-style: solid;
+}
+
+/* Mermaid Diagram */
+.mermaid-diagram {
+  margin: 0.75rem 0;
+  overflow-x: auto;
+}
+
+.mermaid-diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.mermaid-error {
+  padding: 0.75rem 1rem;
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: 6px;
+  color: var(--color-error, #ef4444);
+  font-size: 0.875rem;
 }
 
 .detail-view__footer {

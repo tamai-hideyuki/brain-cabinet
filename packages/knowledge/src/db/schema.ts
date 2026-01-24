@@ -58,9 +58,28 @@ export const knowledgeEmbeddings = sqliteTable("knowledge_embeddings", {
   updatedAt: integer("updated_at").notNull(),
 });
 
+/**
+ * ブックマークノード（階層構造）
+ * フォルダ、ノートへの参照、外部リンクを保存
+ */
+export const knowledgeBookmarkNodes = sqliteTable("knowledge_bookmark_nodes", {
+  id: text("id").primaryKey(),
+  parentId: text("parent_id"),                    // 親ノードID（NULLならルート）
+  type: text("type").notNull(),                   // "folder" | "note" | "link"
+  name: text("name").notNull(),                   // 表示名
+  noteId: text("note_id"),                        // ノートへの参照（type="note"の場合）
+  url: text("url"),                               // 外部URL（type="link"の場合）
+  position: integer("position").notNull(),        // 同一親内での表示順
+  isExpanded: integer("is_expanded").notNull(),   // フォルダの展開状態（1=展開, 0=折りたたみ）
+  createdAt: integer("created_at"),
+  updatedAt: integer("updated_at"),
+});
+
 // 型エクスポート
 export type KnowledgeNote = typeof knowledgeNotes.$inferSelect;
 export type NewKnowledgeNote = typeof knowledgeNotes.$inferInsert;
 export type Category = typeof categories.$inferSelect;
 export type Tag = typeof tags.$inferSelect;
 export type KnowledgeEmbedding = typeof knowledgeEmbeddings.$inferSelect;
+export type KnowledgeBookmarkNode = typeof knowledgeBookmarkNodes.$inferSelect;
+export type NewKnowledgeBookmarkNode = typeof knowledgeBookmarkNodes.$inferInsert;

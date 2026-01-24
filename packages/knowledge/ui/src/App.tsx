@@ -1,6 +1,46 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useId } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import mermaid from 'mermaid'
+
+// Mermaid初期化
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'dark',
+})
+
+// Mermaidダイアグラムコンポーネント
+const MermaidDiagram = ({ chart }: { chart: string }) => {
+  const [svg, setSvg] = useState<string>('')
+  const [error, setError] = useState<string | null>(null)
+  const id = useId().replace(/:/g, '-')
+
+  useEffect(() => {
+    const renderChart = async () => {
+      try {
+        const { svg } = await mermaid.render(`mermaid${id}`, chart)
+        setSvg(svg)
+        setError(null)
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Failed to render diagram')
+      }
+    }
+    renderChart()
+  }, [chart, id])
+
+  if (error) {
+    return <div className="mermaid-error">{error}</div>
+  }
+
+  return (
+    <div
+      className="mermaid-diagram"
+      dangerouslySetInnerHTML={{ __html: svg }}
+    />
+  )
+}
 
 // 開発時と本番時でCabinet UIのURLを切り替え
 const cabinetUrl = import.meta.env.DEV
@@ -44,6 +84,25 @@ type NoteFormData = {
   tags: string
 }
 
+type BookmarkNode = {
+  id: string
+  parentId: string | null
+  type: 'folder' | 'note' | 'link'
+  name: string
+  noteId: string | null
+  url: string | null
+  position: number
+  isExpanded: boolean
+  createdAt: number | null
+  updatedAt: number | null
+  note?: {
+    id: string
+    title: string
+    category: string | null
+  }
+  children?: BookmarkNode[]
+}
+
 const SOURCE_TYPES = [
   { value: '', label: '選択してください' },
   { value: 'book', label: '書籍' },
@@ -62,11 +121,217 @@ const emptyForm: NoteFormData = {
   tags: '',
 }
 
+// ブックマークツリーノードコンポーネント
+type BookmarkTreeNodeProps = {
+  node: BookmarkNode
+  depth: number
+  onNodeClick: (node: BookmarkNode) => void
+  onToggleExpand: (id: string, isExpanded: boolean) => void
+  onDelete: (id: string) => void
+  onRename: (id: string, name: string) => void
+  editingId: string | null
+  editingName: string
+  onEditingNameChange: (name: string) => void
+  onSaveRename: (id: string, name: string) => void
+  onCancelRename: () => void
+  // ドラッグ＆ドロップ
+  draggingId: string | null
+  dragOverId: string | null
+  onDragStart: (id: string) => void
+  onDragEnd: () => void
+  onDragOver: (id: string) => void
+  onDragLeave: () => void
+  onDrop: (targetId: string) => void
+}
+
+const BookmarkTreeNode = ({
+  node,
+  depth,
+  onNodeClick,
+  onToggleExpand,
+  onDelete,
+  onRename,
+  editingId,
+  editingName,
+  onEditingNameChange,
+  onSaveRename,
+  onCancelRename,
+  draggingId,
+  dragOverId,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+}: BookmarkTreeNodeProps) => {
+  const isEditing = editingId === node.id
+  const hasChildren = node.children && node.children.length > 0
+  const isDragging = draggingId === node.id
+  const isDragOver = dragOverId === node.id && node.type === 'folder' && draggingId !== node.id
+
+  const getIcon = () => {
+    if (node.type === 'folder') {
+      return node.isExpanded ? '📂' : '📁'
+    }
+    if (node.type === 'link') return '🔗'
+    return '📄'
+  }
+
+  return (
+    <div className="bookmark-node">
+      <div
+        className={`bookmark-node__row ${node.type === 'note' ? 'bookmark-node__row--clickable' : ''} ${isDragging ? 'bookmark-node__row--dragging' : ''} ${isDragOver ? 'bookmark-node__row--drag-over' : ''}`}
+        style={{ paddingLeft: `${depth * 1.25}rem` }}
+        draggable={!isEditing}
+        onDragStart={(e) => {
+          e.stopPropagation()
+          onDragStart(node.id)
+        }}
+        onDragEnd={(e) => {
+          e.stopPropagation()
+          onDragEnd()
+        }}
+        onDragOver={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          if (node.type === 'folder' && draggingId !== node.id) {
+            onDragOver(node.id)
+          }
+        }}
+        onDragLeave={(e) => {
+          e.stopPropagation()
+          onDragLeave()
+        }}
+        onDrop={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          if (node.type === 'folder' && draggingId !== node.id) {
+            onDrop(node.id)
+          }
+        }}
+      >
+        {node.type === 'folder' && (
+          <button
+            className="bookmark-node__toggle"
+            onClick={() => onToggleExpand(node.id, !node.isExpanded)}
+          >
+            {node.isExpanded ? '▼' : '▶'}
+          </button>
+        )}
+        <span className="bookmark-node__icon">{getIcon()}</span>
+
+        {isEditing ? (
+          <input
+            type="text"
+            className="bookmark-node__edit-input"
+            value={editingName}
+            onChange={(e) => onEditingNameChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') onSaveRename(node.id, editingName)
+              if (e.key === 'Escape') onCancelRename()
+            }}
+            onBlur={() => onSaveRename(node.id, editingName)}
+            autoFocus
+          />
+        ) : (
+          <span
+            className="bookmark-node__name"
+            onClick={() => node.type === 'note' && onNodeClick(node)}
+          >
+            {node.name}
+          </span>
+        )}
+
+        {node.note?.category && (
+          <span className="bookmark-node__category">{node.note.category}</span>
+        )}
+
+        <div className="bookmark-node__actions">
+          <button
+            className="bookmark-node__action"
+            onClick={() => onRename(node.id, node.name)}
+            title="名前変更"
+          >
+            ✏️
+          </button>
+          <button
+            className="bookmark-node__action bookmark-node__action--danger"
+            onClick={() => {
+              if (confirm(`「${node.name}」を削除しますか？`)) {
+                onDelete(node.id)
+              }
+            }}
+            title="削除"
+          >
+            🗑️
+          </button>
+        </div>
+      </div>
+
+      {node.type === 'folder' && node.isExpanded && hasChildren && (
+        <div className="bookmark-node__children">
+          {node.children!.map((child) => (
+            <BookmarkTreeNode
+              key={child.id}
+              node={child}
+              depth={depth + 1}
+              onNodeClick={onNodeClick}
+              onToggleExpand={onToggleExpand}
+              onDelete={onDelete}
+              onRename={onRename}
+              editingId={editingId}
+              editingName={editingName}
+              onEditingNameChange={onEditingNameChange}
+              onSaveRename={onSaveRename}
+              onCancelRename={onCancelRename}
+              draggingId={draggingId}
+              dragOverId={dragOverId}
+              onDragStart={onDragStart}
+              onDragEnd={onDragEnd}
+              onDragOver={onDragOver}
+              onDragLeave={onDragLeave}
+              onDrop={onDrop}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// カウントダウン関連
+const EXPIRATION_MS = 3600 * 1000 // 1時間（ミリ秒）
+
+const calculateRemainingSeconds = (deletedAt: number): number => {
+  const now = Date.now() // ミリ秒
+  const expiresAt = deletedAt + EXPIRATION_MS // ミリ秒
+  return Math.max(0, Math.floor((expiresAt - now) / 1000)) // 秒に変換
+}
+
+const formatCountdown = (seconds: number): string => {
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  const secs = seconds % 60
+  if (hours > 0) {
+    return `${hours}時間${minutes}分${secs}秒`
+  }
+  if (minutes > 0) {
+    return `${minutes}分${secs}秒`
+  }
+  return `${secs}秒`
+}
+
 function App() {
   const [notes, setNotes] = useState<KnowledgeNote[]>([])
   const [deletedNotes, setDeletedNotes] = useState<KnowledgeNote[]>([])
   const [loading, setLoading] = useState(true)
   const [showTrash, setShowTrash] = useState(false)
+
+  // ページネーション
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalNotes, setTotalNotes] = useState(0)
+  const NOTES_PER_PAGE = 30
+  const totalPages = Math.ceil(totalNotes / NOTES_PER_PAGE)
   const [showModal, setShowModal] = useState(false)
   const [editingNote, setEditingNote] = useState<KnowledgeNote | null>(null)
   const [viewingNote, setViewingNote] = useState<KnowledgeNote | null>(null)
@@ -81,6 +346,25 @@ function App() {
 
   // 編集画面のプレビュータブ（スマホ用）
   const [editTab, setEditTab] = useState<'edit' | 'preview'>('edit')
+
+  // カウントダウン更新用のトリガー
+  const [countdownTick, setCountdownTick] = useState(0)
+
+  // 削除確認モーダル
+  const [deleteTarget, setDeleteTarget] = useState<KnowledgeNote | null>(null)
+  const [deleting, setDeleting] = useState(false)
+
+  // ブックマーク関連
+  const [showBookmarks, setShowBookmarks] = useState(false)
+  const [bookmarkTree, setBookmarkTree] = useState<BookmarkNode[]>([])
+  const [bookmarkLoading, setBookmarkLoading] = useState(false)
+  const [addingBookmark, setAddingBookmark] = useState(false)
+  const [newFolderName, setNewFolderName] = useState('')
+  const [creatingFolder, setCreatingFolder] = useState(false)
+  const [editingBookmark, setEditingBookmark] = useState<string | null>(null)
+  const [editingBookmarkName, setEditingBookmarkName] = useState('')
+  const [draggingBookmarkId, setDraggingBookmarkId] = useState<string | null>(null)
+  const [dragOverBookmarkId, setDragOverBookmarkId] = useState<string | null>(null)
 
   // スクロール連動用
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -119,14 +403,23 @@ function App() {
     })
   }, [])
 
-  const fetchNotes = () => {
-    fetch(`${apiBase}/notes`)
+  const fetchNotes = (page = 1) => {
+    const offset = (page - 1) * NOTES_PER_PAGE
+    fetch(`${apiBase}/notes?limit=${NOTES_PER_PAGE}&offset=${offset}`)
       .then((res) => res.json())
       .then((data) => {
         setNotes(data.notes || [])
+        setTotalNotes(data.total || 0)
+        setCurrentPage(page)
         setLoading(false)
       })
       .catch(() => setLoading(false))
+  }
+
+  const goToPage = (page: number) => {
+    if (page < 1 || page > totalPages) return
+    setLoading(true)
+    fetchNotes(page)
   }
 
   const fetchDeletedNotes = () => {
@@ -136,6 +429,141 @@ function App() {
         setDeletedNotes(data.notes || [])
       })
       .catch(() => setDeletedNotes([]))
+  }
+
+  // ブックマーク取得
+  const fetchBookmarks = async () => {
+    setBookmarkLoading(true)
+    try {
+      const res = await fetch(`${apiBase}/bookmarks`)
+      const data = await res.json()
+      setBookmarkTree(data.tree || [])
+    } catch (err) {
+      console.error('Failed to fetch bookmarks:', err)
+    } finally {
+      setBookmarkLoading(false)
+    }
+  }
+
+  // ブックマークにノートを追加
+  const addNoteToBookmark = async (note: KnowledgeNote) => {
+    setAddingBookmark(true)
+    try {
+      await fetch(`${apiBase}/bookmarks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'note',
+          name: note.title,
+          noteId: note.id,
+        }),
+      })
+      await fetchBookmarks()
+    } catch (err) {
+      console.error('Failed to add bookmark:', err)
+    } finally {
+      setAddingBookmark(false)
+    }
+  }
+
+  // フォルダ作成
+  const createFolder = async () => {
+    if (!newFolderName.trim()) return
+    setCreatingFolder(true)
+    try {
+      await fetch(`${apiBase}/bookmarks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'folder',
+          name: newFolderName.trim(),
+        }),
+      })
+      setNewFolderName('')
+      await fetchBookmarks()
+    } catch (err) {
+      console.error('Failed to create folder:', err)
+    } finally {
+      setCreatingFolder(false)
+    }
+  }
+
+  // ブックマーク削除
+  const deleteBookmark = async (id: string) => {
+    try {
+      await fetch(`${apiBase}/bookmarks/${id}`, { method: 'DELETE' })
+      await fetchBookmarks()
+    } catch (err) {
+      console.error('Failed to delete bookmark:', err)
+    }
+  }
+
+  // ブックマーク名更新
+  const updateBookmarkName = async (id: string, name: string) => {
+    try {
+      await fetch(`${apiBase}/bookmarks/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      })
+      setEditingBookmark(null)
+      setEditingBookmarkName('')
+      await fetchBookmarks()
+    } catch (err) {
+      console.error('Failed to update bookmark:', err)
+    }
+  }
+
+  // フォルダ展開/折りたたみ
+  const toggleBookmarkExpand = async (id: string, isExpanded: boolean) => {
+    try {
+      await fetch(`${apiBase}/bookmarks/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isExpanded }),
+      })
+      // ローカルで即座に更新
+      const updateTreeExpand = (nodes: BookmarkNode[]): BookmarkNode[] => {
+        return nodes.map((node) => {
+          if (node.id === id) {
+            return { ...node, isExpanded }
+          }
+          if (node.children) {
+            return { ...node, children: updateTreeExpand(node.children) }
+          }
+          return node
+        })
+      }
+      setBookmarkTree(updateTreeExpand(bookmarkTree))
+    } catch (err) {
+      console.error('Failed to toggle expand:', err)
+    }
+  }
+
+  // ノートがブックマーク済みかどうかをチェック
+  const isNoteBookmarked = (noteId: string): boolean => {
+    const checkInTree = (nodes: BookmarkNode[]): boolean => {
+      for (const node of nodes) {
+        if (node.type === 'note' && node.noteId === noteId) return true
+        if (node.children && checkInTree(node.children)) return true
+      }
+      return false
+    }
+    return checkInTree(bookmarkTree)
+  }
+
+  // ブックマーク移動（ドラッグ＆ドロップ）
+  const moveBookmark = async (bookmarkId: string, newParentId: string | null) => {
+    try {
+      await fetch(`${apiBase}/bookmarks/${bookmarkId}/move`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newParentId }),
+      })
+      await fetchBookmarks()
+    } catch (err) {
+      console.error('Failed to move bookmark:', err)
+    }
   }
 
   // 検索実行
@@ -179,7 +607,19 @@ function App() {
   useEffect(() => {
     fetchNotes()
     fetchDeletedNotes()
+    fetchBookmarks()
   }, [])
+
+  // ゴミ箱表示時のカウントダウン更新（1秒ごと）
+  useEffect(() => {
+    if (!showTrash || deletedNotes.length === 0) return
+
+    const interval = setInterval(() => {
+      setCountdownTick((prev) => prev + 1)
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [showTrash, deletedNotes.length])
 
   const openCreateModal = () => {
     setEditingNote(null)
@@ -228,6 +668,9 @@ function App() {
       // ゴミ箱
       setShowTrash(state.view === 'trash')
 
+      // ブックマーク
+      setShowBookmarks(state.view === 'bookmarks')
+
       // 検索結果
       if (state.view === 'search' && state.query) {
         setSearchQuery(state.query)
@@ -258,6 +701,11 @@ function App() {
       // ゴミ箱
       if (params.get('view') === 'trash') {
         setShowTrash(true)
+      }
+
+      // ブックマーク
+      if (params.get('view') === 'bookmarks') {
+        setShowBookmarks(true)
       }
 
       // 検索
@@ -330,16 +778,31 @@ function App() {
     }
   }
 
-  const handleDelete = async (noteId: string) => {
-    if (!confirm('この知識ノートをゴミ箱に移動しますか？')) return
+  const handleDelete = (note: KnowledgeNote) => {
+    setDeleteTarget(note)
+  }
 
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
+
+    setDeleting(true)
     try {
-      await fetch(`${apiBase}/notes/${noteId}`, { method: 'DELETE' })
-      fetchNotes()
+      await fetch(`${apiBase}/notes/${deleteTarget.id}`, { method: 'DELETE' })
+      setDeleteTarget(null)
+      if (viewingNote?.id === deleteTarget.id) {
+        closeDetailView()
+      }
+      fetchNotes(currentPage)
       fetchDeletedNotes()
     } catch (err) {
       console.error('Failed to delete note:', err)
+    } finally {
+      setDeleting(false)
     }
+  }
+
+  const cancelDelete = () => {
+    setDeleteTarget(null)
   }
 
   const handleRestore = async (noteId: string) => {
@@ -416,6 +879,32 @@ function App() {
               </a>
             )
           },
+          code: ({ className, children }) => {
+            const match = /language-(\w+)/.exec(className || '')
+            const language = match ? match[1] : ''
+            const codeString = String(children).replace(/\n$/, '')
+
+            // インラインコードの場合
+            if (!match) {
+              return <code className={className}>{children}</code>
+            }
+
+            // Mermaid記法の場合
+            if (language === 'mermaid') {
+              return <MermaidDiagram chart={codeString} />
+            }
+
+            // コードブロック
+            return (
+              <SyntaxHighlighter
+                style={oneDark}
+                language={language}
+                PreTag="div"
+              >
+                {codeString}
+              </SyntaxHighlighter>
+            )
+          },
         }}
       >
         {content}
@@ -460,11 +949,30 @@ function App() {
         </div>
         <nav className="header__nav">
           <button
+            className={`header__bookmark-btn ${showBookmarks ? 'header__bookmark-btn--active' : ''}`}
+            onClick={() => {
+              if (!showBookmarks) {
+                setShowBookmarks(true)
+                setShowTrash(false)
+                setShowSearchResults(false)
+                setSearchQuery('')
+                window.history.pushState({ view: 'bookmarks' }, '', '?view=bookmarks')
+              } else {
+                setShowBookmarks(false)
+                window.history.pushState({}, '', window.location.pathname)
+              }
+            }}
+            title="ブックマーク"
+          >
+            ★ {bookmarkTree.length > 0 && <span className="header__bookmark-count">{bookmarkTree.length}</span>}
+          </button>
+          <button
             className={`header__trash-btn ${showTrash ? 'header__trash-btn--active' : ''}`}
             onClick={() => {
               if (!showTrash) {
                 // ゴミ箱を開く
                 setShowTrash(true)
+                setShowBookmarks(false)
                 setShowSearchResults(false)
                 setSearchQuery('')
                 window.history.pushState({ view: 'trash' }, '', '?view=trash')
@@ -546,6 +1054,116 @@ function App() {
               </div>
             )}
           </>
+        ) : showBookmarks ? (
+          <>
+            <div className="bookmark-header">
+              <h1>ブックマーク</h1>
+            </div>
+            <p className="subtitle">よく参照するノートを整理</p>
+
+            <div className="bookmark-folder-form">
+              <input
+                type="text"
+                className="bookmark-folder-form__input"
+                placeholder="新しいフォルダ名..."
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+              />
+              <button
+                type="button"
+                className="btn btn--primary btn--small"
+                onClick={createFolder}
+                disabled={creatingFolder || !newFolderName.trim()}
+              >
+                {creatingFolder ? '作成中...' : '+ フォルダ作成'}
+              </button>
+            </div>
+
+            {bookmarkLoading ? (
+              <p>読み込み中...</p>
+            ) : bookmarkTree.length === 0 ? (
+              <div className="empty-state">
+                <p>ブックマークがありません</p>
+                <p className="empty-state__hint">ノート詳細画面から ★ ボタンで追加できます</p>
+              </div>
+            ) : (
+              <div className="bookmark-tree">
+                {bookmarkTree.map((node) => (
+                  <BookmarkTreeNode
+                    key={node.id}
+                    node={node}
+                    depth={0}
+                    onNodeClick={(n) => {
+                      if (n.type === 'note' && n.noteId) {
+                        const note = notes.find((note) => note.id === n.noteId)
+                        if (note) {
+                          openDetailView(note)
+                        } else {
+                          fetch(`${apiBase}/notes/${n.noteId}`)
+                            .then((res) => res.json())
+                            .then((fetchedNote) => {
+                              if (fetchedNote?.id) {
+                                openDetailView(fetchedNote)
+                              }
+                            })
+                        }
+                      }
+                    }}
+                    onToggleExpand={toggleBookmarkExpand}
+                    onDelete={deleteBookmark}
+                    onRename={(id, name) => {
+                      setEditingBookmark(id)
+                      setEditingBookmarkName(name)
+                    }}
+                    editingId={editingBookmark}
+                    editingName={editingBookmarkName}
+                    onEditingNameChange={setEditingBookmarkName}
+                    onSaveRename={updateBookmarkName}
+                    onCancelRename={() => {
+                      setEditingBookmark(null)
+                      setEditingBookmarkName('')
+                    }}
+                    draggingId={draggingBookmarkId}
+                    dragOverId={dragOverBookmarkId}
+                    onDragStart={(id) => setDraggingBookmarkId(id)}
+                    onDragEnd={() => {
+                      setDraggingBookmarkId(null)
+                      setDragOverBookmarkId(null)
+                    }}
+                    onDragOver={(id) => setDragOverBookmarkId(id)}
+                    onDragLeave={() => setDragOverBookmarkId(null)}
+                    onDrop={(targetId) => {
+                      if (draggingBookmarkId && draggingBookmarkId !== targetId) {
+                        moveBookmark(draggingBookmarkId, targetId)
+                      }
+                      setDraggingBookmarkId(null)
+                      setDragOverBookmarkId(null)
+                    }}
+                  />
+                ))}
+                {draggingBookmarkId && (
+                  <div
+                    className={`bookmark-root-drop ${dragOverBookmarkId === 'root' ? 'bookmark-root-drop--active' : ''}`}
+                    onDragOver={(e) => {
+                      e.preventDefault()
+                      setDragOverBookmarkId('root')
+                    }}
+                    onDragLeave={() => setDragOverBookmarkId(null)}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      if (draggingBookmarkId) {
+                        moveBookmark(draggingBookmarkId, null)
+                      }
+                      setDraggingBookmarkId(null)
+                      setDragOverBookmarkId(null)
+                    }}
+                  >
+                    ルートに移動
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         ) : showTrash ? (
           <>
             <h1>ゴミ箱</h1>
@@ -557,33 +1175,43 @@ function App() {
               </div>
             ) : (
               <div className="notes-grid">
-                {deletedNotes.map((note) => (
-                  <div key={note.id} className="note-card note-card--deleted">
-                    <div className="note-card__header">
-                      <h3>{note.title}</h3>
+                {deletedNotes.map((note) => {
+                  const remainingSeconds = note.deletedAt ? calculateRemainingSeconds(note.deletedAt) : 0
+                  const isExpiringSoon = remainingSeconds <= 300 // 5分以内
+                  // countdownTickを参照して再レンダリングをトリガー
+                  void countdownTick
+
+                  return (
+                    <div key={note.id} className={`note-card note-card--deleted ${isExpiringSoon ? 'note-card--expiring' : ''}`}>
+                      <div className="note-card__header">
+                        <h3>{note.title}</h3>
+                      </div>
+                      <p className="note-card__excerpt">
+                        {note.content.length > 100 ? note.content.slice(0, 100) + '...' : note.content}
+                      </p>
+                      <div className="note-card__countdown">
+                        <span className="note-card__countdown-label">完全削除まで</span>
+                        <span className={`note-card__countdown-time ${isExpiringSoon ? 'note-card__countdown-time--warning' : ''}`}>
+                          {formatCountdown(remainingSeconds)}
+                        </span>
+                      </div>
+                      <div className="note-card__trash-actions">
+                        <button
+                          className="btn btn--small btn--secondary"
+                          onClick={() => handleRestore(note.id)}
+                        >
+                          復元
+                        </button>
+                        <button
+                          className="btn btn--small btn--danger"
+                          onClick={() => handlePermanentDelete(note.id)}
+                        >
+                          完全削除
+                        </button>
+                      </div>
                     </div>
-                    <p className="note-card__excerpt">
-                      {note.content.length > 100 ? note.content.slice(0, 100) + '...' : note.content}
-                    </p>
-                    <span className="note-card__date">
-                      削除: {note.deletedAt ? formatDate(note.deletedAt) : ''}
-                    </span>
-                    <div className="note-card__trash-actions">
-                      <button
-                        className="btn btn--small btn--secondary"
-                        onClick={() => handleRestore(note.id)}
-                      >
-                        復元
-                      </button>
-                      <button
-                        className="btn btn--small btn--danger"
-                        onClick={() => handlePermanentDelete(note.id)}
-                      >
-                        完全削除
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </>
@@ -602,35 +1230,74 @@ function App() {
                 </button>
               </div>
             ) : (
-              <div className="notes-grid">
-                {notes.map((note) => (
-                  <div key={note.id} className="note-card" onClick={() => openDetailView(note)}>
-                    <div className="note-card__header">
-                      <h3>{note.title}</h3>
-                      <button
-                        className="note-card__delete"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleDelete(note.id)
-                        }}
-                        title="削除"
-                      >
-                        ×
-                      </button>
+              <>
+                <div className="notes-grid">
+                  {notes.map((note) => (
+                    <div key={note.id} className="note-card" onClick={() => openDetailView(note)}>
+                      <div className="note-card__header">
+                        <h3>{note.title}</h3>
+                        <button
+                          className="note-card__delete"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDelete(note)
+                          }}
+                          title="削除"
+                        >
+                          ×
+                        </button>
+                      </div>
+                      {note.source && (
+                        <span className="note-card__source">
+                          {note.sourceType && `[${SOURCE_TYPES.find(s => s.value === note.sourceType)?.label || note.sourceType}] `}
+                          {note.source}
+                        </span>
+                      )}
+                      <p className="note-card__excerpt">
+                        {note.content.length > 100 ? note.content.slice(0, 100) + '...' : note.content}
+                      </p>
+                      <span className="note-card__date">{formatDate(note.updatedAt)}</span>
                     </div>
-                    {note.source && (
-                      <span className="note-card__source">
-                        {note.sourceType && `[${SOURCE_TYPES.find(s => s.value === note.sourceType)?.label || note.sourceType}] `}
-                        {note.source}
-                      </span>
-                    )}
-                    <p className="note-card__excerpt">
-                      {note.content.length > 100 ? note.content.slice(0, 100) + '...' : note.content}
-                    </p>
-                    <span className="note-card__date">{formatDate(note.updatedAt)}</span>
+                  ))}
+                </div>
+
+                {/* ページネーション */}
+                {totalPages > 1 && (
+                  <div className="pagination">
+                    <button
+                      className="btn btn--small btn--secondary"
+                      onClick={() => goToPage(1)}
+                      disabled={currentPage === 1}
+                    >
+                      ⏮ 最初
+                    </button>
+                    <button
+                      className="btn btn--small btn--secondary"
+                      onClick={() => goToPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                    >
+                      ← 前へ
+                    </button>
+                    <span className="pagination__info">
+                      {currentPage} / {totalPages} ページ（{totalNotes}件）
+                    </span>
+                    <button
+                      className="btn btn--small btn--secondary"
+                      onClick={() => goToPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                    >
+                      次へ →
+                    </button>
+                    <button
+                      className="btn btn--small btn--secondary"
+                      onClick={() => goToPage(totalPages)}
+                      disabled={currentPage === totalPages}
+                    >
+                      最後 ⏭
+                    </button>
                   </div>
-                ))}
-              </div>
+                )}
+              </>
             )}
           </>
         )}
@@ -645,6 +1312,14 @@ function App() {
               </button>
               <div className="detail-view__actions">
                 <button
+                  className={`btn btn--small ${isNoteBookmarked(viewingNote.id) ? 'btn--secondary' : 'btn--ghost'}`}
+                  onClick={() => addNoteToBookmark(viewingNote)}
+                  disabled={addingBookmark || isNoteBookmarked(viewingNote.id)}
+                  title={isNoteBookmarked(viewingNote.id) ? 'ブックマーク済み' : 'ブックマークに追加'}
+                >
+                  {addingBookmark ? '追加中...' : isNoteBookmarked(viewingNote.id) ? '★ ブックマーク済み' : '☆ ブックマーク'}
+                </button>
+                <button
                   className="btn btn--primary btn--small"
                   onClick={() => openEditModal(viewingNote)}
                 >
@@ -652,10 +1327,7 @@ function App() {
                 </button>
                 <button
                   className="btn btn--danger btn--small"
-                  onClick={() => {
-                    handleDelete(viewingNote.id)
-                    closeDetailView()
-                  }}
+                  onClick={() => handleDelete(viewingNote)}
                 >
                   削除
                 </button>
@@ -880,6 +1552,28 @@ function App() {
                   )}
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 削除確認モーダル */}
+      {deleteTarget && (
+        <div className="confirm-modal__backdrop" onClick={cancelDelete}>
+          <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="confirm-modal__header">
+              <h3>ノートを削除</h3>
+            </div>
+            <div className="confirm-modal__body">
+              <p>「{deleteTarget.title}」を削除しますか？削除後1時間以内であればゴミ箱から復元できます。</p>
+            </div>
+            <div className="confirm-modal__actions">
+              <button className="btn btn--secondary" onClick={cancelDelete} disabled={deleting}>
+                キャンセル
+              </button>
+              <button className="btn btn--danger" onClick={confirmDelete} disabled={deleting}>
+                {deleting ? '削除中...' : '削除'}
+              </button>
             </div>
           </div>
         </div>
