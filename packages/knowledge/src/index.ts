@@ -329,6 +329,18 @@ app.get("/api/categories", async (c) => {
   return c.json(result);
 });
 
+// 使用中のカテゴリを取得（ノートから抽出）
+app.get("/api/categories/used", async (c) => {
+  const result = await db
+    .select({ category: knowledgeNotes.category })
+    .from(knowledgeNotes)
+    .where(and(isNull(knowledgeNotes.deletedAt), isNotNull(knowledgeNotes.category)));
+
+  // ユニークなカテゴリのリストを作成
+  const uniqueCategories = [...new Set(result.map((r) => r.category).filter(Boolean))] as string[];
+  return c.json({ categories: uniqueCategories.sort() });
+});
+
 app.post("/api/categories", async (c) => {
   const body = await c.req.json();
   const id = uuidv4();
@@ -351,6 +363,29 @@ app.post("/api/categories", async (c) => {
 app.get("/api/tags", async (c) => {
   const result = await db.select().from(tags);
   return c.json(result);
+});
+
+// 使用中のタグを取得（ノートから抽出）
+app.get("/api/tags/used", async (c) => {
+  const result = await db
+    .select({ tags: knowledgeNotes.tags })
+    .from(knowledgeNotes)
+    .where(and(isNull(knowledgeNotes.deletedAt), isNotNull(knowledgeNotes.tags)));
+
+  // 全ノートのタグを集約してユニークなリストを作成
+  const allTags: string[] = [];
+  for (const row of result) {
+    if (row.tags) {
+      try {
+        const parsed = JSON.parse(row.tags) as string[];
+        allTags.push(...parsed);
+      } catch {
+        // ignore parse errors
+      }
+    }
+  }
+  const uniqueTags = [...new Set(allTags)].sort();
+  return c.json({ tags: uniqueTags });
 });
 
 // ========== Bookmarks API ==========
