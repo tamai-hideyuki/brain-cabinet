@@ -6,6 +6,11 @@ import { useTheme } from '../../../hooks/useTheme'
 import { usePTM } from '../../../hooks/usePTM'
 import './Header.css'
 
+// 開発時と本番時でKnowledge UIのURLを切り替え
+const knowledgeUrl = import.meta.env.DEV
+  ? 'http://localhost:5174/'
+  : '/knowledge/'
+
 export const Header = () => {
   const { theme, toggleTheme } = useTheme()
   const { ptm, loading: ptmLoading } = usePTM()
@@ -63,7 +68,7 @@ export const Header = () => {
             <span className="header__app-link-short">BC</span>
           </a>
           <span className="header__app-separator">/</span>
-          <a href="/knowledge/" className="header__app-link" title="Brain Knowledge（知識）">
+          <a href={knowledgeUrl} className="header__app-link" title="Brain Knowledge（知識）">
             <span className="header__app-link-full">Knowledge</span>
             <span className="header__app-link-short">BK</span>
           </a>

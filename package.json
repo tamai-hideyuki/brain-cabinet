@@ -9,8 +9,7 @@
     ]
   },
   "scripts": {
-    "dev": "tsx src/index.ts",
-    "ui:dev": "cd ui && npm run dev",
+    "dev": "tsx src/index.ts & tsx packages/knowledge/src/index.ts & cd ui && pnpm dev & cd packages/knowledge/ui && pnpm dev",
     "ui:build": "cd ui && npm run build",
     "test": "vitest run",
     "test:watch": "vitest",

@@ -66,3 +66,54 @@ staticRoutes.get("/favicon.ico", async (c) => {
   const icon = fs.readFileSync(iconPath);
   return c.body(icon, 200, { "Content-Type": "image/png" });
 });
+
+// ========== Knowledge UI 静的ファイル配信 ==========
+const rewriteKnowledgePath = (p: string) => p.replace(/^\/knowledge/, "");
+
+staticRoutes.use(
+  "/knowledge/assets/*",
+  serveStatic({
+    root: "./packages/knowledge/ui/dist",
+    rewriteRequestPath: rewriteKnowledgePath,
+  })
+);
+
+staticRoutes.use(
+  "/knowledge/*.png",
+  serveStatic({
+    root: "./packages/knowledge/ui/dist",
+    rewriteRequestPath: rewriteKnowledgePath,
+  })
+);
+staticRoutes.use(
+  "/knowledge/*.ico",
+  serveStatic({
+    root: "./packages/knowledge/ui/dist",
+    rewriteRequestPath: rewriteKnowledgePath,
+  })
+);
+staticRoutes.use(
+  "/knowledge/*.json",
+  serveStatic({
+    root: "./packages/knowledge/ui/dist",
+    rewriteRequestPath: rewriteKnowledgePath,
+  })
+);
+
+// /knowledge → /knowledge/ へリダイレクト
+staticRoutes.get("/knowledge", (c) => c.redirect("/knowledge/"));
+
+// Knowledge SPA fallback
+staticRoutes.get("/knowledge/*", async (c) => {
+  const indexPath = path.join(
+    __dirname,
+    "../../packages/knowledge/ui/dist/index.html"
+  );
+  try {
+    const html = fs.readFileSync(indexPath, "utf8");
+    return c.html(html);
+  } catch {
+    // ビルドされていない場合は開発サーバーへリダイレクト
+    return c.redirect("http://localhost:5174/");
+  }
+});
