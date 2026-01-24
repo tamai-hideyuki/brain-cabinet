@@ -549,7 +549,7 @@ function App() {
         ) : (
           <>
             <h1>Brain Knowledge</h1>
-            <p className="subtitle">読書や業務から学んだ知識を記録</p>
+            <p className="subtitle">学んだ知識を記録</p>
 
             {loading ? (
               <p>Loading...</p>
