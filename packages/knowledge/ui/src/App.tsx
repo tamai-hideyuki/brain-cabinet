@@ -838,6 +838,13 @@ function App() {
   const isNoteId = (href: string) => /^[a-f0-9-]{36}$/.test(href)
 
   const handleLinkClick = (noteId: string) => {
+    // まずゴミ箱にあるかチェック
+    const trashedNote = deletedNotes.find((n) => n.id === noteId)
+    if (trashedNote) {
+      alert('このノートはゴミ箱にあります')
+      return
+    }
+
     const linkedNote = notes.find((n) => n.id === noteId)
     if (linkedNote) {
       openDetailView(linkedNote)
@@ -847,6 +854,11 @@ function App() {
         .then((res) => res.json())
         .then((note) => {
           if (note && note.id) {
+            // deletedAtがあればゴミ箱にある
+            if (note.deletedAt) {
+              alert('このノートはゴミ箱にあります')
+              return
+            }
             openDetailView(note)
           } else {
             alert('リンク先のノートが見つかりません')
