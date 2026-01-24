@@ -625,6 +625,136 @@ h1 {
   margin-bottom: 0.75rem;
 }
 
+/* Markdown styles */
+.detail-view__body h2 {
+  font-size: 1.375rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 0.5rem;
+}
+
+.detail-view__body h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.detail-view__body h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.detail-view__body ul,
+.detail-view__body ol {
+  margin-bottom: 0.75rem;
+  padding-left: 1.5rem;
+}
+
+.detail-view__body li {
+  margin-bottom: 0.25rem;
+}
+
+.detail-view__body li > ul,
+.detail-view__body li > ol {
+  margin-top: 0.25rem;
+  margin-bottom: 0;
+}
+
+.detail-view__body blockquote {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  border-left: 3px solid var(--color-primary);
+  background: var(--color-bg-muted);
+  border-radius: 0 6px 6px 0;
+  color: var(--color-text-secondary);
+}
+
+.detail-view__body blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+.detail-view__body code {
+  font-family: 'SF Mono', Monaco, 'Consolas', monospace;
+  font-size: 0.875em;
+  background: var(--color-bg-muted);
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  color: #f97316;
+}
+
+.detail-view__body pre {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: var(--color-bg-muted);
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+.detail-view__body pre code {
+  background: none;
+  padding: 0;
+  color: var(--color-text);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+
+.detail-view__body table {
+  width: 100%;
+  margin: 1rem 0;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.detail-view__body th,
+.detail-view__body td {
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--color-border);
+  text-align: left;
+}
+
+.detail-view__body th {
+  background: var(--color-bg-muted);
+  font-weight: 600;
+}
+
+.detail-view__body hr {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 1.5rem 0;
+}
+
+.detail-view__body a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.detail-view__body a:hover {
+  text-decoration: underline;
+}
+
+.detail-view__body strong {
+  font-weight: 600;
+}
+
+.detail-view__body em {
+  font-style: italic;
+}
+
+.detail-view__body del {
+  text-decoration: line-through;
+  color: var(--color-text-subtle);
+}
+
+/* Task list (GFM) */
+.detail-view__body input[type="checkbox"] {
+  margin-right: 0.5rem;
+}
+
 .note-link {
   display: inline;
   background: none;

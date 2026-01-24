@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 // 開発時と本番時でCabinet UIのURLを切り替え
 const cabinetUrl = import.meta.env.DEV
@@ -328,39 +330,20 @@ function App() {
     })
   }
 
-  // [text](noteId) 形式のリンクをパースして表示
-  const parseContent = (content: string) => {
-    const linkRegex = /\[([^\]]*)\]\(([a-f0-9-]{36})\)/g
-    const parts: (string | { text: string; noteId: string })[] = []
-    let lastIndex = 0
-    let match
-
-    while ((match = linkRegex.exec(content)) !== null) {
-      if (match.index > lastIndex) {
-        parts.push(content.slice(lastIndex, match.index))
-      }
-      parts.push({ text: match[1] || '関連ノート', noteId: match[2] })
-      lastIndex = match.index + match[0].length
-    }
-
-    if (lastIndex < content.length) {
-      parts.push(content.slice(lastIndex))
-    }
-
-    return parts
-  }
+  // UUID形式かどうかを判定
+  const isNoteId = (href: string) => /^[a-f0-9-]{36}$/.test(href)
 
   const handleLinkClick = (noteId: string) => {
     const linkedNote = notes.find((n) => n.id === noteId)
     if (linkedNote) {
-      setViewingNote(linkedNote)
+      openDetailView(linkedNote)
     } else {
       // ノートが一覧にない場合はAPIから取得
       fetch(`${apiBase}/notes/${noteId}`)
         .then((res) => res.json())
         .then((note) => {
           if (note && note.id) {
-            setViewingNote(note)
+            openDetailView(note)
           } else {
             alert('リンク先のノートが見つかりません')
           }
@@ -370,31 +353,33 @@ function App() {
   }
 
   const renderContent = (content: string) => {
-    return content.split('\n').map((line, lineIndex) => {
-      const parts = parseContent(line)
-      return (
-        <p key={lineIndex}>
-          {parts.length === 0 ? (
-            <br />
-          ) : (
-            parts.map((part, partIndex) =>
-              typeof part === 'string' ? (
-                part || (parts.length === 1 ? <br /> : null)
-              ) : (
+    return (
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          a: ({ href, children }) => {
+            if (href && isNoteId(href)) {
+              return (
                 <button
-                  key={partIndex}
                   className="note-link"
-                  onClick={() => handleLinkClick(part.noteId)}
-                  title={`ノートを開く: ${part.noteId}`}
+                  onClick={() => handleLinkClick(href)}
+                  title={`ノートを開く: ${href}`}
                 >
-                  {part.text || '→'}
+                  {children || '関連ノート'}
                 </button>
               )
+            }
+            return (
+              <a href={href} target="_blank" rel="noopener noreferrer">
+                {children}
+              </a>
             )
-          )}
-        </p>
-      )
-    })
+          },
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    )
   }
 
   return (
