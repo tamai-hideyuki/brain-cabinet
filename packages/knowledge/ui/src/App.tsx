@@ -109,6 +109,7 @@ const SOURCE_TYPES = [
   { value: 'work', label: '業務' },
   { value: 'article', label: '記事' },
   { value: 'course', label: '講座・研修' },
+  { value: 'ai', label: 'AI' },
   { value: 'other', label: 'その他' },
 ]
 
