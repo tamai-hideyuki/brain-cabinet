@@ -367,6 +367,15 @@ function App() {
   const [draggingBookmarkId, setDraggingBookmarkId] = useState<string | null>(null)
   const [dragOverBookmarkId, setDragOverBookmarkId] = useState<string | null>(null)
 
+  // カテゴリ/タグ候補
+  const [categoryOptions, setCategoryOptions] = useState<string[]>([])
+  const [tagOptions, setTagOptions] = useState<string[]>([])
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false)
+  const [showTagDropdown, setShowTagDropdown] = useState(false)
+  const [tagInputValue, setTagInputValue] = useState('')
+  const categoryInputRef = useRef<HTMLInputElement>(null)
+  const tagInputRef = useRef<HTMLInputElement>(null)
+
   // スクロール連動用
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const previewRef = useRef<HTMLDivElement>(null)
@@ -443,6 +452,28 @@ function App() {
       console.error('Failed to fetch bookmarks:', err)
     } finally {
       setBookmarkLoading(false)
+    }
+  }
+
+  // カテゴリ候補取得
+  const fetchCategoryOptions = async () => {
+    try {
+      const res = await fetch(`${apiBase}/categories/used`)
+      const data = await res.json()
+      setCategoryOptions(data.categories || [])
+    } catch (err) {
+      console.error('Failed to fetch category options:', err)
+    }
+  }
+
+  // タグ候補取得
+  const fetchTagOptions = async () => {
+    try {
+      const res = await fetch(`${apiBase}/tags/used`)
+      const data = await res.json()
+      setTagOptions(data.tags || [])
+    } catch (err) {
+      console.error('Failed to fetch tag options:', err)
     }
   }
 
@@ -609,6 +640,8 @@ function App() {
     fetchNotes()
     fetchDeletedNotes()
     fetchBookmarks()
+    fetchCategoryOptions()
+    fetchTagOptions()
   }, [])
 
   // ゴミ箱表示時のカウントダウン更新（1秒ごと）
@@ -737,6 +770,9 @@ function App() {
     setEditingNote(null)
     setForm(emptyForm)
     setEditTab('edit')
+    setTagInputValue('')
+    setShowCategoryDropdown(false)
+    setShowTagDropdown(false)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -772,6 +808,9 @@ function App() {
       }
       closeModal()
       fetchNotes()
+      // 新しいカテゴリ/タグが追加された可能性があるので候補を更新
+      fetchCategoryOptions()
+      fetchTagOptions()
     } catch (err) {
       console.error('Failed to save note:', err)
     } finally {
@@ -1476,26 +1515,115 @@ function App() {
                     />
                   </div>
 
-                  <div className="form-group">
+                  <div className="form-group form-group--combobox">
                     <label htmlFor="category">カテゴリ</label>
-                    <input
-                      id="category"
-                      type="text"
-                      value={form.category}
-                      onChange={(e) => setForm({ ...form, category: e.target.value })}
-                      placeholder="技術、ビジネス、思考法など"
-                    />
+                    <div className="combobox">
+                      <input
+                        id="category"
+                        ref={categoryInputRef}
+                        type="text"
+                        value={form.category}
+                        onChange={(e) => setForm({ ...form, category: e.target.value })}
+                        onFocus={() => setShowCategoryDropdown(true)}
+                        onBlur={() => setTimeout(() => setShowCategoryDropdown(false), 150)}
+                        placeholder="技術、ビジネス、思考法など"
+                        autoComplete="off"
+                      />
+                      {showCategoryDropdown && categoryOptions.length > 0 && (
+                        <div className="combobox__dropdown">
+                          {categoryOptions
+                            .filter((cat) => !form.category || cat.toLowerCase().includes(form.category.toLowerCase()))
+                            .map((cat) => (
+                              <button
+                                key={cat}
+                                type="button"
+                                className="combobox__option"
+                                onMouseDown={() => setForm({ ...form, category: cat })}
+                              >
+                                {cat}
+                              </button>
+                            ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="form-group">
-                    <label htmlFor="tags">タグ（カンマ区切り）</label>
-                    <input
-                      id="tags"
-                      type="text"
-                      value={form.tags}
-                      onChange={(e) => setForm({ ...form, tags: e.target.value })}
-                      placeholder="React, TypeScript, 設計"
-                    />
+                  <div className="form-group form-group--tags">
+                    <label htmlFor="tags">タグ</label>
+                    <div className="tag-input">
+                      <div className="tag-input__tags">
+                        {form.tags.split(',').map((t) => t.trim()).filter(Boolean).map((tag) => (
+                          <span key={tag} className="tag-input__tag">
+                            {tag}
+                            <button
+                              type="button"
+                              className="tag-input__tag-remove"
+                              onClick={() => {
+                                const newTags = form.tags
+                                  .split(',')
+                                  .map((t) => t.trim())
+                                  .filter((t) => t && t !== tag)
+                                  .join(', ')
+                                setForm({ ...form, tags: newTags })
+                              }}
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                        <input
+                          id="tags"
+                          ref={tagInputRef}
+                          type="text"
+                          value={tagInputValue}
+                          onChange={(e) => setTagInputValue(e.target.value)}
+                          onFocus={() => setShowTagDropdown(true)}
+                          onBlur={() => setTimeout(() => setShowTagDropdown(false), 150)}
+                          onKeyDown={(e) => {
+                            if ((e.key === 'Enter' || e.key === ',') && tagInputValue.trim()) {
+                              e.preventDefault()
+                              const currentTags = form.tags.split(',').map((t) => t.trim()).filter(Boolean)
+                              if (!currentTags.includes(tagInputValue.trim())) {
+                                setForm({ ...form, tags: [...currentTags, tagInputValue.trim()].join(', ') })
+                              }
+                              setTagInputValue('')
+                            } else if (e.key === 'Backspace' && !tagInputValue) {
+                              const currentTags = form.tags.split(',').map((t) => t.trim()).filter(Boolean)
+                              if (currentTags.length > 0) {
+                                setForm({ ...form, tags: currentTags.slice(0, -1).join(', ') })
+                              }
+                            }
+                          }}
+                          placeholder={form.tags ? '' : 'タグを追加...'}
+                          autoComplete="off"
+                        />
+                      </div>
+                      {showTagDropdown && tagOptions.length > 0 && (
+                        <div className="tag-input__dropdown">
+                          {tagOptions
+                            .filter((tag) => {
+                              const currentTags = form.tags.split(',').map((t) => t.trim()).filter(Boolean)
+                              return !currentTags.includes(tag) &&
+                                (!tagInputValue || tag.toLowerCase().includes(tagInputValue.toLowerCase()))
+                            })
+                            .slice(0, 10)
+                            .map((tag) => (
+                              <button
+                                key={tag}
+                                type="button"
+                                className="tag-input__option"
+                                onMouseDown={() => {
+                                  const currentTags = form.tags.split(',').map((t) => t.trim()).filter(Boolean)
+                                  setForm({ ...form, tags: [...currentTags, tag].join(', ') })
+                                  setTagInputValue('')
+                                }}
+                              >
+                                {tag}
+                              </button>
+                            ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
