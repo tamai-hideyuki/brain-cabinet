@@ -11,7 +11,7 @@ export const knowledgeNotes = sqliteTable("knowledge_notes", {
   
   // ソース情報
   source: text("source"),                    // 書籍名、プロジェクト名など
-  sourceType: text("source_type"),           // book, work, article, course, other
+  sourceType: text("source_type"),           // book, work, article, course, ai, other
   sourceUrl: text("source_url"),             // 参照URL（あれば）
   
   // 分類
