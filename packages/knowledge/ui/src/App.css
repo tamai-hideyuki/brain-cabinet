@@ -783,6 +783,143 @@ h1 {
   color: var(--color-text-subtle);
 }
 
+/* Fullscreen Editor */
+.editor-fullscreen {
+  position: fixed;
+  inset: 0;
+  background: var(--color-bg);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+}
+
+.editor-fullscreen__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1.5rem;
+  background: var(--color-bg-surface);
+  border-bottom: 1px solid var(--color-border);
+  gap: 1rem;
+}
+
+.editor-fullscreen__header h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  flex: 1;
+  text-align: center;
+}
+
+.editor-fullscreen__back {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  cursor: pointer;
+  padding: 0.5rem 0;
+  transition: color 0.15s;
+  white-space: nowrap;
+}
+
+.editor-fullscreen__back:hover {
+  color: var(--color-text);
+}
+
+/* タブ（スマホのみ表示） */
+.editor-fullscreen__tabs {
+  display: none;
+  background: var(--color-bg-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.editor-fullscreen__tab {
+  flex: 1;
+  padding: 0.75rem;
+  background: none;
+  border: none;
+  color: var(--color-text-subtle);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  border-bottom: 2px solid transparent;
+}
+
+.editor-fullscreen__tab--active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+/* ボディ（編集 + プレビュー） */
+.editor-fullscreen__body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* 編集パネル */
+.editor-fullscreen__edit {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 1.5rem;
+  border-right: 1px solid var(--color-border);
+}
+
+.editor-fullscreen__meta {
+  margin-bottom: 1rem;
+}
+
+.editor-fullscreen__meta-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.editor-fullscreen__content-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.editor-fullscreen__content-group textarea {
+  flex: 1;
+  min-height: 300px;
+  resize: none;
+  font-family: 'SF Mono', Monaco, 'Consolas', monospace;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+}
+
+/* プレビューパネル */
+.editor-fullscreen__preview {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--color-bg);
+}
+
+.editor-fullscreen__preview-content {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+.editor-fullscreen__preview-content h1 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  line-height: 1.3;
+}
+
+.editor-fullscreen__preview-placeholder {
+  color: var(--color-text-subtle);
+  font-style: italic;
+}
+
 /* Responsive */
 @media (max-width: 640px) {
   .header {
@@ -833,5 +970,50 @@ h1 {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
+  }
+
+  /* フルスクリーン編集 - スマホ対応 */
+  .editor-fullscreen__header {
+    padding: 0.75rem 1rem;
+  }
+
+  .editor-fullscreen__header h2 {
+    font-size: 0.875rem;
+  }
+
+  .editor-fullscreen__tabs {
+    display: flex;
+  }
+
+  .editor-fullscreen__body {
+    flex-direction: column;
+  }
+
+  .editor-fullscreen__edit {
+    display: none;
+    border-right: none;
+    padding: 1rem;
+  }
+
+  .editor-fullscreen__edit--active {
+    display: flex;
+    flex: 1;
+  }
+
+  .editor-fullscreen__preview {
+    display: none;
+  }
+
+  .editor-fullscreen__preview--active {
+    display: block;
+    flex: 1;
+  }
+
+  .editor-fullscreen__meta-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .editor-fullscreen__preview-content {
+    padding: 1.5rem 1rem;
   }
 }

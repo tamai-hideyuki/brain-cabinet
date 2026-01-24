@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
@@ -78,6 +78,46 @@ function App() {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [showSearchResults, setShowSearchResults] = useState(false)
+
+  // 編集画面のプレビュータブ（スマホ用）
+  const [editTab, setEditTab] = useState<'edit' | 'preview'>('edit')
+
+  // スクロール連動用
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const previewRef = useRef<HTMLDivElement>(null)
+  const isScrolling = useRef<'edit' | 'preview' | null>(null)
+
+  const handleEditorScroll = useCallback(() => {
+    if (isScrolling.current === 'preview') return
+    isScrolling.current = 'edit'
+
+    const textarea = textareaRef.current
+    const preview = previewRef.current
+    if (!textarea || !preview) return
+
+    const scrollRatio = textarea.scrollTop / (textarea.scrollHeight - textarea.clientHeight || 1)
+    preview.scrollTop = scrollRatio * (preview.scrollHeight - preview.clientHeight)
+
+    requestAnimationFrame(() => {
+      isScrolling.current = null
+    })
+  }, [])
+
+  const handlePreviewScroll = useCallback(() => {
+    if (isScrolling.current === 'edit') return
+    isScrolling.current = 'preview'
+
+    const textarea = textareaRef.current
+    const preview = previewRef.current
+    if (!textarea || !preview) return
+
+    const scrollRatio = preview.scrollTop / (preview.scrollHeight - preview.clientHeight || 1)
+    textarea.scrollTop = scrollRatio * (textarea.scrollHeight - textarea.clientHeight)
+
+    requestAnimationFrame(() => {
+      isScrolling.current = null
+    })
+  }, [])
 
   const fetchNotes = () => {
     fetch(`${apiBase}/notes`)
@@ -247,6 +287,7 @@ function App() {
     setShowModal(false)
     setEditingNote(null)
     setForm(emptyForm)
+    setEditTab('edit')
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -676,98 +717,170 @@ function App() {
       )}
 
       {showModal && (
-        <div className="modal-overlay" onClick={closeModal}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal__header">
-              <h2>{editingNote ? '知識ノートを編集' : '新しい知識ノート'}</h2>
-              <button className="modal__close" onClick={closeModal}>×</button>
-            </div>
-            <form onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label htmlFor="title">タイトル *</label>
-                <input
-                  id="title"
-                  type="text"
-                  value={form.title}
-                  onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  placeholder="学んだことのタイトル"
-                  required
-                />
+        <div className="editor-fullscreen">
+          <div className="editor-fullscreen__header">
+            <button className="editor-fullscreen__back" onClick={closeModal}>
+              ← キャンセル
+            </button>
+            <h2>{editingNote ? '知識ノートを編集' : '新しい知識ノート'}</h2>
+            <button
+              className="btn btn--primary btn--small"
+              onClick={handleSubmit}
+              disabled={saving || !form.title.trim() || !form.content.trim()}
+            >
+              {saving ? '保存中...' : editingNote ? '更新' : '作成'}
+            </button>
+          </div>
+
+          {/* スマホ用タブ切り替え */}
+          <div className="editor-fullscreen__tabs">
+            <button
+              className={`editor-fullscreen__tab ${editTab === 'edit' ? 'editor-fullscreen__tab--active' : ''}`}
+              onClick={() => setEditTab('edit')}
+            >
+              編集
+            </button>
+            <button
+              className={`editor-fullscreen__tab ${editTab === 'preview' ? 'editor-fullscreen__tab--active' : ''}`}
+              onClick={() => setEditTab('preview')}
+            >
+              プレビュー
+            </button>
+          </div>
+
+          <div className="editor-fullscreen__body">
+            {/* 編集パネル */}
+            <div className={`editor-fullscreen__edit ${editTab === 'edit' ? 'editor-fullscreen__edit--active' : ''}`}>
+              <div className="editor-fullscreen__meta">
+                <div className="form-group">
+                  <label htmlFor="title">タイトル *</label>
+                  <input
+                    id="title"
+                    type="text"
+                    value={form.title}
+                    onChange={(e) => setForm({ ...form, title: e.target.value })}
+                    placeholder="学んだことのタイトル"
+                    required
+                  />
+                </div>
+
+                <div className="editor-fullscreen__meta-row">
+                  <div className="form-group">
+                    <label htmlFor="sourceType">ソース種別</label>
+                    <select
+                      id="sourceType"
+                      value={form.sourceType}
+                      onChange={(e) => setForm({ ...form, sourceType: e.target.value })}
+                    >
+                      {SOURCE_TYPES.map((type) => (
+                        <option key={type.value} value={type.value}>
+                          {type.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="source">ソース名</label>
+                    <input
+                      id="source"
+                      type="text"
+                      value={form.source}
+                      onChange={(e) => setForm({ ...form, source: e.target.value })}
+                      placeholder="書籍名、プロジェクト名など"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="category">カテゴリ</label>
+                    <input
+                      id="category"
+                      type="text"
+                      value={form.category}
+                      onChange={(e) => setForm({ ...form, category: e.target.value })}
+                      placeholder="技術、ビジネス、思考法など"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="tags">タグ（カンマ区切り）</label>
+                    <input
+                      id="tags"
+                      type="text"
+                      value={form.tags}
+                      onChange={(e) => setForm({ ...form, tags: e.target.value })}
+                      placeholder="React, TypeScript, 設計"
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div className="form-group">
-                <label htmlFor="content">内容 *</label>
+              <div className="form-group editor-fullscreen__content-group">
+                <label htmlFor="content">内容 *（Markdown対応）</label>
                 <textarea
                   id="content"
+                  ref={textareaRef}
                   value={form.content}
                   onChange={(e) => setForm({ ...form, content: e.target.value })}
-                  placeholder="学んだ内容を記録..."
-                  rows={8}
+                  onScroll={handleEditorScroll}
+                  placeholder="学んだ内容を記録...
+
+# 見出し
+## 小見出し
+
+- リスト項目
+- リスト項目
+
+**太字** や *斜体* も使えます
+
+> 引用
+
+`コード`"
                   required
                 />
               </div>
+            </div>
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="sourceType">ソース種別</label>
-                  <select
-                    id="sourceType"
-                    value={form.sourceType}
-                    onChange={(e) => setForm({ ...form, sourceType: e.target.value })}
-                  >
-                    {SOURCE_TYPES.map((type) => (
-                      <option key={type.value} value={type.value}>
-                        {type.label}
-                      </option>
-                    ))}
-                  </select>
+            {/* プレビューパネル */}
+            <div
+              ref={previewRef}
+              className={`editor-fullscreen__preview ${editTab === 'preview' ? 'editor-fullscreen__preview--active' : ''}`}
+              onScroll={handlePreviewScroll}
+            >
+              <div className="editor-fullscreen__preview-content">
+                <h1>{form.title || 'タイトル未入力'}</h1>
+
+                <div className="detail-view__meta">
+                  {form.sourceType && (
+                    <span className="detail-view__tag detail-view__tag--type">
+                      {SOURCE_TYPES.find(s => s.value === form.sourceType)?.label || form.sourceType}
+                    </span>
+                  )}
+                  {form.category && (
+                    <span className="detail-view__tag detail-view__tag--category">
+                      {form.category}
+                    </span>
+                  )}
+                  {form.tags && form.tags.split(',').map((tag) => tag.trim()).filter(Boolean).map((tag) => (
+                    <span key={tag} className="detail-view__tag">
+                      {tag}
+                    </span>
+                  ))}
                 </div>
 
-                <div className="form-group">
-                  <label htmlFor="source">ソース名</label>
-                  <input
-                    id="source"
-                    type="text"
-                    value={form.source}
-                    onChange={(e) => setForm({ ...form, source: e.target.value })}
-                    placeholder="書籍名、プロジェクト名など"
-                  />
-                </div>
-              </div>
+                {form.source && (
+                  <p className="detail-view__source">
+                    ソース: {form.source}
+                  </p>
+                )}
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="category">カテゴリ</label>
-                  <input
-                    id="category"
-                    type="text"
-                    value={form.category}
-                    onChange={(e) => setForm({ ...form, category: e.target.value })}
-                    placeholder="技術、ビジネス、思考法など"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="tags">タグ（カンマ区切り）</label>
-                  <input
-                    id="tags"
-                    type="text"
-                    value={form.tags}
-                    onChange={(e) => setForm({ ...form, tags: e.target.value })}
-                    placeholder="React, TypeScript, 設計"
-                  />
+                <div className="detail-view__body">
+                  {form.content ? renderContent(form.content) : (
+                    <p className="editor-fullscreen__preview-placeholder">内容を入力するとプレビューが表示されます</p>
+                  )}
                 </div>
               </div>
-
-              <div className="form-actions">
-                <button type="button" className="btn btn--secondary" onClick={closeModal}>
-                  キャンセル
-                </button>
-                <button type="submit" className="btn btn--primary" disabled={saving}>
-                  {saving ? '保存中...' : editingNote ? '更新' : '作成'}
-                </button>
-              </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
