@@ -6,11 +6,12 @@ import { useTheme } from '../../../hooks/useTheme'
 import { usePTM } from '../../../hooks/usePTM'
 import './Header.css'
 
-type HeaderProps = {
-  title?: string
-}
+// 開発時と本番時でKnowledge UIのURLを切り替え
+const knowledgeUrl = import.meta.env.DEV
+  ? 'http://localhost:5174/'
+  : '/knowledge/'
 
-export const Header = ({ title = 'Brain Cabinet' }: HeaderProps) => {
+export const Header = () => {
   const { theme, toggleTheme } = useTheme()
   const { ptm, loading: ptmLoading } = usePTM()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -61,10 +62,17 @@ export const Header = ({ title = 'Brain Cabinet' }: HeaderProps) => {
   return (
     <>
       <header className="header">
-        <a href="/ui/" className="header__logo">
-          <span className="header__logo-full">{title}</span>
-          <span className="header__logo-short">BC</span>
-        </a>
+        <div className="header__app-switcher">
+          <a href="/ui/" className="header__app-link header__app-link--active" title="Brain Cabinet（判断）">
+            <span className="header__app-link-full">Cabinet</span>
+            <span className="header__app-link-short">BC</span>
+          </a>
+          <span className="header__app-separator">/</span>
+          <a href={knowledgeUrl} className="header__app-link" title="Brain Knowledge（知識）">
+            <span className="header__app-link-full">Knowledge</span>
+            <span className="header__app-link-short">BK</span>
+          </a>
+        </div>
 
         {/* デスクトップナビゲーション */}
         <nav className="header__nav header__nav--desktop">
