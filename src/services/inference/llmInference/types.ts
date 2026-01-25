@@ -143,8 +143,12 @@ export type LlmInferenceExecuteResultItem = {
   noteId: string;
   type: NoteType;
   confidence: number;
-  status: LlmInferenceStatus;
+  status: LlmInferenceStatus | "error";
   reasoning: string;
+  error?: {
+    code: string;
+    message: string;
+  };
 };
 
 export type LlmInferenceExecuteResult = {

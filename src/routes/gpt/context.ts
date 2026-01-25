@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import { getContextForGPT } from "../../services/gptService";
 import { getGptContext } from "../../services/gptService/context/gptContext";
-import { logger } from "../../utils/logger";
 
 export const contextRoute = new Hono();
 
@@ -26,19 +25,14 @@ contextRoute.get("/notes/:id/context", async (c) => {
   const includeOutline = c.req.query("outline") !== "false";
   const includeBulletPoints = c.req.query("bullets") === "true";
 
-  try {
-    const context = await getContextForGPT(id, {
-      includeFullContent,
-      includeHistory,
-      historyLimit,
-      includeOutline,
-      includeBulletPoints,
-    });
-    return c.json(context);
-  } catch (e) {
-    logger.error({ err: e, noteId: id }, "GPT context fetch failed");
-    return c.json({ error: (e as Error).message }, 404);
-  }
+  const context = await getContextForGPT(id, {
+    includeFullContent,
+    includeHistory,
+    historyLimit,
+    includeOutline,
+    includeBulletPoints,
+  });
+  return c.json(context);
 });
 
 // ============================================================
@@ -67,11 +61,6 @@ contextRoute.get("/context", async (c) => {
     maxRecommendations: maxRecommendationsParam ? parseInt(maxRecommendationsParam, 10) : 3,
   };
 
-  try {
-    const context = await getGptContext(options);
-    return c.json(context);
-  } catch (e) {
-    logger.error({ err: e }, "GPT unified context fetch failed");
-    return c.json({ error: (e as Error).message }, 500);
-  }
+  const context = await getGptContext(options);
+  return c.json(context);
 });

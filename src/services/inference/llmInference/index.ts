@@ -141,13 +141,43 @@ export async function executeLlmInference(
   for (let i = 0; i < candidates.length; i += batchSize) {
     const batch = candidates.slice(i, i + batchSize);
 
-    const batchResults = await Promise.all(
+    // Promise.allSettledで1件の失敗が全体を止めないようにする
+    const settledResults = await Promise.allSettled(
       batch.map((candidate) =>
         processCandidate(candidate, ollamaAvailable, { ...options, seed, dryRun })
       )
     );
 
-    results.push(...batchResults);
+    // 成功/失敗を分離して結果に追加
+    for (let j = 0; j < settledResults.length; j++) {
+      const result = settledResults[j];
+      const candidate = batch[j];
+
+      if (result.status === "fulfilled") {
+        results.push(result.value);
+      } else {
+        // 失敗した推論はerrorステータスとして結果に含める
+        const error = result.reason;
+        const errorMessage = error instanceof Error ? error.message : String(error);
+
+        logger.error(
+          { noteId: candidate.noteId, error: errorMessage },
+          "LLM inference failed for note"
+        );
+
+        results.push({
+          noteId: candidate.noteId,
+          type: "scratch" as NoteType,
+          confidence: 0,
+          status: "error" as const,
+          reasoning: `推論失敗: ${errorMessage}`,
+          error: {
+            code: "LLM_INFERENCE_FAILED",
+            message: errorMessage,
+          },
+        });
+      }
+    }
 
     // バッチ間の待機（CPU/GPU負荷軽減）
     if (i + batchSize < candidates.length) {
