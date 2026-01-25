@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { searchForGPT } from "../../services/gptService";
-import { logger } from "../../utils/logger";
+import { ValidationError, ErrorCodes } from "../../utils/errors";
 
 export const searchRoute = new Hono();
 
@@ -18,7 +18,7 @@ export const searchRoute = new Hono();
 searchRoute.get("/search", async (c) => {
   const query = c.req.query("query");
   if (!query) {
-    return c.json({ error: "query is required" }, 400);
+    throw new ValidationError("query is required", "query", ErrorCodes.SEARCH_QUERY_REQUIRED);
   }
 
   const searchInParam = c.req.query("searchIn");
@@ -31,17 +31,12 @@ searchRoute.get("/search", async (c) => {
   const limit = limitParam ? parseInt(limitParam, 10) : 10;
   const includeHistory = c.req.query("includeHistory") === "true";
 
-  try {
-    const result = await searchForGPT({
-      query: decodeURIComponent(query),
-      searchIn,
-      category,
-      limit,
-      includeHistory,
-    });
-    return c.json(result);
-  } catch (e) {
-    logger.error({ err: e, query, searchIn, category, limit }, "GPT search failed");
-    return c.json({ error: (e as Error).message }, 500);
-  }
+  const result = await searchForGPT({
+    query: decodeURIComponent(query),
+    searchIn,
+    category,
+    limit,
+    includeHistory,
+  });
+  return c.json(result);
 });

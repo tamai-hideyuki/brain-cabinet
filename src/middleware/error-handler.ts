@@ -6,6 +6,7 @@
  * - その他のエラーはAppErrorにラップして処理
  */
 import type { ErrorHandler } from "hono";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { logger } from "../utils/logger";
 import { isAppError, toAppError } from "../utils/errors";
 
@@ -29,5 +30,5 @@ export const errorHandler: ErrorHandler = (err, c) => {
   );
 
   // 構造化されたエラーレスポンス
-  return c.json(appError.toJSON(), appError.statusCode);
+  return c.json(appError.toJSON(), appError.statusCode as ContentfulStatusCode);
 };
