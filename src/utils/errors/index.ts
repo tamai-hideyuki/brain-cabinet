@@ -66,6 +66,14 @@ export const ErrorCodes = {
   SECRET_BOX_ITEM_NOT_FOUND: "SECRET_BOX_ITEM_NOT_FOUND",
   SECRET_BOX_FOLDER_NOT_FOUND: "SECRET_BOX_FOLDER_NOT_FOUND",
   SECRET_BOX_FOLDER_NOT_EMPTY: "SECRET_BOX_FOLDER_NOT_EMPTY",
+
+  // LLM関連エラー
+  LLM_UNAVAILABLE: "LLM_UNAVAILABLE",             // Ollamaサーバー接続不可
+  LLM_MODEL_NOT_FOUND: "LLM_MODEL_NOT_FOUND",     // モデルが見つからない
+  LLM_INFERENCE_FAILED: "LLM_INFERENCE_FAILED",   // 推論失敗
+  LLM_TIMEOUT: "LLM_TIMEOUT",                     // タイムアウト
+  LLM_PARSE_ERROR: "LLM_PARSE_ERROR",             // レスポンスパース失敗
+  LLM_BATCH_PARTIAL: "LLM_BATCH_PARTIAL",         // バッチ処理の部分失敗
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];

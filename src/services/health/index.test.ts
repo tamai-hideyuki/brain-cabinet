@@ -19,7 +19,18 @@ vi.mock("../../db/client", () => {
   };
 });
 
+// Ollamaヘルスチェックをモック
+vi.mock("../inference/llmInference/ollamaHealth", () => ({
+  checkOllamaHealth: vi.fn().mockResolvedValue({
+    available: true,
+    modelLoaded: true,
+    model: "qwen2.5:3b",
+    message: "Ollama準備完了 (qwen2.5:3b)",
+  }),
+}));
+
 import { db } from "../../db/client";
+import { checkOllamaHealth } from "../inference/llmInference/ollamaHealth";
 
 describe("healthService", () => {
   beforeEach(() => {
@@ -62,7 +73,7 @@ describe("healthService", () => {
       expect(result.uptime).toBeGreaterThanOrEqual(0);
     });
 
-    it("checksにdatabaseとstorageが含まれる", async () => {
+    it("checksにdatabase, storage, ollamaが含まれる", async () => {
       const mockLimit = vi.fn().mockResolvedValue([{ count: 10 }]);
       const mockFrom = vi.fn().mockReturnValue({ limit: mockLimit });
       vi.mocked(db.select).mockReturnValue({ from: mockFrom } as any);
@@ -71,10 +82,33 @@ describe("healthService", () => {
 
       expect(result.checks).toHaveProperty("database");
       expect(result.checks).toHaveProperty("storage");
+      expect(result.checks).toHaveProperty("ollama");
       expect(result.checks.database).toHaveProperty("status");
       expect(result.checks.database).toHaveProperty("message");
       expect(result.checks.storage).toHaveProperty("status");
       expect(result.checks.storage).toHaveProperty("notesCount");
+      expect(result.checks.ollama).toHaveProperty("available");
+      expect(result.checks.ollama).toHaveProperty("modelLoaded");
+      expect(result.checks.ollama).toHaveProperty("message");
+    });
+
+    it("Ollama障害時にdegradedステータスを返す", async () => {
+      const mockLimit = vi.fn().mockResolvedValue([{ count: 1 }]);
+      const mockFrom = vi.fn().mockReturnValue({ limit: mockLimit });
+      vi.mocked(db.select).mockReturnValue({ from: mockFrom } as any);
+
+      // Ollamaを利用不可に設定
+      vi.mocked(checkOllamaHealth).mockResolvedValueOnce({
+        available: false,
+        modelLoaded: false,
+        model: "qwen2.5:3b",
+        message: "Ollamaサーバーに接続できません",
+      });
+
+      const result = await performHealthCheck();
+
+      expect(result.status).toBe("degraded");
+      expect(result.checks.ollama.available).toBe(false);
     });
 
     it("gptSummaryが文字列で返される", async () => {

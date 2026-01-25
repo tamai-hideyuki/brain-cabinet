@@ -6,6 +6,10 @@
 import { db } from "../../db/client";
 import { sql } from "drizzle-orm";
 import { notes } from "../../db/schema";
+import {
+  checkOllamaHealth,
+  type OllamaHealthStatus,
+} from "../inference/llmInference/ollamaHealth";
 
 // サーバー起動時刻を記録
 const serverStartTime = Date.now();
@@ -29,6 +33,7 @@ export interface HealthCheckResult {
       notesCount: number;
       message: string;
     };
+    ollama: OllamaHealthStatus;
   };
   gptSummary: string;
 }
@@ -85,15 +90,34 @@ const checkStorage = async (): Promise<{
 };
 
 /**
+ * Ollama状態をチェック
+ */
+const checkOllama = async (): Promise<OllamaHealthStatus> => {
+  try {
+    return await checkOllamaHealth();
+  } catch (error) {
+    return {
+      available: false,
+      modelLoaded: false,
+      model: process.env.OLLAMA_MODEL ?? "qwen2.5:3b",
+      message: `ヘルスチェック例外: ${(error as Error).message}`,
+    };
+  }
+};
+
+/**
  * 総合ステータスを判定
  */
 const determineOverallStatus = (
   dbStatus: HealthStatus,
-  storageStatus: HealthStatus
+  storageStatus: HealthStatus,
+  ollamaAvailable: boolean
 ): HealthStatus => {
   if (dbStatus === "unhealthy") return "unhealthy";
   if (storageStatus === "unhealthy") return "degraded";
   if (dbStatus === "degraded" || storageStatus === "degraded") return "degraded";
+  // Ollama障害はdegraded扱い（クリティカルではないがLLM機能が使えない）
+  if (!ollamaAvailable) return "degraded";
   return "healthy";
 };
 
@@ -116,13 +140,18 @@ const formatUptime = (ms: number): string => {
  * ヘルスチェックを実行
  */
 export const performHealthCheck = async (): Promise<HealthCheckResult> => {
-  const [dbHealth, storageHealth] = await Promise.all([
+  const [dbHealth, storageHealth, ollamaHealth] = await Promise.all([
     checkDatabase(),
     checkStorage(),
+    checkOllama(),
   ]);
 
   const uptime = Date.now() - serverStartTime;
-  const overallStatus = determineOverallStatus(dbHealth.status, storageHealth.status);
+  const overallStatus = determineOverallStatus(
+    dbHealth.status,
+    storageHealth.status,
+    ollamaHealth.available && ollamaHealth.modelLoaded
+  );
 
   // GPT向けサマリー生成
   const statusEmoji = {
@@ -131,11 +160,14 @@ export const performHealthCheck = async (): Promise<HealthCheckResult> => {
     unhealthy: "❌",
   };
 
+  const ollamaStatus = ollamaHealth.available && ollamaHealth.modelLoaded;
+
   const gptSummary = `
 Brain Cabinet サーバー状態: ${statusEmoji[overallStatus]} ${overallStatus === "healthy" ? "正常稼働中" : overallStatus === "degraded" ? "一部機能に問題あり" : "障害発生中"}
 稼働時間: ${formatUptime(uptime)}
 データベース: ${statusEmoji[dbHealth.status]} ${dbHealth.message}
 ストレージ: ${statusEmoji[storageHealth.status]} ${storageHealth.message}
+Ollama LLM: ${ollamaStatus ? "✅" : "❌"} ${ollamaHealth.message}
 `.trim();
 
   return {
@@ -145,6 +177,7 @@ Brain Cabinet サーバー状態: ${statusEmoji[overallStatus]} ${overallStatus 
     checks: {
       database: dbHealth,
       storage: storageHealth,
+      ollama: ollamaHealth,
     },
     gptSummary,
   };
