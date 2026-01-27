@@ -1,6 +1,4 @@
-import { db } from "../../db/client";
-import { notes, noteHistory } from "../../db/schema";
-import { sql, gte, lte, desc } from "drizzle-orm";
+import * as analyticsRepo from "../../repositories/analyticsRepo";
 
 // ============================================
 // 型定義
@@ -130,27 +128,10 @@ export const calculateHeatmapLevel = (count: number, maxCount: number): number =
  */
 export const getSemanticDiffTimeline = async (range: DateRange): Promise<TimelinePoint[]> => {
   // noteHistoryから変更履歴を取得
-  const historyResults = await db
-    .select({
-      createdAt: noteHistory.createdAt,
-      semanticDiff: noteHistory.semanticDiff,
-    })
-    .from(noteHistory)
-    .where(
-      sql`${noteHistory.createdAt} >= ${range.start} AND ${noteHistory.createdAt} <= ${range.end}`
-    )
-    .orderBy(noteHistory.createdAt);
+  const historyResults = await analyticsRepo.findNoteHistoryInRange(range.start, range.end);
 
   // notesから作成・更新を取得
-  const noteResults = await db
-    .select({
-      createdAt: notes.createdAt,
-      updatedAt: notes.updatedAt,
-    })
-    .from(notes)
-    .where(
-      sql`${notes.createdAt} >= ${range.start} OR ${notes.updatedAt} >= ${range.start}`
-    );
+  const noteResults = await analyticsRepo.findNoteTimestampsInRange(range.start);
 
   // 日付ごとに集計
   const dailyMap = new Map<string, { total: number; count: number }>();
@@ -207,18 +188,7 @@ export const getSemanticDiffTimeline = async (range: DateRange): Promise<Timelin
  * ノートのクラスタ遷移履歴
  */
 export const getClusterJourney = async (range: DateRange): Promise<JourneyPoint[]> => {
-  const results = await db
-    .select({
-      id: notes.id,
-      title: notes.title,
-      clusterId: notes.clusterId,
-      createdAt: notes.createdAt,
-    })
-    .from(notes)
-    .where(
-      sql`${notes.createdAt} >= ${range.start} AND ${notes.createdAt} <= ${range.end}`
-    )
-    .orderBy(notes.createdAt);
+  const results = await analyticsRepo.findNotesWithClusterInRange(range.start, range.end);
 
   return results.map((row) => ({
     date: timestampToDate(row.createdAt),
@@ -237,24 +207,10 @@ export const getDailyActivity = async (year: number): Promise<HeatmapDay[]> => {
   const endOfYear = Math.floor(new Date(year, 11, 31, 23, 59, 59).getTime() / 1000);
 
   // ノート作成日を取得
-  const createdResults = await db
-    .select({
-      createdAt: notes.createdAt,
-    })
-    .from(notes)
-    .where(
-      sql`${notes.createdAt} >= ${startOfYear} AND ${notes.createdAt} <= ${endOfYear}`
-    );
+  const createdResults = await analyticsRepo.findNoteCreationsInYear(startOfYear, endOfYear);
 
   // 履歴（更新）を取得
-  const historyResults = await db
-    .select({
-      createdAt: noteHistory.createdAt,
-    })
-    .from(noteHistory)
-    .where(
-      sql`${noteHistory.createdAt} >= ${startOfYear} AND ${noteHistory.createdAt} <= ${endOfYear}`
-    );
+  const historyResults = await analyticsRepo.findNoteHistoryInYear(startOfYear, endOfYear);
 
   // 日付ごとにカウント
   const dailyMap = new Map<string, number>();
@@ -296,16 +252,7 @@ export const getDailyActivity = async (year: number): Promise<HeatmapDay[]> => {
  * 週/月ごとのクラスタ別ノート数
  */
 export const getTrendStats = async (unit: TimeUnit, range: DateRange): Promise<TrendItem[]> => {
-  const results = await db
-    .select({
-      clusterId: notes.clusterId,
-      createdAt: notes.createdAt,
-    })
-    .from(notes)
-    .where(
-      sql`${notes.createdAt} >= ${range.start} AND ${notes.createdAt} <= ${range.end} AND ${notes.clusterId} IS NOT NULL`
-    )
-    .orderBy(notes.createdAt);
+  const results = await analyticsRepo.findNotesWithClusterInRangeForTrend(range.start, range.end);
 
   // 期間ごとにクラスタ別カウント
   const trendMap = new Map<string, Map<number, number>>();
@@ -346,36 +293,21 @@ export const getSummaryStats = async () => {
   const thirtyDaysAgo = now - 30 * 24 * 60 * 60;
 
   // 総ノート数
-  const totalNotes = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(notes);
+  const totalNotes = await analyticsRepo.countAllNotes();
 
   // 過去30日のノート数
-  const recentNotes = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(notes)
-    .where(gte(notes.createdAt, thirtyDaysAgo));
+  const recentNotes = await analyticsRepo.countNotesSince(thirtyDaysAgo);
 
   // 過去30日の履歴数（変更回数）
-  const recentChanges = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(noteHistory)
-    .where(gte(noteHistory.createdAt, thirtyDaysAgo));
+  const recentChanges = await analyticsRepo.countHistorySince(thirtyDaysAgo);
 
   // 過去30日の平均 semantic diff
-  const avgDiff = await db
-    .select({
-      avg: sql<string>`avg(cast(semantic_diff as real))`,
-    })
-    .from(noteHistory)
-    .where(
-      sql`${noteHistory.createdAt} >= ${thirtyDaysAgo} AND ${noteHistory.semanticDiff} IS NOT NULL`
-    );
+  const avgDiff = await analyticsRepo.getAvgSemanticDiffSince(thirtyDaysAgo);
 
   return {
-    totalNotes: totalNotes[0]?.count ?? 0,
-    notesLast30Days: recentNotes[0]?.count ?? 0,
-    changesLast30Days: recentChanges[0]?.count ?? 0,
-    avgSemanticDiffLast30Days: avgDiff[0]?.avg ? parseFloat(avgDiff[0].avg) : 0,
+    totalNotes,
+    notesLast30Days: recentNotes,
+    changesLast30Days: recentChanges,
+    avgSemanticDiffLast30Days: avgDiff,
   };
 };

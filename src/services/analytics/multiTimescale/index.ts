@@ -8,8 +8,7 @@
  * - フェーズ遷移検出（持続的なモード変化）
  */
 
-import { db } from "../../../db/client";
-import { sql } from "drizzle-orm";
+import * as analyticsRepo from "../../../repositories/analyticsRepo";
 import { round4 } from "../../../utils/math";
 
 // ============================================================
@@ -117,37 +116,10 @@ export async function getClusterDailyActivity(
   const startDate = Math.floor(Date.now() / 1000) - days * 24 * 60 * 60;
 
   // ノート作成
-  const noteCreations = await db.all<{
-    date: string;
-    cluster_id: number;
-    count: number;
-  }>(sql`
-    SELECT
-      date(created_at, 'unixepoch') as date,
-      cluster_id,
-      count(*) as count
-    FROM notes
-    WHERE created_at >= ${startDate}
-      AND cluster_id IS NOT NULL
-    GROUP BY date, cluster_id
-  `);
+  const noteCreations = await analyticsRepo.findClusterDailyNoteCreations(startDate);
 
   // ノート更新（履歴）
-  const noteUpdates = await db.all<{
-    date: string;
-    cluster_id: number;
-    count: number;
-  }>(sql`
-    SELECT
-      date(nh.created_at, 'unixepoch') as date,
-      n.cluster_id,
-      count(*) as count
-    FROM note_history nh
-    JOIN notes n ON nh.note_id = n.id
-    WHERE nh.created_at >= ${startDate}
-      AND n.cluster_id IS NOT NULL
-    GROUP BY date, n.cluster_id
-  `);
+  const noteUpdates = await analyticsRepo.findClusterDailyNoteUpdates(startDate);
 
   // マージ
   const activityMap = new Map<string, DailyActivity>();
