@@ -3,9 +3,7 @@
  * サーバーの状態を確認するための機能を提供
  */
 
-import { db } from "../../db/client";
-import { sql } from "drizzle-orm";
-import { notes } from "../../db/schema";
+import * as healthRepo from "../../repositories/healthRepo";
 import {
   checkOllamaHealth,
   type OllamaHealthStatus,
@@ -45,7 +43,7 @@ const checkDatabase = async (): Promise<ComponentHealth> => {
   const start = Date.now();
   try {
     // 簡単なクエリで接続確認
-    await db.select({ count: sql<number>`1` }).from(notes).limit(1);
+    await healthRepo.checkConnection();
     const latency = Date.now() - start;
 
     return {
@@ -70,10 +68,7 @@ const checkStorage = async (): Promise<{
   message: string;
 }> => {
   try {
-    const result = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(notes);
-    const notesCount = result[0]?.count ?? 0;
+    const notesCount = await healthRepo.countNotes();
 
     return {
       status: "healthy",

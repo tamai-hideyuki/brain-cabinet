@@ -2,8 +2,7 @@ import { Hono } from "hono";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { db } from "../../db/client";
-import { sql } from "drizzle-orm";
+import * as systemRepo from "../../repositories/systemRepo";
 import { logger } from "../../utils/logger";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -73,10 +72,7 @@ const TABLE_DEFINITIONS: Array<{
 async function getTableSize(tableName: string, blobColumns?: string[]): Promise<{ rowCount: number; size: number }> {
   try {
     // レコード数を取得
-    const countResult = await db.all<{ count: number }>(
-      sql.raw(`SELECT COUNT(*) as count FROM ${tableName}`)
-    );
-    const rowCount = countResult[0]?.count ?? 0;
+    const rowCount = await systemRepo.countTableRows(tableName);
 
     if (rowCount === 0) {
       return { rowCount: 0, size: 0 };
@@ -84,11 +80,7 @@ async function getTableSize(tableName: string, blobColumns?: string[]): Promise<
 
     // BLOBカラムがある場合は実サイズを計算
     if (blobColumns && blobColumns.length > 0) {
-      const sizeExpressions = blobColumns.map(col => `COALESCE(SUM(LENGTH(${col})), 0)`).join(" + ");
-      const sizeResult = await db.all<{ size: number }>(
-        sql.raw(`SELECT (${sizeExpressions}) as size FROM ${tableName}`)
-      );
-      const blobSize = Number(sizeResult[0]?.size ?? 0);
+      const blobSize = await systemRepo.sumBlobColumnSizes(tableName, blobColumns);
 
       // BLOBサイズ + 推定行データサイズ（1行あたり約200バイトと仮定）
       const estimatedRowSize = rowCount * 200;

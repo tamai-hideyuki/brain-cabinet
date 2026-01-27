@@ -29,8 +29,7 @@ import {
   isValidLabel,
 } from "../../services/drift/driftAnnotation";
 import { DRIFT_ANNOTATION_LABELS } from "../../db/schema";
-import { db } from "../../db/client";
-import { sql } from "drizzle-orm";
+import * as driftEventRepo from "../../repositories/driftEventRepo";
 import { getOrCompute, generateCacheKey } from "../../services/cache";
 
 export const driftRoute = new Hono();
@@ -95,37 +94,10 @@ driftRoute.get("/events", async (c) => {
   startDate.setDate(startDate.getDate() - rangeDays);
   const startTimestamp = Math.floor(startDate.getTime() / 1000);
 
-  let events;
-  if (severity === "all") {
-    events = await db.all<{
-      id: number;
-      detected_at: number;
-      severity: string;
-      type: string;
-      message: string;
-      related_cluster: number | null;
-    }>(sql`
-      SELECT id, detected_at, severity, type, message, related_cluster
-      FROM drift_events
-      WHERE detected_at >= ${startTimestamp}
-      ORDER BY detected_at DESC
-    `);
-  } else {
-    events = await db.all<{
-      id: number;
-      detected_at: number;
-      severity: string;
-      type: string;
-      message: string;
-      related_cluster: number | null;
-    }>(sql`
-      SELECT id, detected_at, severity, type, message, related_cluster
-      FROM drift_events
-      WHERE detected_at >= ${startTimestamp}
-        AND severity = ${severity}
-      ORDER BY detected_at DESC
-    `);
-  }
+  const events = await driftEventRepo.findEventsSince(
+    startTimestamp,
+    severity === "all" ? undefined : severity
+  );
 
   // フォーマット
   const formattedEvents = events.map((e) => ({
@@ -164,17 +136,7 @@ driftRoute.get("/summary", async (c) => {
   const description = getStateDescription(timeline.summary);
 
   // 最新のイベント5件
-  const recentEvents = await db.all<{
-    detected_at: number;
-    severity: string;
-    type: string;
-    message: string;
-  }>(sql`
-    SELECT detected_at, severity, type, message
-    FROM drift_events
-    ORDER BY detected_at DESC
-    LIMIT 5
-  `);
+  const recentEvents = await driftEventRepo.findRecentEvents(5);
 
   return c.json({
     current: {
