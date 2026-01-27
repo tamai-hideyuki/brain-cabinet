@@ -7,21 +7,13 @@
  * 元スクリプト: src/scripts/rebuild-drift-events.ts をサービス化
  */
 
-import { db } from "../../db/client";
-import { sql } from "drizzle-orm";
+import * as driftRepo from "../../repositories/driftRepo";
 import {
   computeDriftScore,
   classifyDriftEvent,
 } from "./computeDriftScore";
 
-type HistoryRow = {
-  id: string;
-  note_id: string;
-  semantic_diff: string | null;
-  prev_cluster_id: number | null;
-  new_cluster_id: number | null;
-  created_at: number;
-};
+type HistoryRow = driftRepo.NoteHistoryForRebuildRow;
 
 type DriftEventRecord = {
   noteId: string;
@@ -73,25 +65,12 @@ function generateDriftMessage(event: DriftEventRecord): string {
  */
 export async function rebuildDriftEvents(): Promise<RebuildDriftEventsResult> {
   // 既存の drift_events を削除
-  const existingCount = await db.all<{ count: number }>(sql`
-    SELECT COUNT(*) as count FROM drift_events
-  `);
-  const cleared = existingCount[0]?.count || 0;
+  const cleared = await driftRepo.countDriftEvents();
 
-  await db.run(sql`DELETE FROM drift_events`);
+  await driftRepo.deleteAllDriftEvents();
 
   // note_history 全件取得（時系列順）
-  const historyRows = await db.all<HistoryRow>(sql`
-    SELECT
-      id,
-      note_id,
-      semantic_diff,
-      prev_cluster_id,
-      new_cluster_id,
-      created_at
-    FROM note_history
-    ORDER BY created_at ASC
-  `);
+  const historyRows = await driftRepo.findAllNoteHistory();
 
   const events: DriftEventRecord[] = [];
 
@@ -157,12 +136,13 @@ export async function rebuildDriftEvents(): Promise<RebuildDriftEventsResult> {
     // メッセージを生成
     const message = generateDriftMessage(event);
 
-    await db.run(sql`
-      INSERT INTO drift_events
-        (detected_at, severity, type, message, related_cluster)
-      VALUES
-        (${event.detectedAt}, ${severity}, ${type}, ${message}, ${event.newClusterId})
-    `);
+    await driftRepo.insertDriftEventWithMessage(
+      event.detectedAt,
+      severity,
+      type,
+      message,
+      event.newClusterId
+    );
   }
 
   // 結果集計

@@ -4,8 +4,7 @@
  * 全メトリクスを統合して PtmSnapshot を生成・保存
  */
 
-import { db } from "../../db/client";
-import { sql } from "drizzle-orm";
+import * as ptmRepo from "../../repositories/ptmRepo";
 import { computeCoreMetrics } from "./core";
 import { computeInfluenceMetrics } from "./influence";
 import { computeDriftMetrics, computeDynamicsMetrics, computeStabilityMetrics } from "./dynamics";
@@ -76,16 +75,16 @@ export async function capturePtmSnapshot(
   const snapshot = await generatePtmSnapshot(date);
 
   // 既存があれば削除
-  await db.run(sql`DELETE FROM ptm_snapshots WHERE date(captured_at) = ${date}`);
+  await ptmRepo.deletePtmSnapshotByDate(date);
 
   // 保存
   const now = Math.floor(Date.now() / 1000);
-  await db.run(sql`
-    INSERT INTO ptm_snapshots
-      (captured_at, cluster_strengths, imbalance_score, summary)
-    VALUES
-      (${now}, ${JSON.stringify(snapshot.clusterWeights)}, ${1 - snapshot.avgCohesion}, ${JSON.stringify(snapshot)})
-  `);
+  await ptmRepo.insertPtmSnapshot({
+    capturedAt: now,
+    clusterStrengths: JSON.stringify(snapshot.clusterWeights),
+    imbalanceScore: 1 - snapshot.avgCohesion,
+    summary: JSON.stringify(snapshot),
+  });
 
   return snapshot;
 }
@@ -94,21 +93,14 @@ export async function capturePtmSnapshot(
  * 最新の PTM Snapshot を取得
  */
 export async function getLatestPtmSnapshot(): Promise<PtmSnapshot | null> {
-  const rows = await db.all<{
-    summary: string;
-  }>(sql`
-    SELECT summary
-    FROM ptm_snapshots
-    ORDER BY captured_at DESC
-    LIMIT 1
-  `);
+  const row = await ptmRepo.findLatestPtmSnapshot();
 
-  if (rows.length === 0) {
+  if (!row) {
     return null;
   }
 
   try {
-    return JSON.parse(rows[0].summary) as PtmSnapshot;
+    return JSON.parse(row.summary) as PtmSnapshot;
   } catch {
     return null;
   }
@@ -120,14 +112,7 @@ export async function getLatestPtmSnapshot(): Promise<PtmSnapshot | null> {
 export async function getPtmSnapshotHistory(
   limit: number = 7
 ): Promise<PtmSnapshot[]> {
-  const rows = await db.all<{
-    summary: string;
-  }>(sql`
-    SELECT summary
-    FROM ptm_snapshots
-    ORDER BY captured_at DESC
-    LIMIT ${limit}
-  `);
+  const rows = await ptmRepo.findPtmSnapshotHistory(limit);
 
   const snapshots: PtmSnapshot[] = [];
   for (const row of rows) {

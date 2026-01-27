@@ -9,8 +9,7 @@
  * - クラスター間のフロー分析
  */
 
-import { db } from "../../db/client";
-import { sql } from "drizzle-orm";
+import * as driftRepo from "../../repositories/driftRepo";
 import {
   bufferToFloat32Array,
   cosineSimilarity,
@@ -105,36 +104,7 @@ export async function getDriftHistoriesWithEmbeddings(
 ): Promise<HistoryWithEmbeddings[]> {
   const startDate = Math.floor(Date.now() / 1000) - days * 24 * 60 * 60;
 
-  const rows = await db.all<{
-    history_id: number;
-    note_id: string;
-    drift_score: string | null;
-    old_embedding: Buffer | null;
-    new_embedding: Buffer | null;
-    old_cluster_id: number | null;
-    new_cluster_id: number | null;
-    created_at: number;
-  }>(sql`
-    SELECT
-      nh.id as history_id,
-      nh.note_id,
-      nh.drift_score,
-      nh.old_embedding,
-      ne.embedding as new_embedding,
-      nh.old_cluster_id,
-      n.cluster_id as new_cluster_id,
-      nh.created_at
-    FROM note_history nh
-    JOIN notes n ON nh.note_id = n.id
-    LEFT JOIN note_embeddings ne ON nh.note_id = ne.note_id
-    WHERE nh.drift_score IS NOT NULL
-      AND nh.drift_score != ''
-      AND CAST(nh.drift_score AS REAL) >= ${MIN_DRIFT_SCORE}
-      AND nh.created_at >= ${startDate}
-      AND nh.old_embedding IS NOT NULL
-      AND ne.embedding IS NOT NULL
-    ORDER BY nh.created_at DESC
-  `);
+  const rows = await driftRepo.findDriftHistoriesWithEmbeddings(startDate, MIN_DRIFT_SCORE);
 
   return rows.map((r) => ({
     historyId: r.history_id,
@@ -154,14 +124,7 @@ export async function getDriftHistoriesWithEmbeddings(
 export async function getClusterCentroids(): Promise<
   Map<number, { centroid: number[]; name?: string }>
 > {
-  const rows = await db.all<{
-    cluster_id: number;
-    centroid: Buffer;
-  }>(sql`
-    SELECT cluster_id, centroid
-    FROM cluster_dynamics
-    WHERE date = (SELECT MAX(date) FROM cluster_dynamics)
-  `);
+  const rows = await driftRepo.findLatestClusterCentroids();
 
   const centroids = new Map<number, { centroid: number[]; name?: string }>();
   for (const row of rows) {
@@ -340,31 +303,14 @@ export async function analyzeDriftDirection(
 export async function analyzeDriftDirectionByHistoryId(
   historyId: number
 ): Promise<DriftDirection | null> {
-  const row = await db.get<{
-    note_id: string;
-    drift_score: string | null;
-    old_embedding: Buffer | null;
-    old_cluster_id: number | null;
-  }>(sql`
-    SELECT note_id, drift_score, old_embedding, old_cluster_id
-    FROM note_history
-    WHERE id = ${historyId}
-  `);
+  const row = await driftRepo.findHistoryById(historyId);
 
   if (!row || !row.old_embedding) {
     return null;
   }
 
   // 現在の埋め込みを取得
-  const embRow = await db.get<{
-    embedding: Buffer;
-    cluster_id: number | null;
-  }>(sql`
-    SELECT ne.embedding, n.cluster_id
-    FROM note_embeddings ne
-    JOIN notes n ON ne.note_id = n.id
-    WHERE ne.note_id = ${row.note_id}
-  `);
+  const embRow = await driftRepo.findCurrentEmbeddingAndCluster(row.note_id);
 
   if (!embRow) {
     return null;

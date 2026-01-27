@@ -8,8 +8,7 @@
  * - 反実仮想分析: 「このノートがなかったら？」
  */
 
-import { db } from "../../db/client";
-import { sql } from "drizzle-orm";
+import * as influenceRepo from "../../repositories/influenceRepo";
 import { round4 } from "../../utils/math";
 
 // ============================================================
@@ -90,18 +89,7 @@ export async function getNoteTimeSeries(
 ): Promise<NoteTimeSeries[]> {
   const startDate = Math.floor(Date.now() / 1000) - days * 24 * 60 * 60;
 
-  const rows = await db.all<{
-    note_id: string;
-    created_at: number;
-    drift_score: string | null;
-    new_cluster_id: number | null;
-  }>(sql`
-    SELECT note_id, created_at, drift_score, new_cluster_id
-    FROM note_history
-    WHERE note_id = ${noteId}
-      AND created_at >= ${startDate}
-    ORDER BY created_at ASC
-  `);
+  const rows = await influenceRepo.findNoteTimeSeries(noteId, startDate);
 
   return rows.map((r) => ({
     noteId: r.note_id,
@@ -120,23 +108,7 @@ export async function getClusterTimeSeries(
 ): Promise<{ date: string; totalDrift: number; noteCount: number }[]> {
   const startDate = Math.floor(Date.now() / 1000) - days * 24 * 60 * 60;
 
-  const rows = await db.all<{
-    date: string;
-    total_drift: number;
-    note_count: number;
-  }>(sql`
-    SELECT
-      DATE(created_at, 'unixepoch') as date,
-      SUM(CAST(drift_score AS REAL)) as total_drift,
-      COUNT(*) as note_count
-    FROM note_history nh
-    JOIN notes n ON nh.note_id = n.id
-    WHERE n.cluster_id = ${clusterId}
-      AND nh.created_at >= ${startDate}
-      AND nh.drift_score IS NOT NULL
-    GROUP BY date
-    ORDER BY date ASC
-  `);
+  const rows = await influenceRepo.findClusterTimeSeries(clusterId, startDate);
 
   return rows.map((r) => ({
     date: r.date,
@@ -156,19 +128,7 @@ export async function getInfluenceTimeSeries(
   const startDate = Math.floor(Date.now() / 1000) - days * 24 * 60 * 60;
 
   // note_historyからソースとターゲットの変化を時系列で取得
-  const rows = await db.all<{
-    date: string;
-    drift_score: number;
-  }>(sql`
-    SELECT
-      DATE(created_at, 'unixepoch') as date,
-      CAST(drift_score AS REAL) as drift_score
-    FROM note_history
-    WHERE note_id = ${targetNoteId}
-      AND created_at >= ${startDate}
-      AND drift_score IS NOT NULL
-    ORDER BY date ASC
-  `);
+  const rows = await influenceRepo.findInfluenceTimeSeries(targetNoteId, startDate);
 
   return rows.map((r) => ({
     date: r.date,
@@ -325,27 +285,8 @@ export async function analyzeCausalRelations(
   limit: number = 10
 ): Promise<CausalRelation> {
   // 影響エッジを取得
-  const influencers = await db.all<{
-    source_note_id: string;
-    weight: number;
-  }>(sql`
-    SELECT source_note_id, weight
-    FROM note_influence_edges
-    WHERE target_note_id = ${noteId}
-    ORDER BY weight DESC
-    LIMIT ${limit}
-  `);
-
-  const influenced = await db.all<{
-    target_note_id: string;
-    weight: number;
-  }>(sql`
-    SELECT target_note_id, weight
-    FROM note_influence_edges
-    WHERE source_note_id = ${noteId}
-    ORDER BY weight DESC
-    LIMIT ${limit}
-  `);
+  const influencers = await influenceRepo.findInfluencersForCausal(noteId, limit);
+  const influenced = await influenceRepo.findInfluencedForCausal(noteId, limit);
 
   const causes: string[] = [];
   const causedBy: string[] = [];
@@ -390,15 +331,7 @@ export async function analyzeInterventionEffect(
   noteId: string
 ): Promise<InterventionEffect> {
   // ノートの情報を取得
-  const noteInfo = await db.get<{
-    cluster_id: number | null;
-    created_at: number;
-    updated_at: number;
-  }>(sql`
-    SELECT cluster_id, created_at, updated_at
-    FROM notes
-    WHERE id = ${noteId}
-  `);
+  const noteInfo = await influenceRepo.findNoteForIntervention(noteId);
 
   if (!noteInfo || !noteInfo.cluster_id) {
     return {
@@ -420,36 +353,18 @@ export async function analyzeInterventionEffect(
   const afterWindow = 14 * 24 * 60 * 60;
 
   // 介入前のドリフト
-  const beforeDrift = await db.get<{
-    avg_drift: number;
-    count: number;
-  }>(sql`
-    SELECT
-      AVG(CAST(drift_score AS REAL)) as avg_drift,
-      COUNT(*) as count
-    FROM note_history nh
-    JOIN notes n ON nh.note_id = n.id
-    WHERE n.cluster_id = ${clusterId}
-      AND nh.created_at >= ${interventionTime - beforeWindow}
-      AND nh.created_at < ${interventionTime}
-      AND nh.drift_score IS NOT NULL
-  `);
+  const beforeDrift = await influenceRepo.findDriftBefore(
+    clusterId,
+    interventionTime - beforeWindow,
+    interventionTime
+  );
 
   // 介入後のドリフト
-  const afterDrift = await db.get<{
-    avg_drift: number;
-    count: number;
-  }>(sql`
-    SELECT
-      AVG(CAST(drift_score AS REAL)) as avg_drift,
-      COUNT(*) as count
-    FROM note_history nh
-    JOIN notes n ON nh.note_id = n.id
-    WHERE n.cluster_id = ${clusterId}
-      AND nh.created_at >= ${interventionTime}
-      AND nh.created_at < ${interventionTime + afterWindow}
-      AND nh.drift_score IS NOT NULL
-  `);
+  const afterDrift = await influenceRepo.findDriftBefore(
+    clusterId,
+    interventionTime,
+    interventionTime + afterWindow
+  );
 
   const avgBefore = beforeDrift?.avg_drift || 0;
   const avgAfter = afterDrift?.avg_drift || 0;
@@ -461,11 +376,7 @@ export async function analyzeInterventionEffect(
   const acceleration = avgBefore > 0 ? driftIncrease / avgBefore : driftIncrease;
 
   // 影響を受けたノート数
-  const affectedNotes = await db.get<{ count: number }>(sql`
-    SELECT COUNT(DISTINCT target_note_id) as count
-    FROM note_influence_edges
-    WHERE source_note_id = ${noteId}
-  `);
+  const affectedNotesCount = await influenceRepo.countAffectedNotes(noteId);
 
   // 効果量（Cohen's d の簡易版）
   const pooledStd = Math.sqrt((countBefore * avgBefore * avgBefore + countAfter * avgAfter * avgAfter) / (countBefore + countAfter));
@@ -478,15 +389,11 @@ export async function analyzeInterventionEffect(
   const significance = Math.min(1, Math.max(0, 1 - Math.exp(-Math.abs(tStat) / 2)));
 
   // 効果が現れるまでの時間（最初の有意な変化）
-  const firstChange = await db.get<{ first_change: number }>(sql`
-    SELECT MIN(created_at) as first_change
-    FROM note_history nh
-    JOIN notes n ON nh.note_id = n.id
-    WHERE n.cluster_id = ${clusterId}
-      AND nh.created_at > ${interventionTime}
-      AND nh.drift_score IS NOT NULL
-      AND CAST(nh.drift_score AS REAL) > ${avgBefore * 1.5}
-  `);
+  const firstChange = await influenceRepo.findFirstSignificantChange(
+    clusterId,
+    interventionTime,
+    avgBefore * 1.5
+  );
 
   const timeToEffect = firstChange?.first_change
     ? Math.floor((firstChange.first_change - interventionTime) / (24 * 60 * 60))
@@ -495,7 +402,7 @@ export async function analyzeInterventionEffect(
   return {
     noteId,
     clusterDriftAcceleration: round4(acceleration),
-    affectedNotes: affectedNotes?.count || 0,
+    affectedNotes: affectedNotesCount,
     avgDriftIncrease: round4(driftIncrease),
     significance: round4(significance),
     effectSize: round4(Math.min(3, effectSize)), // Cohen's d は通常3以下
@@ -514,16 +421,7 @@ export async function analyzeCounterfactual(
   noteId: string
 ): Promise<CounterfactualAnalysis> {
   // ノート情報を取得
-  const noteInfo = await db.get<{
-    title: string;
-    cluster_id: number | null;
-    tags: string | null;
-    created_at: number;
-  }>(sql`
-    SELECT title, cluster_id, tags, created_at
-    FROM notes
-    WHERE id = ${noteId}
-  `);
+  const noteInfo = await influenceRepo.findNoteForCounterfactual(noteId);
 
   if (!noteInfo) {
     return {
@@ -538,71 +436,32 @@ export async function analyzeCounterfactual(
   }
 
   // このノートに依存するノート（影響を受けているノート）
-  const dependentNotes = await db.all<{ target_note_id: string }>(sql`
-    SELECT DISTINCT target_note_id
-    FROM note_influence_edges
-    WHERE source_note_id = ${noteId}
-    ORDER BY weight DESC
-    LIMIT 10
-  `);
+  const dependentNotes = await influenceRepo.findDependentNotes(noteId, 10);
 
   const dependentIds = dependentNotes.map((n) => n.target_note_id);
 
-  // クラスター内での位置づけを確認
-  const clusterNotes = noteInfo.cluster_id ? await db.get<{ count: number }>(sql`
-    SELECT COUNT(*) as count
-    FROM notes
-    WHERE cluster_id = ${noteInfo.cluster_id}
-  `) : null;
-
   // このノートがクラスターの初期メンバーかどうか
-  const earlierNotesInCluster = noteInfo.cluster_id ? await db.get<{ count: number }>(sql`
-    SELECT COUNT(*) as count
-    FROM notes
-    WHERE cluster_id = ${noteInfo.cluster_id}
-      AND created_at < ${noteInfo.created_at}
-  `) : null;
+  const earlierNotesCount = noteInfo.cluster_id
+    ? await influenceRepo.countEarlierNotesInCluster(noteInfo.cluster_id, noteInfo.created_at)
+    : 0;
 
-  const isFoundingMember = (earlierNotesInCluster?.count || 0) < 3;
+  const isFoundingMember = earlierNotesCount < 3;
 
   // タグから概念を抽出
   const tags = noteInfo.tags ? JSON.parse(noteInfo.tags) : [];
   const missingConcepts = tags.slice(0, 5);
 
   // 影響スコアを計算
-  const totalInfluence = await db.get<{ total: number }>(sql`
-    SELECT SUM(weight) as total
-    FROM note_influence_edges
-    WHERE source_note_id = ${noteId}
-  `);
+  const totalInfluence = await influenceRepo.findTotalInfluence(noteId);
+  const maxInfluence = await influenceRepo.findMaxInfluence();
 
-  const maxInfluence = await db.get<{ max: number }>(sql`
-    SELECT MAX(total) as max
-    FROM (
-      SELECT SUM(weight) as total
-      FROM note_influence_edges
-      GROUP BY source_note_id
-    )
-  `);
-
-  const impactScore = maxInfluence?.max && maxInfluence.max > 0
-    ? (totalInfluence?.total || 0) / maxInfluence.max
-    : 0;
+  const impactScore = maxInfluence > 0 ? totalInfluence / maxInfluence : 0;
 
   // ピボット確率（クラスター変更を誘発したか）
-  const clusterChanges = await db.get<{ count: number }>(sql`
-    SELECT COUNT(*) as count
-    FROM note_history
-    WHERE note_id IN (
-      SELECT target_note_id FROM note_influence_edges WHERE source_note_id = ${noteId}
-    )
-    AND prev_cluster_id IS NOT NULL
-    AND new_cluster_id IS NOT NULL
-    AND prev_cluster_id != new_cluster_id
-  `);
+  const clusterChangesCount = await influenceRepo.countClusterChanges(noteId);
 
   const pivotProbability = dependentIds.length > 0
-    ? (clusterChanges?.count || 0) / dependentIds.length
+    ? clusterChangesCount / dependentIds.length
     : 0;
 
   // 代替経路の説明を生成
@@ -741,62 +600,20 @@ export async function getGlobalCausalSummary(): Promise<{
   pivotNotes: Array<{ noteId: string; title: string; pivotProbability: number }>;
 }> {
   // 影響エッジの統計
-  const edgeStats = await db.get<{
-    total: number;
-    avg_weight: number;
-  }>(sql`
-    SELECT COUNT(*) as total, AVG(weight) as avg_weight
-    FROM note_influence_edges
-  `);
+  const edgeStats = await influenceRepo.findEdgeStats();
 
   // 強い影響関係（weight > 0.5）
-  const strongRelations = await db.get<{ count: number }>(sql`
-    SELECT COUNT(*) as count
-    FROM note_influence_edges
-    WHERE weight > 0.5
-  `);
+  const strongRelationsCount = await influenceRepo.countStrongRelations(0.5);
 
   // Top influencers
-  const topInfluencers = await db.all<{
-    source_note_id: string;
-    caused_count: number;
-    avg_strength: number;
-  }>(sql`
-    SELECT
-      source_note_id,
-      COUNT(*) as caused_count,
-      AVG(weight) as avg_strength
-    FROM note_influence_edges
-    WHERE weight > 0.3
-    GROUP BY source_note_id
-    ORDER BY caused_count DESC
-    LIMIT 10
-  `);
+  const topInfluencers = await influenceRepo.findTopCausalInfluencers(0.3, 10);
 
   // ピボットノート（クラスター変更を多く誘発したノート）
-  const pivotNotes = await db.all<{
-    note_id: string;
-    title: string;
-    pivot_count: number;
-  }>(sql`
-    SELECT
-      n.id as note_id,
-      n.title,
-      COUNT(DISTINCT nh.note_id) as pivot_count
-    FROM notes n
-    JOIN note_influence_edges nie ON n.id = nie.source_note_id
-    JOIN note_history nh ON nie.target_note_id = nh.note_id
-    WHERE nh.prev_cluster_id IS NOT NULL
-      AND nh.new_cluster_id IS NOT NULL
-      AND nh.prev_cluster_id != nh.new_cluster_id
-    GROUP BY n.id
-    ORDER BY pivot_count DESC
-    LIMIT 5
-  `);
+  const pivotNotes = await influenceRepo.findPivotNotes(5);
 
   return {
     totalCausalPairs: edgeStats?.total || 0,
-    strongCausalRelations: strongRelations?.count || 0,
+    strongCausalRelations: strongRelationsCount,
     avgCausalStrength: round4(edgeStats?.avg_weight || 0),
     topCausalInfluencers: topInfluencers.map((t) => ({
       noteId: t.source_note_id,

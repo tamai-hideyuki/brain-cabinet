@@ -4,8 +4,7 @@
  * note_influence_edges からノート・クラスタの影響力を集計
  */
 
-import { db } from "../../db/client";
-import { sql } from "drizzle-orm";
+import * as ptmRepo from "../../repositories/ptmRepo";
 import type {
   InfluenceMetrics,
   InfluencerSummary,
@@ -22,18 +21,10 @@ function round4(n: number): number {
  */
 export async function computeInfluenceMetrics(): Promise<InfluenceMetrics> {
   // 基本統計
-  const basicStats = await db.all<{
-    total_edges: number;
-    avg_weight: number;
-  }>(sql`
-    SELECT
-      COUNT(*) as total_edges,
-      AVG(weight) as avg_weight
-    FROM note_influence_edges
-  `);
+  const basicStats = await ptmRepo.findInfluenceBasicStats();
 
-  const totalEdges = basicStats[0]?.total_edges ?? 0;
-  const avgWeight = basicStats[0]?.avg_weight ?? 0;
+  const totalEdges = basicStats?.total_edges ?? 0;
+  const avgWeight = basicStats?.avg_weight ?? 0;
 
   if (totalEdges === 0) {
     return {
@@ -47,20 +38,7 @@ export async function computeInfluenceMetrics(): Promise<InfluenceMetrics> {
   }
 
   // Top Influencers（影響を与えているノート）
-  const influencerRows = await db.all<{
-    source_note_id: string;
-    out_weight: number;
-    edge_count: number;
-  }>(sql`
-    SELECT
-      source_note_id,
-      SUM(weight) as out_weight,
-      COUNT(*) as edge_count
-    FROM note_influence_edges
-    GROUP BY source_note_id
-    ORDER BY out_weight DESC
-    LIMIT 5
-  `);
+  const influencerRows = await ptmRepo.findTopInfluencers(5);
 
   const topInfluencers: InfluencerSummary[] = influencerRows.map((r) => ({
     noteId: r.source_note_id,
@@ -69,20 +47,7 @@ export async function computeInfluenceMetrics(): Promise<InfluenceMetrics> {
   }));
 
   // Top Influenced（影響を受けているノート）
-  const influencedRows = await db.all<{
-    target_note_id: string;
-    in_weight: number;
-    edge_count: number;
-  }>(sql`
-    SELECT
-      target_note_id,
-      SUM(weight) as in_weight,
-      COUNT(*) as edge_count
-    FROM note_influence_edges
-    GROUP BY target_note_id
-    ORDER BY in_weight DESC
-    LIMIT 5
-  `);
+  const influencedRows = await ptmRepo.findTopInfluenced(5);
 
   const topInfluenced: InfluencedSummary[] = influencedRows.map((r) => ({
     noteId: r.target_note_id,
@@ -93,31 +58,8 @@ export async function computeInfluenceMetrics(): Promise<InfluenceMetrics> {
   // クラスタ別影響力
   // source_note → そのクラスタが「与えた」影響
   // target_note → そのクラスタが「受けた」影響
-  const clusterGivenRows = await db.all<{
-    cluster_id: number;
-    given: number;
-  }>(sql`
-    SELECT
-      n.cluster_id,
-      SUM(e.weight) as given
-    FROM note_influence_edges e
-    JOIN notes n ON e.source_note_id = n.id
-    WHERE n.cluster_id IS NOT NULL
-    GROUP BY n.cluster_id
-  `);
-
-  const clusterReceivedRows = await db.all<{
-    cluster_id: number;
-    received: number;
-  }>(sql`
-    SELECT
-      n.cluster_id,
-      SUM(e.weight) as received
-    FROM note_influence_edges e
-    JOIN notes n ON e.target_note_id = n.id
-    WHERE n.cluster_id IS NOT NULL
-    GROUP BY n.cluster_id
-  `);
+  const clusterGivenRows = await ptmRepo.findClusterGivenInfluence();
+  const clusterReceivedRows = await ptmRepo.findClusterReceivedInfluence();
 
   // 集約
   const clusterMap = new Map<number, { given: number; received: number }>();
@@ -161,23 +103,7 @@ export async function computeInfluenceMetrics(): Promise<InfluenceMetrics> {
 export async function computeClusterInfluenceFlow(): Promise<
   Array<{ source: number; target: number; weight: number }>
 > {
-  const rows = await db.all<{
-    source_cluster: number;
-    target_cluster: number;
-    total_weight: number;
-  }>(sql`
-    SELECT
-      src.cluster_id as source_cluster,
-      tgt.cluster_id as target_cluster,
-      SUM(e.weight) as total_weight
-    FROM note_influence_edges e
-    JOIN notes src ON e.source_note_id = src.id
-    JOIN notes tgt ON e.target_note_id = tgt.id
-    WHERE src.cluster_id IS NOT NULL
-      AND tgt.cluster_id IS NOT NULL
-    GROUP BY src.cluster_id, tgt.cluster_id
-    ORDER BY total_weight DESC
-  `);
+  const rows = await ptmRepo.findClusterInfluenceFlow();
 
   return rows.map((r) => ({
     source: r.source_cluster,

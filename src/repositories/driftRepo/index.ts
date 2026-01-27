@@ -277,3 +277,149 @@ export const findPhaseDetectionData = async (
     ORDER BY nh.created_at ASC
   `);
 };
+
+// ============================================
+// Drift Direction Types
+// ============================================
+
+export type DriftHistoryWithEmbeddingsRow = {
+  history_id: number;
+  note_id: string;
+  drift_score: string | null;
+  old_embedding: Buffer | null;
+  new_embedding: Buffer | null;
+  old_cluster_id: number | null;
+  new_cluster_id: number | null;
+  created_at: number;
+};
+
+export type ClusterCentroidRow = {
+  cluster_id: number;
+  centroid: Buffer;
+};
+
+export type HistoryRow = {
+  note_id: string;
+  drift_score: string | null;
+  old_embedding: Buffer | null;
+  old_cluster_id: number | null;
+};
+
+export type CurrentEmbeddingRow = {
+  embedding: Buffer;
+  cluster_id: number | null;
+};
+
+export type NoteHistoryForRebuildRow = {
+  id: string;
+  note_id: string;
+  semantic_diff: string | null;
+  prev_cluster_id: number | null;
+  new_cluster_id: number | null;
+  created_at: number;
+};
+
+// ============================================
+// Drift Direction Functions
+// ============================================
+
+/**
+ * ドリフトイベントのある履歴と埋め込みを取得
+ */
+export const findDriftHistoriesWithEmbeddings = async (
+  startTimestamp: number,
+  minDriftScore: number
+): Promise<DriftHistoryWithEmbeddingsRow[]> => {
+  return await db.all<DriftHistoryWithEmbeddingsRow>(sql`
+    SELECT
+      nh.id as history_id,
+      nh.note_id,
+      nh.drift_score,
+      nh.old_embedding,
+      ne.embedding as new_embedding,
+      nh.old_cluster_id,
+      n.cluster_id as new_cluster_id,
+      nh.created_at
+    FROM note_history nh
+    JOIN notes n ON nh.note_id = n.id
+    LEFT JOIN note_embeddings ne ON nh.note_id = ne.note_id
+    WHERE nh.drift_score IS NOT NULL
+      AND nh.drift_score != ''
+      AND CAST(nh.drift_score AS REAL) >= ${minDriftScore}
+      AND nh.created_at >= ${startTimestamp}
+      AND nh.old_embedding IS NOT NULL
+      AND ne.embedding IS NOT NULL
+    ORDER BY nh.created_at DESC
+  `);
+};
+
+/**
+ * 最新のクラスターセントロイドを取得
+ */
+export const findLatestClusterCentroids = async (): Promise<ClusterCentroidRow[]> => {
+  return await db.all<ClusterCentroidRow>(sql`
+    SELECT cluster_id, centroid
+    FROM cluster_dynamics
+    WHERE date = (SELECT MAX(date) FROM cluster_dynamics)
+  `);
+};
+
+/**
+ * 履歴IDで履歴を取得
+ */
+export const findHistoryById = async (
+  historyId: number
+): Promise<HistoryRow | null> => {
+  const row = await db.get<HistoryRow>(sql`
+    SELECT note_id, drift_score, old_embedding, old_cluster_id
+    FROM note_history
+    WHERE id = ${historyId}
+  `);
+  return row ?? null;
+};
+
+/**
+ * ノートの現在の埋め込みとクラスタを取得
+ */
+export const findCurrentEmbeddingAndCluster = async (
+  noteId: string
+): Promise<CurrentEmbeddingRow | null> => {
+  const row = await db.get<CurrentEmbeddingRow>(sql`
+    SELECT ne.embedding, n.cluster_id
+    FROM note_embeddings ne
+    JOIN notes n ON ne.note_id = n.id
+    WHERE ne.note_id = ${noteId}
+  `);
+  return row ?? null;
+};
+
+// ============================================
+// Rebuild Drift Events Functions
+// ============================================
+
+/**
+ * ドリフトイベントの数を取得
+ */
+export const countDriftEvents = async (): Promise<number> => {
+  const result = await db.all<{ count: number }>(sql`
+    SELECT COUNT(*) as count FROM drift_events
+  `);
+  return result[0]?.count ?? 0;
+};
+
+/**
+ * 全てのnote_historyを取得（時系列順）
+ */
+export const findAllNoteHistory = async (): Promise<NoteHistoryForRebuildRow[]> => {
+  return await db.all<NoteHistoryForRebuildRow>(sql`
+    SELECT
+      id,
+      note_id,
+      semantic_diff,
+      prev_cluster_id,
+      new_cluster_id,
+      created_at
+    FROM note_history
+    ORDER BY created_at ASC
+  `);
+};
