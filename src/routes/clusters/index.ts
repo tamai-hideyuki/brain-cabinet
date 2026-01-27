@@ -6,8 +6,7 @@ import {
 } from "../../repositories/clusterRepo";
 import { enqueueJob } from "../../services/jobs/job-queue";
 import { logger } from "../../utils/logger";
-import { db } from "../../db/client";
-import { sql } from "drizzle-orm";
+import * as clusterDynamicsRepo from "../../repositories/clusterDynamicsRepo";
 import {
   getClusterIdentity,
   getAllClusterIdentities,
@@ -180,40 +179,20 @@ clustersRoute.get("/:id/representatives", async (c) => {
   }
 
   // 最新の cluster_dynamics から centroid を取得
-  const dynamicsRows = await db.all<{
-    centroid: Buffer;
-    date: string;
-  }>(sql`
-    SELECT centroid, date FROM cluster_dynamics
-    WHERE cluster_id = ${clusterId}
-    ORDER BY date DESC
-    LIMIT 1
-  `);
+  const dynamicsRow = await clusterDynamicsRepo.findLatestCentroid(clusterId);
 
-  if (dynamicsRows.length === 0 || !dynamicsRows[0].centroid) {
+  if (!dynamicsRow || !dynamicsRow.centroid) {
     return c.json({ error: "No centroid available for this cluster" }, 404);
   }
 
-  const centroidBuffer = dynamicsRows[0].centroid;
-  const centroid = bufferToFloat32Array(centroidBuffer);
+  const centroid = bufferToFloat32Array(dynamicsRow.centroid);
 
   if (centroid.length === 0) {
     return c.json({ error: "Invalid centroid data" }, 500);
   }
 
   // クラスタ所属ノートの embedding を取得
-  const noteRows = await db.all<{
-    note_id: string;
-    title: string;
-    embedding: Buffer;
-    updated_at: number;
-    category: string | null;
-  }>(sql`
-    SELECT n.id as note_id, n.title, n.category, n.updated_at, ne.embedding
-    FROM notes n
-    JOIN note_embeddings ne ON n.id = ne.note_id
-    WHERE n.cluster_id = ${clusterId}
-  `);
+  const noteRows = await clusterDynamicsRepo.findNoteEmbeddingsByClusterId(clusterId);
 
   if (noteRows.length === 0) {
     return c.json({
@@ -245,7 +224,7 @@ clustersRoute.get("/:id/representatives", async (c) => {
 
   return c.json({
     clusterId,
-    date: dynamicsRows[0].date,
+    date: dynamicsRow.date,
     top,
     notes: scoredNotes,
   });

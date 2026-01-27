@@ -9,8 +9,7 @@
  * - stability_score: 前日からの変化量
  */
 
-import { db } from "../../db/client";
-import { sql } from "drizzle-orm";
+import * as clusterRepo from "../../repositories/clusterRepo";
 import {
   bufferToFloat32Array,
   float32ArrayToBuffer,
@@ -36,23 +35,13 @@ export async function captureClusterDynamics(
   date: string = new Date().toISOString().split("T")[0]
 ): Promise<ClusterDynamicsSnapshot[]> {
   // 既存のデータを削除（冪等性のため）
-  await db.run(sql`DELETE FROM cluster_dynamics WHERE date = ${date}`);
+  await clusterRepo.deleteDynamicsByDate(date);
 
   // クラスタ一覧を取得
-  const clusters = await db.all<{ id: number }>(sql`
-    SELECT DISTINCT id FROM clusters ORDER BY id
-  `);
+  const clusters = await clusterRepo.findAllClusterIdsFromClusters();
 
   // 全ノートの埋め込みとクラスタ情報を取得
-  const embeddings = await db.all<{
-    note_id: string;
-    embedding: Buffer;
-    cluster_id: number | null;
-  }>(sql`
-    SELECT ne.note_id, ne.embedding, n.cluster_id
-    FROM note_embeddings ne
-    JOIN notes n ON ne.note_id = n.id
-  `);
+  const embeddings = await clusterRepo.findAllNoteEmbeddings();
 
   // クラスタごとに埋め込みをグループ化
   const clusterEmbeddings = new Map<number, number[][]>();
@@ -78,12 +67,7 @@ export async function captureClusterDynamics(
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdayStr = yesterday.toISOString().split("T")[0];
 
-  const previousData = await db.all<{
-    cluster_id: number;
-    centroid: Buffer;
-  }>(sql`
-    SELECT cluster_id, centroid FROM cluster_dynamics WHERE date = ${yesterdayStr}
-  `);
+  const previousData = await clusterRepo.findPreviousCentroids(yesterdayStr);
 
   const previousCentroids = new Map<number, number[]>();
   for (const p of previousData) {
@@ -129,12 +113,15 @@ export async function captureClusterDynamics(
     const centroidBuffer = float32ArrayToBuffer(centroid);
     const interactionsJson = JSON.stringify(interactions);
 
-    await db.run(sql`
-      INSERT INTO cluster_dynamics
-        (date, cluster_id, centroid, cohesion, note_count, interactions, stability_score, created_at)
-      VALUES
-        (${date}, ${clusterId}, ${centroidBuffer}, ${cohesion}, ${vectors.length}, ${interactionsJson}, ${stabilityScore}, datetime('now'))
-    `);
+    await clusterRepo.insertClusterDynamics({
+      date,
+      clusterId,
+      centroidBuffer,
+      cohesion,
+      noteCount: vectors.length,
+      interactionsJson,
+      stabilityScore,
+    });
 
     results.push({
       clusterId,
@@ -155,19 +142,7 @@ export async function captureClusterDynamics(
 export async function getClusterDynamics(
   date: string
 ): Promise<ClusterDynamicsSnapshot[]> {
-  const rows = await db.all<{
-    cluster_id: number;
-    centroid: Buffer;
-    cohesion: number;
-    note_count: number;
-    interactions: string | null;
-    stability_score: number | null;
-  }>(sql`
-    SELECT cluster_id, centroid, cohesion, note_count, interactions, stability_score
-    FROM cluster_dynamics
-    WHERE date = ${date}
-    ORDER BY cluster_id
-  `);
+  const rows = await clusterRepo.findDynamicsByDate(date);
 
   return rows.map((r) => ({
     clusterId: r.cluster_id,
@@ -195,18 +170,7 @@ export async function getClusterDynamicsTimeline(
   startDate.setDate(startDate.getDate() - rangeDays);
   const startDateStr = startDate.toISOString().split("T")[0];
 
-  const rows = await db.all<{
-    date: string;
-    cohesion: number;
-    note_count: number;
-    stability_score: number | null;
-  }>(sql`
-    SELECT date, cohesion, note_count, stability_score
-    FROM cluster_dynamics
-    WHERE cluster_id = ${clusterId}
-      AND date >= ${startDateStr}
-    ORDER BY date ASC
-  `);
+  const rows = await clusterRepo.findDynamicsTimeline(clusterId, startDateStr);
 
   return rows.map((r) => ({
     date: r.date,

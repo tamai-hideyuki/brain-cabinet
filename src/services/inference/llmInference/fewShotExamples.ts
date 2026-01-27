@@ -5,9 +5,7 @@
  * プロンプトに含めることで推論精度を向上させる
  */
 
-import { db } from "../../../db/client";
-import { notes, llmInferenceResults } from "../../../db/schema";
-import { eq, and, gte, desc, inArray } from "drizzle-orm";
+import * as inferenceRepo from "../../../repositories/inferenceRepo";
 import type { NoteType } from "../../../db/schema";
 import { logger } from "../../../utils/logger";
 
@@ -56,39 +54,18 @@ export async function getFewShotExamples(): Promise<FewShotExample[]> {
   try {
     for (const noteType of NOTE_TYPES) {
       // 承認済み or 高信頼度自動適用のものから取得
-      const results = await db
-        .select({
-          noteId: llmInferenceResults.noteId,
-          type: llmInferenceResults.type,
-          confidence: llmInferenceResults.confidence,
-          reasoning: llmInferenceResults.reasoning,
-          resolvedAt: llmInferenceResults.resolvedAt,
-        })
-        .from(llmInferenceResults)
-        .where(
-          and(
-            eq(llmInferenceResults.type, noteType),
-            gte(llmInferenceResults.confidence, MIN_CONFIDENCE_FOR_FEWSHOT),
-            // approved（明示的承認）または auto_applied（高信頼度自動適用）
-            inArray(llmInferenceResults.status, ["approved", "auto_applied"])
-          )
-        )
-        .orderBy(desc(llmInferenceResults.resolvedAt))
-        .limit(MAX_EXAMPLES_PER_TYPE);
+      const results = await inferenceRepo.findApprovedForFewShot(
+        noteType,
+        MIN_CONFIDENCE_FOR_FEWSHOT,
+        MAX_EXAMPLES_PER_TYPE
+      );
 
       // ノート情報を取得
       for (const result of results) {
-        const noteData = await db
-          .select({
-            title: notes.title,
-            content: notes.content,
-          })
-          .from(notes)
-          .where(eq(notes.id, result.noteId))
-          .limit(1);
+        const noteData = await inferenceRepo.findNoteBasicInfo(result.noteId);
 
-        if (noteData.length > 0) {
-          const content = noteData[0].content;
+        if (noteData) {
+          const content = noteData.content;
           // コンテンツを適切な長さに切り詰め
           const truncatedContent = content.length > MAX_CONTENT_LENGTH
             ? content.slice(0, MAX_CONTENT_LENGTH) + "..."
@@ -96,7 +73,7 @@ export async function getFewShotExamples(): Promise<FewShotExample[]> {
 
           examples.push({
             type: result.type as NoteType,
-            title: noteData[0].title,
+            title: noteData.title,
             content: truncatedContent,
             reasoning: result.reasoning ?? "",
           });

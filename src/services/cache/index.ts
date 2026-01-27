@@ -7,9 +7,8 @@
  * - データ変更時のキャッシュ無効化
  */
 
-import { db } from "../../db/client";
-import { analysisCache, CacheKeyType, CACHE_KEY_TYPES } from "../../db/schema";
-import { eq, and, lt } from "drizzle-orm";
+import * as cacheRepo from "../../repositories/cacheRepo";
+import { CacheKeyType, CACHE_KEY_TYPES } from "../../db/schema";
 
 // デフォルトTTL設定（秒）
 export const DEFAULT_TTL: Record<CacheKeyType, number> = {
@@ -31,29 +30,16 @@ export async function get<T>(
 ): Promise<T | null> {
   const now = Math.floor(Date.now() / 1000);
 
-  const result = await db
-    .select()
-    .from(analysisCache)
-    .where(
-      and(
-        eq(analysisCache.cacheKey, key),
-        eq(analysisCache.keyType, keyType)
-      )
-    )
-    .limit(1);
+  const cached = await cacheRepo.findByKeyAndType(key, keyType);
 
-  if (result.length === 0) {
+  if (!cached) {
     return null;
   }
-
-  const cached = result[0];
 
   // 期限切れチェック
   if (cached.expiresAt < now) {
     // 期限切れデータを削除
-    await db
-      .delete(analysisCache)
-      .where(eq(analysisCache.id, cached.id));
+    await cacheRepo.deleteById(cached.id);
     return null;
   }
 
@@ -61,9 +47,7 @@ export async function get<T>(
     return JSON.parse(cached.data) as T;
   } catch {
     // パースエラー時は削除
-    await db
-      .delete(analysisCache)
-      .where(eq(analysisCache.id, cached.id));
+    await cacheRepo.deleteById(cached.id);
     return null;
   }
 }
@@ -84,17 +68,10 @@ export async function set<T>(
   const jsonData = JSON.stringify(data);
 
   // 既存エントリを削除
-  await db
-    .delete(analysisCache)
-    .where(
-      and(
-        eq(analysisCache.cacheKey, key),
-        eq(analysisCache.keyType, keyType)
-      )
-    );
+  await cacheRepo.deleteByKeyAndType(key, keyType);
 
   // 新規エントリを挿入
-  await db.insert(analysisCache).values({
+  await cacheRepo.insert({
     cacheKey: key,
     keyType,
     data: jsonData,
@@ -134,24 +111,17 @@ export async function getOrCompute<T>(
  */
 export async function invalidate(keyType?: CacheKeyType): Promise<number> {
   if (keyType) {
-    // 削除前にカウント
-    const toDelete = await db
-      .select()
-      .from(analysisCache)
-      .where(eq(analysisCache.keyType, keyType));
-    const count = toDelete.length;
+    const count = await cacheRepo.countByKeyType(keyType);
 
     if (count > 0) {
-      await db.delete(analysisCache).where(eq(analysisCache.keyType, keyType));
+      await cacheRepo.deleteByKeyType(keyType);
     }
     return count;
   } else {
-    // 削除前にカウント
-    const toDelete = await db.select().from(analysisCache);
-    const count = toDelete.length;
+    const count = await cacheRepo.countAll();
 
     if (count > 0) {
-      await db.delete(analysisCache);
+      await cacheRepo.deleteAll();
     }
     return count;
   }
@@ -165,29 +135,13 @@ export async function invalidateKey(
   keyType: CacheKeyType
 ): Promise<boolean> {
   // 削除前に存在確認
-  const existing = await db
-    .select()
-    .from(analysisCache)
-    .where(
-      and(
-        eq(analysisCache.cacheKey, key),
-        eq(analysisCache.keyType, keyType)
-      )
-    )
-    .limit(1);
+  const existing = await cacheRepo.findByKeyAndType(key, keyType);
 
-  if (existing.length === 0) {
+  if (!existing) {
     return false;
   }
 
-  await db
-    .delete(analysisCache)
-    .where(
-      and(
-        eq(analysisCache.cacheKey, key),
-        eq(analysisCache.keyType, keyType)
-      )
-    );
+  await cacheRepo.deleteByKeyAndType(key, keyType);
   return true;
 }
 
@@ -197,15 +151,10 @@ export async function invalidateKey(
 export async function cleanupExpired(): Promise<number> {
   const now = Math.floor(Date.now() / 1000);
 
-  // 削除前にカウント
-  const toDelete = await db
-    .select()
-    .from(analysisCache)
-    .where(lt(analysisCache.expiresAt, now));
-  const count = toDelete.length;
+  const count = await cacheRepo.countExpired(now);
 
   if (count > 0) {
-    await db.delete(analysisCache).where(lt(analysisCache.expiresAt, now));
+    await cacheRepo.deleteExpired(now);
   }
   return count;
 }
@@ -222,13 +171,7 @@ export async function getStats(): Promise<{
   const now = Math.floor(Date.now() / 1000);
 
   // 全エントリを取得
-  const entries = await db
-    .select({
-      keyType: analysisCache.keyType,
-      data: analysisCache.data,
-      expiresAt: analysisCache.expiresAt,
-    })
-    .from(analysisCache);
+  const entries = await cacheRepo.findAllForStats();
 
   const entriesByType: Record<CacheKeyType, number> = {} as Record<CacheKeyType, number>;
   for (const type of CACHE_KEY_TYPES) {

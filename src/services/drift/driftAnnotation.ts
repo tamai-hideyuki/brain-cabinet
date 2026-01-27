@@ -6,8 +6,7 @@
  * - 思考の質的な変化を自己観測
  */
 
-import { db } from "../../db/client";
-import { sql } from "drizzle-orm";
+import * as driftRepo from "../../repositories/driftRepo";
 import {
   DRIFT_ANNOTATION_LABELS,
   type DriftAnnotationLabel,
@@ -83,20 +82,23 @@ export async function upsertAnnotation(
 
   if (existing) {
     // 更新
-    await db.run(sql`
-      UPDATE drift_annotations
-      SET label = ${input.label},
-          note = ${input.note ?? null},
-          auto_phase = ${input.autoPhase ?? existing.autoPhase ?? null},
-          updated_at = ${now}
-      WHERE date = ${input.date}
-    `);
+    await driftRepo.updateAnnotation(
+      input.date,
+      input.label,
+      input.note ?? null,
+      input.autoPhase ?? existing.autoPhase ?? null,
+      now
+    );
   } else {
     // 新規作成
-    await db.run(sql`
-      INSERT INTO drift_annotations (date, label, note, auto_phase, created_at, updated_at)
-      VALUES (${input.date}, ${input.label}, ${input.note ?? null}, ${input.autoPhase ?? null}, ${now}, ${now})
-    `);
+    await driftRepo.insertAnnotation(
+      input.date,
+      input.label,
+      input.note ?? null,
+      input.autoPhase ?? null,
+      now,
+      now
+    );
   }
 
   const result = await getAnnotationByDate(input.date);
@@ -110,25 +112,10 @@ export async function upsertAnnotation(
 /**
  * 日付でアノテーションを取得
  */
-export async function getAnnotationByDate(
-  date: string
-): Promise<DriftAnnotation | null> {
-  const row = await db.get<{
-    id: number;
-    date: string;
-    label: string;
-    note: string | null;
-    auto_phase: string | null;
-    created_at: number;
-    updated_at: number;
-  }>(sql`
-    SELECT id, date, label, note, auto_phase, created_at, updated_at
-    FROM drift_annotations
-    WHERE date = ${date}
-  `);
-
-  if (!row) return null;
-
+/**
+ * AnnotationRowをDriftAnnotationに変換するヘルパー
+ */
+function toAnnotation(row: driftRepo.AnnotationRow): DriftAnnotation {
   return {
     id: row.id,
     date: row.date,
@@ -140,37 +127,23 @@ export async function getAnnotationByDate(
   };
 }
 
+export async function getAnnotationByDate(
+  date: string
+): Promise<DriftAnnotation | null> {
+  const row = await driftRepo.findAnnotationByDate(date);
+  if (!row) return null;
+  return toAnnotation(row);
+}
+
 /**
  * IDでアノテーションを取得
  */
 export async function getAnnotationById(
   id: number
 ): Promise<DriftAnnotation | null> {
-  const row = await db.get<{
-    id: number;
-    date: string;
-    label: string;
-    note: string | null;
-    auto_phase: string | null;
-    created_at: number;
-    updated_at: number;
-  }>(sql`
-    SELECT id, date, label, note, auto_phase, created_at, updated_at
-    FROM drift_annotations
-    WHERE id = ${id}
-  `);
-
+  const row = await driftRepo.findAnnotationById(id);
   if (!row) return null;
-
-  return {
-    id: row.id,
-    date: row.date,
-    label: row.label as DriftAnnotationLabel,
-    note: row.note,
-    autoPhase: row.auto_phase as DriftPhase | null,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
+  return toAnnotation(row);
 }
 
 /**
@@ -180,30 +153,8 @@ export async function getAnnotationsInRange(
   startDate: string,
   endDate: string
 ): Promise<DriftAnnotation[]> {
-  const rows = await db.all<{
-    id: number;
-    date: string;
-    label: string;
-    note: string | null;
-    auto_phase: string | null;
-    created_at: number;
-    updated_at: number;
-  }>(sql`
-    SELECT id, date, label, note, auto_phase, created_at, updated_at
-    FROM drift_annotations
-    WHERE date >= ${startDate} AND date <= ${endDate}
-    ORDER BY date ASC
-  `);
-
-  return rows.map((row) => ({
-    id: row.id,
-    date: row.date,
-    label: row.label as DriftAnnotationLabel,
-    note: row.note,
-    autoPhase: row.auto_phase as DriftPhase | null,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  }));
+  const rows = await driftRepo.findAnnotationsInRange(startDate, endDate);
+  return rows.map(toAnnotation);
 }
 
 /**
@@ -228,11 +179,7 @@ export async function deleteAnnotation(id: number): Promise<boolean> {
   const existing = await getAnnotationById(id);
   if (!existing) return false;
 
-  await db.run(sql`
-    DELETE FROM drift_annotations
-    WHERE id = ${id}
-  `);
-
+  await driftRepo.deleteAnnotationById(id);
   return true;
 }
 
@@ -244,11 +191,7 @@ export async function deleteAnnotationByDate(date: string): Promise<boolean> {
   const existing = await getAnnotationByDate(date);
   if (!existing) return false;
 
-  await db.run(sql`
-    DELETE FROM drift_annotations
-    WHERE date = ${date}
-  `);
-
+  await driftRepo.deleteAnnotationByDate(date);
   return true;
 }
 

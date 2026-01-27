@@ -8,8 +8,7 @@
  * - Drift との統合
  */
 
-import { db } from "../../db/client";
-import { sql } from "drizzle-orm";
+import * as ptmRepo from "../../repositories/ptmRepo";
 import type {
   CoreMetrics,
   ClusterWeight,
@@ -76,15 +75,7 @@ function round4(n: number): number {
  */
 export async function computeCoreMetrics(): Promise<CoreMetrics> {
   // 全ノートの埋め込みとクラスタ情報を取得
-  const embeddings = await db.all<{
-    note_id: string;
-    embedding: Buffer;
-    cluster_id: number | null;
-  }>(sql`
-    SELECT ne.note_id, ne.embedding, n.cluster_id
-    FROM note_embeddings ne
-    JOIN notes n ON ne.note_id = n.id
-  `);
+  const embeddings = await ptmRepo.findAllNoteEmbeddingsWithCluster();
 
   if (embeddings.length === 0) {
     return {
@@ -145,15 +136,7 @@ export async function computeCoreMetrics(): Promise<CoreMetrics> {
  * クラスタ重心を計算
  */
 export async function computeClusterCentroids(): Promise<ClusterCentroid[]> {
-  const embeddings = await db.all<{
-    note_id: string;
-    embedding: Buffer;
-    cluster_id: number | null;
-  }>(sql`
-    SELECT ne.note_id, ne.embedding, n.cluster_id
-    FROM note_embeddings ne
-    JOIN notes n ON ne.note_id = n.id
-  `);
+  const embeddings = await ptmRepo.findAllNoteEmbeddingsWithCluster();
 
   const clusterVectors = new Map<number, number[][]>();
 

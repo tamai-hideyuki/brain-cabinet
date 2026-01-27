@@ -8,8 +8,7 @@
  * - 成長状態（stable / overheat / stagnation）を判定
  */
 
-import { db } from "../../db/client";
-import { sql } from "drizzle-orm";
+import * as driftRepo from "../../repositories/driftRepo";
 
 // EMA の平滑化係数（0.3 = 変化に敏感すぎず鈍感すぎない）
 const EMA_ALPHA = 0.3;
@@ -71,21 +70,7 @@ export async function getDailyDriftRaw(
   startDate.setDate(startDate.getDate() - rangeDays);
   const startTimestamp = Math.floor(startDate.getTime() / 1000);
 
-  const rows = await db.all<{
-    date: string;
-    total: number;
-    count: number;
-  }>(sql`
-    SELECT
-      date(created_at, 'unixepoch') as date,
-      SUM(CAST(semantic_diff AS REAL)) as total,
-      COUNT(*) as count
-    FROM note_history
-    WHERE semantic_diff IS NOT NULL
-      AND created_at >= ${startTimestamp}
-    GROUP BY date(created_at, 'unixepoch')
-    ORDER BY date ASC
-  `);
+  const rows = await driftRepo.findDailyDriftRaw(startTimestamp);
 
   return rows.map((row) => ({
     date: row.date,
@@ -197,26 +182,7 @@ export async function getDailyPhases(
   // 日別に履歴を取得し、各履歴のtrajectoryを判定
   // Note: note_historyにはembeddingが保存されていないため、
   // semantic_diffとクラスタIDの変化のみで判定する
-  const rows = await db.all<{
-    date: string;
-    prev_cluster_id: number | null;
-    new_cluster_id: number | null;
-    semantic_diff: string | null;
-    embedding: Buffer | null;
-  }>(sql`
-    SELECT
-      date(nh.created_at, 'unixepoch') as date,
-      nh.prev_cluster_id,
-      nh.new_cluster_id,
-      nh.semantic_diff,
-      ne.embedding
-    FROM note_history nh
-    JOIN notes n ON nh.note_id = n.id
-    LEFT JOIN note_embeddings ne ON nh.note_id = ne.note_id
-    WHERE nh.semantic_diff IS NOT NULL
-      AND nh.created_at >= ${startTimestamp}
-    ORDER BY nh.created_at ASC
-  `);
+  const rows = await driftRepo.findPhaseDetectionData(startTimestamp);
 
   // 日別にtrajectoryを集計
   const dailyTrajectories = new Map<string, { creation: number; destruction: number; neutral: number }>();

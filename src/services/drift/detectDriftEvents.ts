@@ -7,13 +7,11 @@
  * threshold = 0.25 (バランス型)
  */
 
-import { db } from "../../db/client";
-import { sql } from "drizzle-orm";
+import * as driftRepo from "../../repositories/driftRepo";
 import {
   computeDriftScore,
   classifyDriftEvent,
   DRIFT_THRESHOLD,
-  LARGE_DRIFT_THRESHOLD,
 } from "./computeDriftScore";
 
 export type DetectedDriftEvent = {
@@ -33,30 +31,12 @@ export async function detectAllDriftEvents(): Promise<DetectedDriftEvent[]> {
   console.log("🔍 Detecting drift events from note_history...");
 
   // note_history から semantic_diff >= threshold のレコードを取得
-  const historyRows = await db.all<{
-    note_id: string;
-    semantic_diff: string;
-    created_at: number;
-  }>(sql`
-    SELECT note_id, semantic_diff, created_at
-    FROM note_history
-    WHERE semantic_diff IS NOT NULL
-      AND CAST(semantic_diff AS REAL) >= ${DRIFT_THRESHOLD}
-    ORDER BY created_at ASC
-  `);
+  const historyRows = await driftRepo.findHistoryWithDriftAboveThreshold(DRIFT_THRESHOLD);
 
   console.log(`📊 History records with drift >= ${DRIFT_THRESHOLD}: ${historyRows.length}`);
 
   // クラスタ履歴を取得（note_id => cluster_id の時系列）
-  const clusterHistoryRows = await db.all<{
-    note_id: string;
-    cluster_id: number;
-    assigned_at: number;
-  }>(sql`
-    SELECT note_id, cluster_id, assigned_at
-    FROM cluster_history
-    ORDER BY assigned_at ASC
-  `);
+  const clusterHistoryRows = await driftRepo.findAllClusterHistory();
 
   // note_id ごとのクラスタ履歴をマップ化
   const clusterHistoryMap = new Map<string, Array<{ clusterId: number; assignedAt: number }>>();
@@ -151,12 +131,13 @@ export async function saveDriftEvents(events: DetectedDriftEvent[]): Promise<voi
     // メッセージを生成
     const message = generateDriftMessage(event);
 
-    await db.run(sql`
-      INSERT INTO drift_events
-        (detected_at, severity, type, message, related_cluster)
-      VALUES
-        (${event.detectedAt}, ${severity}, ${type}, ${message}, ${event.newClusterId})
-    `);
+    await driftRepo.insertDriftEventWithMessage(
+      event.detectedAt,
+      severity,
+      type,
+      message,
+      event.newClusterId
+    );
   }
 
   console.log(`✅ Saved ${events.length} drift events`);

@@ -6,8 +6,7 @@
  * 式: influence(A → B) = cosine(A, B) × drift_score(B)
  */
 
-import { db } from "../../db/client";
-import { sql } from "drizzle-orm";
+import * as influenceRepo from "../../repositories/influenceRepo";
 import { computeDriftScore } from "../drift/computeDriftScore";
 import { getAllEmbeddings, getEmbedding } from "../../repositories/embeddingRepo";
 import {
@@ -115,17 +114,14 @@ export async function generateInfluenceEdges(
     if (weight < INFLUENCE_THRESHOLD) continue;
 
     // エッジを挿入/更新
-    await db.run(sql`
-      INSERT INTO note_influence_edges
-        (source_note_id, target_note_id, weight, cosine_sim, drift_score, created_at)
-      VALUES
-        (${sourceNoteId}, ${targetNoteId}, ${weight}, ${round4(cosineSim)}, ${round4(driftScore)}, ${now})
-      ON CONFLICT(source_note_id, target_note_id) DO UPDATE SET
-        weight = excluded.weight,
-        cosine_sim = excluded.cosine_sim,
-        drift_score = excluded.drift_score,
-        created_at = excluded.created_at
-    `);
+    await influenceRepo.upsertInfluenceEdge({
+      sourceNoteId,
+      targetNoteId,
+      weight,
+      cosineSim: round4(cosineSim),
+      driftScore: round4(driftScore),
+      createdAt: now,
+    });
 
     edgesCreated++;
   }
@@ -137,10 +133,7 @@ export async function generateInfluenceEdges(
  * ノートが削除されたとき、関連するエッジを削除
  */
 export async function removeInfluenceEdges(noteId: string): Promise<void> {
-  await db.run(sql`
-    DELETE FROM note_influence_edges
-    WHERE source_note_id = ${noteId} OR target_note_id = ${noteId}
-  `);
+  await influenceRepo.deleteInfluenceEdgesByNoteId(noteId);
 }
 
 /**
@@ -150,31 +143,7 @@ export async function getInfluencersOf(
   noteId: string,
   limit: number = 10
 ): Promise<InfluenceEdgeWithNoteInfo[]> {
-  const rows = await db.all<{
-    source_note_id: string;
-    target_note_id: string;
-    weight: number;
-    cosine_sim: number;
-    drift_score: number;
-    created_at: number;
-    source_title: string | null;
-    source_cluster_id: number | null;
-  }>(sql`
-    SELECT
-      e.source_note_id,
-      e.target_note_id,
-      e.weight,
-      e.cosine_sim,
-      e.drift_score,
-      e.created_at,
-      n.title as source_title,
-      n.cluster_id as source_cluster_id
-    FROM note_influence_edges e
-    LEFT JOIN notes n ON e.source_note_id = n.id
-    WHERE e.target_note_id = ${noteId}
-    ORDER BY e.weight DESC
-    LIMIT ${limit}
-  `);
+  const rows = await influenceRepo.findInfluencersOf(noteId, limit);
 
   return rows.map((r) => ({
     sourceNoteId: r.source_note_id,
@@ -205,20 +174,7 @@ export async function getInfluencersOfWithDecay(
   // 減衰後に除外される可能性があるため、多めに取得
   const fetchLimit = limit * 3;
 
-  const rows = await db.all<{
-    source_note_id: string;
-    target_note_id: string;
-    weight: number;
-    cosine_sim: number;
-    drift_score: number;
-    created_at: number;
-  }>(sql`
-    SELECT source_note_id, target_note_id, weight, cosine_sim, drift_score, created_at
-    FROM note_influence_edges
-    WHERE target_note_id = ${noteId}
-    ORDER BY weight DESC
-    LIMIT ${fetchLimit}
-  `);
+  const rows = await influenceRepo.findInfluencersOfRaw(noteId, fetchLimit);
 
   const edges = rows.map((r) => ({
     sourceNoteId: r.source_note_id,
@@ -246,31 +202,7 @@ export async function getInfluencedBy(
   noteId: string,
   limit: number = 10
 ): Promise<InfluenceEdgeWithNoteInfo[]> {
-  const rows = await db.all<{
-    source_note_id: string;
-    target_note_id: string;
-    weight: number;
-    cosine_sim: number;
-    drift_score: number;
-    created_at: number;
-    target_title: string | null;
-    target_cluster_id: number | null;
-  }>(sql`
-    SELECT
-      e.source_note_id,
-      e.target_note_id,
-      e.weight,
-      e.cosine_sim,
-      e.drift_score,
-      e.created_at,
-      n.title as target_title,
-      n.cluster_id as target_cluster_id
-    FROM note_influence_edges e
-    LEFT JOIN notes n ON e.target_note_id = n.id
-    WHERE e.source_note_id = ${noteId}
-    ORDER BY e.weight DESC
-    LIMIT ${limit}
-  `);
+  const rows = await influenceRepo.findInfluencedBy(noteId, limit);
 
   return rows.map((r) => ({
     sourceNoteId: r.source_note_id,
@@ -300,20 +232,7 @@ export async function getInfluencedByWithDecay(
 
   const fetchLimit = limit * 3;
 
-  const rows = await db.all<{
-    source_note_id: string;
-    target_note_id: string;
-    weight: number;
-    cosine_sim: number;
-    drift_score: number;
-    created_at: number;
-  }>(sql`
-    SELECT source_note_id, target_note_id, weight, cosine_sim, drift_score, created_at
-    FROM note_influence_edges
-    WHERE source_note_id = ${noteId}
-    ORDER BY weight DESC
-    LIMIT ${fetchLimit}
-  `);
+  const rows = await influenceRepo.findInfluencedByRaw(noteId, fetchLimit);
 
   const edges = rows.map((r) => ({
     sourceNoteId: r.source_note_id,
@@ -343,25 +262,12 @@ export async function rebuildInfluenceGraph(): Promise<{
   notesProcessed: number;
 }> {
   // 既存のエッジを削除
-  const existingCount = await db.all<{ count: number }>(sql`
-    SELECT COUNT(*) as count FROM note_influence_edges
-  `);
-  const cleared = existingCount[0]?.count || 0;
+  const cleared = await influenceRepo.countInfluenceEdges();
 
-  await db.run(sql`DELETE FROM note_influence_edges`);
+  await influenceRepo.deleteAllInfluenceEdges();
 
   // note_history から semantic_diff がある履歴を取得
-  const historyRows = await db.all<{
-    note_id: string;
-    semantic_diff: string | null;
-    prev_cluster_id: number | null;
-    new_cluster_id: number | null;
-  }>(sql`
-    SELECT note_id, semantic_diff, prev_cluster_id, new_cluster_id
-    FROM note_history
-    WHERE semantic_diff IS NOT NULL
-    ORDER BY created_at ASC
-  `);
+  const historyRows = await influenceRepo.findHistoryWithSemanticDiff();
 
   let edgesCreated = 0;
   const processedNotes = new Set<string>();
@@ -394,19 +300,7 @@ export async function rebuildInfluenceGraph(): Promise<{
  * グラフ全体のエッジを取得（可視化用）
  */
 export async function getAllInfluenceEdges(limit: number = 200): Promise<InfluenceEdge[]> {
-  const rows = await db.all<{
-    source_note_id: string;
-    target_note_id: string;
-    weight: number;
-    cosine_sim: number;
-    drift_score: number;
-    created_at: number;
-  }>(sql`
-    SELECT source_note_id, target_note_id, weight, cosine_sim, drift_score, created_at
-    FROM note_influence_edges
-    ORDER BY weight DESC
-    LIMIT ${limit}
-  `);
+  const rows = await influenceRepo.findAllInfluenceEdges(limit);
 
   return rows.map((r) => ({
     sourceNoteId: r.source_note_id,
@@ -433,19 +327,7 @@ export async function getAllInfluenceEdgesWithDecay(
   // 減衰後に除外される可能性があるため、多めに取得
   const fetchLimit = limit * 2;
 
-  const rows = await db.all<{
-    source_note_id: string;
-    target_note_id: string;
-    weight: number;
-    cosine_sim: number;
-    drift_score: number;
-    created_at: number;
-  }>(sql`
-    SELECT source_note_id, target_note_id, weight, cosine_sim, drift_score, created_at
-    FROM note_influence_edges
-    ORDER BY weight DESC
-    LIMIT ${fetchLimit}
-  `);
+  const rows = await influenceRepo.findAllInfluenceEdges(fetchLimit);
 
   const edges = rows.map((r) => ({
     sourceNoteId: r.source_note_id,
@@ -469,13 +351,7 @@ export async function getAllInfluenceEdgesWithDecay(
 export async function getInfluenceDecayStats(
   lambda: number = DEFAULT_DECAY_RATE
 ): Promise<TimeDecayStats> {
-  const rows = await db.all<{
-    weight: number;
-    created_at: number;
-  }>(sql`
-    SELECT weight, created_at
-    FROM note_influence_edges
-  `);
+  const rows = await influenceRepo.findAllEdgesForDecayStats();
 
   const edges = rows.map((r) => ({
     weight: r.weight,
@@ -506,54 +382,18 @@ export async function getInfluenceStats(): Promise<{
   }>;
 }> {
   // 基本統計
-  const basicStats = await db.all<{
-    total_edges: number;
-    avg_weight: number;
-    max_weight: number;
-  }>(sql`
-    SELECT
-      COUNT(*) as total_edges,
-      AVG(weight) as avg_weight,
-      MAX(weight) as max_weight
-    FROM note_influence_edges
-  `);
+  const basicStats = await influenceRepo.findInfluenceBasicStats();
 
   // 最も影響を受けたノート
-  const topInfluenced = await db.all<{
-    target_note_id: string;
-    edge_count: number;
-    total_influence: number;
-  }>(sql`
-    SELECT
-      target_note_id,
-      COUNT(*) as edge_count,
-      SUM(weight) as total_influence
-    FROM note_influence_edges
-    GROUP BY target_note_id
-    ORDER BY total_influence DESC
-    LIMIT 5
-  `);
+  const topInfluenced = await influenceRepo.findTopInfluencedNotes(5);
 
   // 最も影響を与えているノート
-  const topInfluencers = await db.all<{
-    source_note_id: string;
-    edge_count: number;
-    total_influence: number;
-  }>(sql`
-    SELECT
-      source_note_id,
-      COUNT(*) as edge_count,
-      SUM(weight) as total_influence
-    FROM note_influence_edges
-    GROUP BY source_note_id
-    ORDER BY total_influence DESC
-    LIMIT 5
-  `);
+  const topInfluencers = await influenceRepo.findTopInfluencerNotes(5);
 
   return {
-    totalEdges: basicStats[0]?.total_edges ?? 0,
-    avgWeight: basicStats[0]?.avg_weight ?? 0,
-    maxWeight: basicStats[0]?.max_weight ?? 0,
+    totalEdges: basicStats?.total_edges ?? 0,
+    avgWeight: basicStats?.avg_weight ?? 0,
+    maxWeight: basicStats?.max_weight ?? 0,
     topInfluencedNotes: topInfluenced.map((r) => ({
       noteId: r.target_note_id,
       edgeCount: r.edge_count,

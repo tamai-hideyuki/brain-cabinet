@@ -147,3 +147,347 @@ export const deleteClusterHistoryByNoteIdRaw = async (
 ) => {
   await tx.delete(clusterHistory).where(eq(clusterHistory.noteId, noteId));
 };
+
+// ============================================================
+// Cluster Identity 用クエリ
+// ============================================================
+
+export type CentroidRow = {
+  centroid: Buffer;
+};
+
+export type NoteWithEmbeddingRow = {
+  note_id: string;
+  title: string;
+  category: string | null;
+  embedding: Buffer;
+};
+
+export type ClusterInfoRow = {
+  note_count: number;
+  cohesion: number;
+};
+
+export type DriftSumRow = {
+  drift_sum: number;
+};
+
+export type InfluenceSumRow = {
+  total: number;
+};
+
+/**
+ * クラスタの最新centroidを取得
+ */
+export const findLatestCentroid = async (clusterId: number): Promise<CentroidRow | null> => {
+  const rows = await db.all<CentroidRow>(sql`
+    SELECT centroid FROM cluster_dynamics
+    WHERE cluster_id = ${clusterId}
+    ORDER BY date DESC
+    LIMIT 1
+  `);
+  return rows[0] ?? null;
+};
+
+/**
+ * クラスタに属するノートとembeddingを取得
+ */
+export const findNotesWithEmbeddingByClusterId = async (
+  clusterId: number
+): Promise<NoteWithEmbeddingRow[]> => {
+  return db.all<NoteWithEmbeddingRow>(sql`
+    SELECT n.id as note_id, n.title, n.category, ne.embedding
+    FROM notes n
+    JOIN note_embeddings ne ON n.id = ne.note_id
+    WHERE n.cluster_id = ${clusterId}
+  `);
+};
+
+/**
+ * クラスタの基本情報を取得
+ */
+export const findClusterDynamicsInfo = async (clusterId: number): Promise<ClusterInfoRow | null> => {
+  const rows = await db.all<ClusterInfoRow>(sql`
+    SELECT note_count, cohesion
+    FROM cluster_dynamics
+    WHERE cluster_id = ${clusterId}
+    ORDER BY date DESC
+    LIMIT 1
+  `);
+  return rows[0] ?? null;
+};
+
+/**
+ * クラスタのdrift合計を取得
+ */
+export const findClusterDriftSum = async (
+  clusterId: number,
+  startTimestamp: number
+): Promise<number> => {
+  const rows = await db.all<DriftSumRow>(sql`
+    SELECT SUM(CAST(semantic_diff AS REAL)) as drift_sum
+    FROM note_history
+    WHERE semantic_diff IS NOT NULL
+      AND new_cluster_id = ${clusterId}
+      AND created_at >= ${startTimestamp}
+  `);
+  return rows[0]?.drift_sum ?? 0;
+};
+
+/**
+ * 全体のdrift合計を取得
+ */
+export const findTotalDriftSum = async (startTimestamp: number): Promise<number> => {
+  const rows = await db.all<DriftSumRow>(sql`
+    SELECT SUM(CAST(semantic_diff AS REAL)) as drift_sum
+    FROM note_history
+    WHERE semantic_diff IS NOT NULL
+      AND created_at >= ${startTimestamp}
+  `);
+  return rows[0]?.drift_sum ?? 0;
+};
+
+/**
+ * クラスタの期間内drift合計を取得
+ */
+export const findClusterDriftSumInRange = async (
+  clusterId: number,
+  startTimestamp: number,
+  endTimestamp?: number
+): Promise<number> => {
+  if (endTimestamp !== undefined) {
+    const rows = await db.all<DriftSumRow>(sql`
+      SELECT SUM(CAST(semantic_diff AS REAL)) as drift_sum
+      FROM note_history
+      WHERE semantic_diff IS NOT NULL
+        AND new_cluster_id = ${clusterId}
+        AND created_at >= ${startTimestamp}
+        AND created_at < ${endTimestamp}
+    `);
+    return rows[0]?.drift_sum ?? 0;
+  }
+  return findClusterDriftSum(clusterId, startTimestamp);
+};
+
+/**
+ * クラスタのoutDegree（影響を与えた合計）を取得
+ */
+export const findClusterOutDegree = async (clusterId: number): Promise<number> => {
+  const rows = await db.all<InfluenceSumRow>(sql`
+    SELECT SUM(e.weight) as total
+    FROM note_influence_edges e
+    JOIN notes n ON e.source_note_id = n.id
+    WHERE n.cluster_id = ${clusterId}
+  `);
+  return rows[0]?.total ?? 0;
+};
+
+/**
+ * クラスタのinDegree（影響を受けた合計）を取得
+ */
+export const findClusterInDegree = async (clusterId: number): Promise<number> => {
+  const rows = await db.all<InfluenceSumRow>(sql`
+    SELECT SUM(e.weight) as total
+    FROM note_influence_edges e
+    JOIN notes n ON e.target_note_id = n.id
+    WHERE n.cluster_id = ${clusterId}
+  `);
+  return rows[0]?.total ?? 0;
+};
+
+/**
+ * 全クラスタIDを取得
+ */
+export const findAllClusterIds = async (): Promise<number[]> => {
+  const rows = await db.all<{ cluster_id: number }>(sql`
+    SELECT DISTINCT cluster_id FROM cluster_dynamics
+    ORDER BY cluster_id
+  `);
+  return rows.map((r) => r.cluster_id);
+};
+
+// ============================================================
+// Cluster Label 用クエリ
+// ============================================================
+
+export type NoteContentRow = {
+  id: string;
+  content: string;
+  title: string | null;
+};
+
+export type IdentityIdRow = {
+  id: number;
+};
+
+/**
+ * identity_idに属するノートを取得（snapshot経由）
+ */
+export const findNotesByIdentityId = async (identityId: number): Promise<NoteContentRow[]> => {
+  return db.all<NoteContentRow>(sql`
+    SELECT n.id, n.content, n.title
+    FROM notes n
+    JOIN snapshot_note_assignments sna ON n.id = sna.note_id
+    JOIN snapshot_clusters sc ON sna.snapshot_id = sc.snapshot_id AND sna.cluster_id = sc.id
+    WHERE sc.identity_id = ${identityId}
+    AND n.deleted_at IS NULL
+    LIMIT 100
+  `);
+};
+
+/**
+ * identity_idに属するノートを取得（直接cluster_id経由）
+ */
+export const findNotesByIdentityIdDirect = async (identityId: number): Promise<NoteContentRow[]> => {
+  return db.all<NoteContentRow>(sql`
+    SELECT id, content, title
+    FROM notes
+    WHERE cluster_id IN (
+      SELECT sc.local_id
+      FROM snapshot_clusters sc
+      WHERE sc.identity_id = ${identityId}
+    )
+    AND deleted_at IS NULL
+    LIMIT 100
+  `);
+};
+
+/**
+ * アクティブなクラスタidentityを取得
+ */
+export const findActiveIdentities = async (includeWithLabel: boolean): Promise<IdentityIdRow[]> => {
+  if (includeWithLabel) {
+    return db.all<IdentityIdRow>(sql`SELECT id FROM cluster_identities WHERE is_active = 1`);
+  }
+  return db.all<IdentityIdRow>(sql`SELECT id FROM cluster_identities WHERE is_active = 1 AND (label IS NULL OR label = '')`);
+};
+
+/**
+ * クラスタidentityのラベルを更新
+ */
+export const updateIdentityLabel = async (identityId: number, label: string): Promise<void> => {
+  await db.run(sql`
+    UPDATE cluster_identities
+    SET label = ${label}
+    WHERE id = ${identityId}
+  `);
+};
+
+// ============================================================
+// Cluster Dynamics 用クエリ
+// ============================================================
+
+export type AllClusterIdRow = {
+  id: number;
+};
+
+export type NoteEmbeddingRow = {
+  note_id: string;
+  embedding: Buffer;
+  cluster_id: number | null;
+};
+
+export type PreviousCentroidRow = {
+  cluster_id: number;
+  centroid: Buffer;
+};
+
+export type DynamicsRow = {
+  cluster_id: number;
+  centroid: Buffer;
+  cohesion: number;
+  note_count: number;
+  interactions: string | null;
+  stability_score: number | null;
+};
+
+export type TimelineRow = {
+  date: string;
+  cohesion: number;
+  note_count: number;
+  stability_score: number | null;
+};
+
+/**
+ * 指定日のcluster_dynamicsを削除
+ */
+export const deleteDynamicsByDate = async (date: string): Promise<void> => {
+  await db.run(sql`DELETE FROM cluster_dynamics WHERE date = ${date}`);
+};
+
+/**
+ * 全クラスタIDを取得（clustersテーブルから）
+ */
+export const findAllClusterIdsFromClusters = async (): Promise<AllClusterIdRow[]> => {
+  return db.all<AllClusterIdRow>(sql`
+    SELECT DISTINCT id FROM clusters ORDER BY id
+  `);
+};
+
+/**
+ * 全ノートのembeddingとcluster_idを取得
+ */
+export const findAllNoteEmbeddings = async (): Promise<NoteEmbeddingRow[]> => {
+  return db.all<NoteEmbeddingRow>(sql`
+    SELECT ne.note_id, ne.embedding, n.cluster_id
+    FROM note_embeddings ne
+    JOIN notes n ON ne.note_id = n.id
+  `);
+};
+
+/**
+ * 指定日のcluster_dynamics centroidを取得
+ */
+export const findPreviousCentroids = async (date: string): Promise<PreviousCentroidRow[]> => {
+  return db.all<PreviousCentroidRow>(sql`
+    SELECT cluster_id, centroid FROM cluster_dynamics WHERE date = ${date}
+  `);
+};
+
+/**
+ * cluster_dynamicsを保存
+ */
+export const insertClusterDynamics = async (params: {
+  date: string;
+  clusterId: number;
+  centroidBuffer: Buffer;
+  cohesion: number;
+  noteCount: number;
+  interactionsJson: string;
+  stabilityScore: number | null;
+}): Promise<void> => {
+  await db.run(sql`
+    INSERT INTO cluster_dynamics
+      (date, cluster_id, centroid, cohesion, note_count, interactions, stability_score, created_at)
+    VALUES
+      (${params.date}, ${params.clusterId}, ${params.centroidBuffer}, ${params.cohesion}, ${params.noteCount}, ${params.interactionsJson}, ${params.stabilityScore}, datetime('now'))
+  `);
+};
+
+/**
+ * 指定日のcluster_dynamicsを取得
+ */
+export const findDynamicsByDate = async (date: string): Promise<DynamicsRow[]> => {
+  return db.all<DynamicsRow>(sql`
+    SELECT cluster_id, centroid, cohesion, note_count, interactions, stability_score
+    FROM cluster_dynamics
+    WHERE date = ${date}
+    ORDER BY cluster_id
+  `);
+};
+
+/**
+ * クラスタのdynamicsタイムラインを取得
+ */
+export const findDynamicsTimeline = async (
+  clusterId: number,
+  startDate: string
+): Promise<TimelineRow[]> => {
+  return db.all<TimelineRow>(sql`
+    SELECT date, cohesion, note_count, stability_score
+    FROM cluster_dynamics
+    WHERE cluster_id = ${clusterId}
+      AND date >= ${startDate}
+    ORDER BY date ASC
+  `);
+};

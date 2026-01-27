@@ -7,8 +7,7 @@
  * - Mode / Season 判定
  */
 
-import { db } from "../../db/client";
-import { sql } from "drizzle-orm";
+import * as ptmRepo from "../../repositories/ptmRepo";
 import { getDailyDriftData, calcGrowthAngle, detectWarning } from "../drift/driftCore";
 import { computeClusterInfluenceFlow } from "./influence";
 import type {
@@ -54,19 +53,7 @@ export async function computeClusterDriftContribution(
   const startTimestamp = Math.floor(startDate.getTime() / 1000);
 
   // note_history から semantic_diff とクラスタを取得
-  const rows = await db.all<{
-    new_cluster_id: number | null;
-    drift_sum: number;
-  }>(sql`
-    SELECT
-      new_cluster_id,
-      SUM(CAST(semantic_diff AS REAL)) as drift_sum
-    FROM note_history
-    WHERE semantic_diff IS NOT NULL
-      AND new_cluster_id IS NOT NULL
-      AND created_at >= ${startTimestamp}
-    GROUP BY new_cluster_id
-  `);
+  const rows = await ptmRepo.findClusterDriftContribution(startTimestamp);
 
   if (rows.length === 0) {
     return [];
@@ -233,17 +220,7 @@ export function detectThinkingSeason(
 export async function computeStabilityMetrics(
   date: string = new Date().toISOString().split("T")[0]
 ): Promise<StabilityMetrics> {
-  const rows = await db.all<{
-    cluster_id: number;
-    cohesion: number;
-    stability_score: number | null;
-    note_count: number;
-  }>(sql`
-    SELECT cluster_id, cohesion, stability_score, note_count
-    FROM cluster_dynamics
-    WHERE date = ${date}
-    ORDER BY cluster_id
-  `);
+  const rows = await ptmRepo.findClusterStabilityMetrics(date);
 
   if (rows.length === 0) {
     return {

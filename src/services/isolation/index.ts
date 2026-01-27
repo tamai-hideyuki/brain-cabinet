@@ -8,8 +8,7 @@
  * - 孤立度が高い = 他ノートとの関連が薄い
  */
 
-import { db } from "../../db/client";
-import { sql } from "drizzle-orm";
+import * as isolationRepo from "../../repositories/isolationRepo";
 import { getAllEmbeddings, getEmbedding } from "../../repositories/embeddingRepo";
 
 /**
@@ -71,32 +70,10 @@ async function calculateConnectivity(): Promise<
   >
 > {
   // 入力エッジの集計
-  const inEdges = await db.all<{
-    target_note_id: string;
-    in_degree: number;
-    in_weight: number;
-  }>(sql`
-    SELECT
-      target_note_id,
-      COUNT(*) as in_degree,
-      SUM(weight) as in_weight
-    FROM note_influence_edges
-    GROUP BY target_note_id
-  `);
+  const inEdges = await isolationRepo.findInEdgeSummary();
 
   // 出力エッジの集計
-  const outEdges = await db.all<{
-    source_note_id: string;
-    out_degree: number;
-    out_weight: number;
-  }>(sql`
-    SELECT
-      source_note_id,
-      COUNT(*) as out_degree,
-      SUM(weight) as out_weight
-    FROM note_influence_edges
-    GROUP BY source_note_id
-  `);
+  const outEdges = await isolationRepo.findOutEdgeSummary();
 
   const connectivityMap = new Map<
     string,
@@ -182,18 +159,7 @@ export async function detectIsolatedNotes(
   const { threshold = 0.7, limit = 50, includeSimilarity = true } = options;
 
   // 全ノートを取得
-  const notes = await db.all<{
-    id: string;
-    title: string;
-    category: string | null;
-    cluster_id: number | null;
-    created_at: number;
-    updated_at: number;
-  }>(sql`
-    SELECT id, title, category, cluster_id, created_at, updated_at
-    FROM notes
-    ORDER BY updated_at DESC
-  `);
+  const notes = await isolationRepo.findAllNotes();
 
   if (notes.length === 0) {
     return [];
@@ -274,22 +240,13 @@ export async function detectIsolatedNotes(
  * 特定ノートの孤立度を取得
  */
 export async function getIsolationScore(noteId: string): Promise<IsolationInfo | null> {
-  const note = await db.all<{
-    id: string;
-    title: string;
-    category: string | null;
-    cluster_id: number | null;
-    created_at: number;
-    updated_at: number;
-  }>(sql`
-    SELECT id, title, category, cluster_id, created_at, updated_at
-    FROM notes
-    WHERE id = ${noteId}
-  `);
+  const noteData = await isolationRepo.findNoteById(noteId);
 
-  if (note.length === 0) {
+  if (!noteData) {
     return null;
   }
+
+  const note = [noteData];
 
   const connectivityMap = await calculateConnectivity();
   const allEmbeddings = await getAllEmbeddings();
@@ -341,7 +298,7 @@ export async function getIsolationScore(noteId: string): Promise<IsolationInfo |
 export async function getIsolationStats(
   isolationThreshold: number = 0.7
 ): Promise<IsolationStats> {
-  const notes = await db.all<{ id: string }>(sql`SELECT id FROM notes`);
+  const notes = await isolationRepo.findAllNoteIds();
   const totalNotes = notes.length;
 
   if (totalNotes === 0) {
@@ -449,12 +406,7 @@ export async function getIntegrationSuggestions(
   }
 
   // ノート情報を取得
-  const notesInfo = await db.all<{
-    id: string;
-    title: string;
-  }>(sql`
-    SELECT id, title FROM notes WHERE id IN ${noteIds}
-  `);
+  const notesInfo = await isolationRepo.findNotesByIds(noteIds);
 
   const noteMap = new Map(notesInfo.map((n) => [n.id, n.title]));
 

@@ -7,8 +7,7 @@
  * すべての成長分析機能がこのモジュールを中心に動作する
  */
 
-import { db } from "../../db/client";
-import { sql } from "drizzle-orm";
+import * as driftRepo from "../../repositories/driftRepo";
 
 // ============================================================
 // 設定値
@@ -107,19 +106,7 @@ export async function getDailyDriftData(
   startDate.setDate(startDate.getDate() - rangeDays);
   const startTimestamp = Math.floor(startDate.getTime() / 1000);
 
-  const rows = await db.all<{
-    date: string;
-    total: number;
-  }>(sql`
-    SELECT
-      date(created_at, 'unixepoch') as date,
-      SUM(CAST(semantic_diff AS REAL)) as total
-    FROM note_history
-    WHERE semantic_diff IS NOT NULL
-      AND created_at >= ${startTimestamp}
-    GROUP BY date(created_at, 'unixepoch')
-    ORDER BY date ASC
-  `);
+  const rows = await driftRepo.findDailyDriftData(startTimestamp);
 
   // EMA を計算
   const data: DailyDrift[] = [];

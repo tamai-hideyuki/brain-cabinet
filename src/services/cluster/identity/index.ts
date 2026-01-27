@@ -4,8 +4,7 @@
  * クラスタの「人格」を構成するデータを集約
  */
 
-import { db } from "../../../db/client";
-import { sql } from "drizzle-orm";
+import * as clusterRepo from "../../../repositories/clusterRepo";
 import type {
   ClusterIdentity,
   RepresentativeNote,
@@ -23,36 +22,19 @@ export async function getRepresentativeNotes(
   top: number = 5
 ): Promise<RepresentativeNote[]> {
   // centroid を取得
-  const dynamicsRows = await db.all<{
-    centroid: Buffer;
-  }>(sql`
-    SELECT centroid FROM cluster_dynamics
-    WHERE cluster_id = ${clusterId}
-    ORDER BY date DESC
-    LIMIT 1
-  `);
+  const centroidRow = await clusterRepo.findLatestCentroid(clusterId);
 
-  if (dynamicsRows.length === 0 || !dynamicsRows[0].centroid) {
+  if (!centroidRow || !centroidRow.centroid) {
     return [];
   }
 
-  const centroid = bufferToFloat32Array(dynamicsRows[0].centroid);
+  const centroid = bufferToFloat32Array(centroidRow.centroid);
   if (centroid.length === 0) {
     return [];
   }
 
   // ノートと embedding を取得
-  const noteRows = await db.all<{
-    note_id: string;
-    title: string;
-    category: string | null;
-    embedding: Buffer;
-  }>(sql`
-    SELECT n.id as note_id, n.title, n.category, ne.embedding
-    FROM notes n
-    JOIN note_embeddings ne ON n.id = ne.note_id
-    WHERE n.cluster_id = ${clusterId}
-  `);
+  const noteRows = await clusterRepo.findNotesWithEmbeddingByClusterId(clusterId);
 
   if (noteRows.length === 0) {
     return [];
@@ -93,57 +75,18 @@ export async function getClusterDriftSummary(
   const startTimestamp = Math.floor(startDate.getTime() / 1000);
 
   // クラスタ内ノートの drift 合計
-  const clusterDrift = await db.all<{
-    drift_sum: number;
-  }>(sql`
-    SELECT SUM(CAST(semantic_diff AS REAL)) as drift_sum
-    FROM note_history
-    WHERE semantic_diff IS NOT NULL
-      AND new_cluster_id = ${clusterId}
-      AND created_at >= ${startTimestamp}
-  `);
+  const clusterSum = await clusterRepo.findClusterDriftSum(clusterId, startTimestamp);
 
   // 全体の drift 合計
-  const totalDrift = await db.all<{
-    drift_sum: number;
-  }>(sql`
-    SELECT SUM(CAST(semantic_diff AS REAL)) as drift_sum
-    FROM note_history
-    WHERE semantic_diff IS NOT NULL
-      AND created_at >= ${startTimestamp}
-  `);
-
-  const clusterSum = clusterDrift[0]?.drift_sum ?? 0;
-  const totalSum = totalDrift[0]?.drift_sum ?? 0;
+  const totalSum = await clusterRepo.findTotalDriftSum(startTimestamp);
 
   // トレンド判定（直近3日 vs 4-7日前）
   const midDate = new Date();
   midDate.setDate(midDate.getDate() - 3);
   const midTimestamp = Math.floor(midDate.getTime() / 1000);
 
-  const recentDrift = await db.all<{
-    drift_sum: number;
-  }>(sql`
-    SELECT SUM(CAST(semantic_diff AS REAL)) as drift_sum
-    FROM note_history
-    WHERE semantic_diff IS NOT NULL
-      AND new_cluster_id = ${clusterId}
-      AND created_at >= ${midTimestamp}
-  `);
-
-  const olderDrift = await db.all<{
-    drift_sum: number;
-  }>(sql`
-    SELECT SUM(CAST(semantic_diff AS REAL)) as drift_sum
-    FROM note_history
-    WHERE semantic_diff IS NOT NULL
-      AND new_cluster_id = ${clusterId}
-      AND created_at >= ${startTimestamp}
-      AND created_at < ${midTimestamp}
-  `);
-
-  const recentSum = recentDrift[0]?.drift_sum ?? 0;
-  const olderSum = olderDrift[0]?.drift_sum ?? 0;
+  const recentSum = await clusterRepo.findClusterDriftSum(clusterId, midTimestamp);
+  const olderSum = await clusterRepo.findClusterDriftSumInRange(clusterId, startTimestamp, midTimestamp);
 
   let trend: "rising" | "falling" | "flat" = "flat";
   if (recentSum > olderSum * 1.2) {
@@ -167,27 +110,11 @@ export async function getClusterInfluenceSummary(
   clusterId: number
 ): Promise<ClusterInfluenceSummary> {
   // outDegree: このクラスタのノートが他に与えた影響
-  const outResult = await db.all<{
-    total: number;
-  }>(sql`
-    SELECT SUM(e.weight) as total
-    FROM note_influence_edges e
-    JOIN notes n ON e.source_note_id = n.id
-    WHERE n.cluster_id = ${clusterId}
-  `);
+  const outDegree = await clusterRepo.findClusterOutDegree(clusterId);
 
   // inDegree: このクラスタのノートが受けた影響
-  const inResult = await db.all<{
-    total: number;
-  }>(sql`
-    SELECT SUM(e.weight) as total
-    FROM note_influence_edges e
-    JOIN notes n ON e.target_note_id = n.id
-    WHERE n.cluster_id = ${clusterId}
-  `);
+  const inDegree = await clusterRepo.findClusterInDegree(clusterId);
 
-  const outDegree = outResult[0]?.total ?? 0;
-  const inDegree = inResult[0]?.total ?? 0;
   const total = outDegree + inDegree;
 
   return {
@@ -267,18 +194,9 @@ export function extractKeywords(titles: string[], maxKeywords: number = 5): stri
 
 export async function getClusterIdentity(clusterId: number): Promise<ClusterIdentity | null> {
   // クラスタ基本情報を取得
-  const clusterInfo = await db.all<{
-    note_count: number;
-    cohesion: number;
-  }>(sql`
-    SELECT note_count, cohesion
-    FROM cluster_dynamics
-    WHERE cluster_id = ${clusterId}
-    ORDER BY date DESC
-    LIMIT 1
-  `);
+  const clusterInfo = await clusterRepo.findClusterDynamicsInfo(clusterId);
 
-  if (clusterInfo.length === 0) {
+  if (!clusterInfo) {
     return null;
   }
 
@@ -301,8 +219,8 @@ export async function getClusterIdentity(clusterId: number): Promise<ClusterIden
       representatives,
       drift,
       influence,
-      cohesion: clusterInfo[0].cohesion,
-      noteCount: clusterInfo[0].note_count,
+      cohesion: clusterInfo.cohesion,
+      noteCount: clusterInfo.note_count,
     },
   };
 }
@@ -313,14 +231,11 @@ export async function getClusterIdentity(clusterId: number): Promise<ClusterIden
 
 export async function getAllClusterIdentities(): Promise<ClusterIdentity[]> {
   // 全クラスタIDを取得
-  const clusterIds = await db.all<{ cluster_id: number }>(sql`
-    SELECT DISTINCT cluster_id FROM cluster_dynamics
-    ORDER BY cluster_id
-  `);
+  const clusterIds = await clusterRepo.findAllClusterIds();
 
   // 並列で全クラスタの identity を取得
   const identities = await Promise.all(
-    clusterIds.map((row) => getClusterIdentity(row.cluster_id))
+    clusterIds.map((clusterId) => getClusterIdentity(clusterId))
   );
 
   return identities.filter((id): id is ClusterIdentity => id !== null);
