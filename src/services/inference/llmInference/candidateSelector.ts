@@ -4,9 +4,7 @@
  * LLM推論を実行すべきノート候補を抽出する
  */
 
-import { db } from "../../../db/client";
-import { notes, noteInferences, llmInferenceResults } from "../../../db/schema";
-import { eq, lt, desc, and, notInArray, sql } from "drizzle-orm";
+import * as inferenceRepo from "../../../repositories/inferenceRepo";
 import { logger } from "../../../utils/logger";
 import { BATCH_CONFIG } from "./types";
 
@@ -49,46 +47,24 @@ export async function getLlmInferenceCandidates(
   logger.debug({ limit, confidenceThreshold }, "Getting LLM inference candidates");
 
   // 既にLLM推論済みのノートIDを取得（保留中・承認済み・却下以外も含む）
-  const existingResults = await db
-    .select({ noteId: llmInferenceResults.noteId })
-    .from(llmInferenceResults);
-  const existingNoteIds = existingResults.map((r) => r.noteId);
+  const existingNoteIds = await inferenceRepo.findExistingLlmNoteIds();
 
   // 候補リストを構築
   const candidates: LlmInferenceCandidate[] = [];
 
   // 1. 推論履歴がないノート（LLM推論未実行）
   if (candidates.length < limit) {
-    const noInferenceNotes = await db
-      .select({
-        id: notes.id,
-        title: notes.title,
-        content: notes.content,
-        updatedAt: notes.updatedAt,
-      })
-      .from(notes)
-      .where(
-        existingNoteIds.length > 0
-          ? notInArray(notes.id, existingNoteIds)
-          : sql`1=1`
-      )
-      .orderBy(desc(notes.updatedAt))
-      .limit(limit - candidates.length);
+    const noInferenceNotes = await inferenceRepo.findNotesWithoutLlmInference(
+      existingNoteIds,
+      limit - candidates.length
+    );
 
     for (const note of noInferenceNotes) {
       // ルールベース推論があるか確認
-      const ruleInference = await db
-        .select({
-          type: noteInferences.type,
-          confidence: noteInferences.confidence,
-        })
-        .from(noteInferences)
-        .where(eq(noteInferences.noteId, note.id))
-        .orderBy(desc(noteInferences.createdAt))
-        .limit(1);
+      const ruleInference = await inferenceRepo.findLatestInferenceBasic(note.id);
 
-      const currentType = ruleInference[0]?.type ?? "unknown";
-      const currentConfidence = ruleInference[0]?.confidence ?? 0;
+      const currentType = ruleInference?.type ?? "unknown";
+      const currentConfidence = ruleInference?.confidence ?? 0;
 
       candidates.push({
         noteId: note.id,
@@ -103,23 +79,11 @@ export async function getLlmInferenceCandidates(
 
   // 2. confidence < threshold のノート（低信頼度）
   if (candidates.length < limit) {
-    const lowConfidenceNotes = await db
-      .select({
-        noteId: noteInferences.noteId,
-        type: noteInferences.type,
-        confidence: noteInferences.confidence,
-      })
-      .from(noteInferences)
-      .where(
-        and(
-          lt(noteInferences.confidence, confidenceThreshold),
-          existingNoteIds.length > 0
-            ? notInArray(noteInferences.noteId, existingNoteIds)
-            : sql`1=1`
-        )
-      )
-      .orderBy(noteInferences.confidence)
-      .limit(limit - candidates.length);
+    const lowConfidenceNotes = await inferenceRepo.findLowConfidenceInferences(
+      confidenceThreshold,
+      existingNoteIds,
+      limit - candidates.length
+    );
 
     // 既に追加済みのノートIDを除外
     const addedNoteIds = new Set(candidates.map((c) => c.noteId));
@@ -127,21 +91,14 @@ export async function getLlmInferenceCandidates(
     for (const inference of lowConfidenceNotes) {
       if (addedNoteIds.has(inference.noteId)) continue;
 
-      const noteData = await db
-        .select({
-          title: notes.title,
-          content: notes.content,
-        })
-        .from(notes)
-        .where(eq(notes.id, inference.noteId))
-        .limit(1);
+      const noteData = await inferenceRepo.findNoteBasicInfo(inference.noteId);
 
-      if (noteData.length === 0) continue;
+      if (!noteData) continue;
 
       candidates.push({
         noteId: inference.noteId,
-        title: noteData[0].title,
-        content: noteData[0].content,
+        title: noteData.title,
+        content: noteData.content,
         currentType: inference.type,
         currentConfidence: inference.confidence,
         reason: `低信頼度 (${(inference.confidence * 100).toFixed(0)}%)`,
@@ -152,44 +109,24 @@ export async function getLlmInferenceCandidates(
 
   // 3. scratch タイプで更新日が新しいノート
   if (candidates.length < limit) {
-    const scratchNotes = await db
-      .select({
-        noteId: noteInferences.noteId,
-        confidence: noteInferences.confidence,
-      })
-      .from(noteInferences)
-      .innerJoin(notes, eq(noteInferences.noteId, notes.id))
-      .where(
-        and(
-          eq(noteInferences.type, "scratch"),
-          existingNoteIds.length > 0
-            ? notInArray(noteInferences.noteId, existingNoteIds)
-            : sql`1=1`
-        )
-      )
-      .orderBy(desc(notes.updatedAt))
-      .limit(limit - candidates.length);
+    const scratchNotes = await inferenceRepo.findScratchTypeNotes(
+      existingNoteIds,
+      limit - candidates.length
+    );
 
     const addedNoteIds = new Set(candidates.map((c) => c.noteId));
 
     for (const inference of scratchNotes) {
       if (addedNoteIds.has(inference.noteId)) continue;
 
-      const noteData = await db
-        .select({
-          title: notes.title,
-          content: notes.content,
-        })
-        .from(notes)
-        .where(eq(notes.id, inference.noteId))
-        .limit(1);
+      const noteData = await inferenceRepo.findNoteBasicInfo(inference.noteId);
 
-      if (noteData.length === 0) continue;
+      if (!noteData) continue;
 
       candidates.push({
         noteId: inference.noteId,
-        title: noteData[0].title,
-        content: noteData[0].content,
+        title: noteData.title,
+        content: noteData.content,
         currentType: "scratch",
         currentConfidence: inference.confidence,
         reason: "scratchタイプ（再分類候補）",

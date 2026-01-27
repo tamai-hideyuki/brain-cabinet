@@ -5,17 +5,13 @@
  * 閾値ベースの自動反映と週次サマリーを提供
  */
 
-import { db } from "../../../db/client";
+import * as inferenceRepo from "../../../repositories/inferenceRepo";
 import {
-  notes,
-  noteInferences,
-  llmInferenceResults,
   type NoteType,
   type Intent,
   type DecayProfile,
   type LlmInferenceStatus,
 } from "../../../db/schema";
-import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
 import { logger } from "../../../utils/logger";
 
 import { inferWithOllama, type InferWithLlmOptions } from "./ollamaClient";
@@ -94,33 +90,17 @@ export async function executeLlmInference(
     // 特定ノートを推論
     candidates = [];
     for (const noteId of options.noteIds.slice(0, limit)) {
-      const noteData = await db
-        .select({
-          id: notes.id,
-          title: notes.title,
-          content: notes.content,
-        })
-        .from(notes)
-        .where(eq(notes.id, noteId))
-        .limit(1);
+      const noteData = await inferenceRepo.findNoteBasicInfo(noteId);
 
-      if (noteData.length > 0) {
-        const ruleInference = await db
-          .select({
-            type: noteInferences.type,
-            confidence: noteInferences.confidence,
-          })
-          .from(noteInferences)
-          .where(eq(noteInferences.noteId, noteId))
-          .orderBy(desc(noteInferences.createdAt))
-          .limit(1);
+      if (noteData) {
+        const ruleInference = await inferenceRepo.findLatestInferenceBasic(noteId);
 
         candidates.push({
-          noteId: noteData[0].id,
-          title: noteData[0].title,
-          content: noteData[0].content,
-          currentType: ruleInference[0]?.type ?? "unknown",
-          currentConfidence: ruleInference[0]?.confidence ?? 0,
+          noteId: noteData.id,
+          title: noteData.title,
+          content: noteData.content,
+          currentType: ruleInference?.type ?? "unknown",
+          currentConfidence: ruleInference?.confidence ?? 0,
           reason: "指定ノート",
         });
       }
@@ -252,7 +232,7 @@ async function processCandidate(
 
     // DB保存
     if (!options.dryRun) {
-      await db.insert(llmInferenceResults).values({
+      await inferenceRepo.insertLlmResult({
         noteId,
         type,
         intent,
@@ -272,7 +252,7 @@ async function processCandidate(
 
       // 自動反映の場合、noteInferencesも更新
       if (status === "auto_applied" || status === "auto_applied_notified") {
-        await db.insert(noteInferences).values({
+        await inferenceRepo.insertNoteInference({
           noteId,
           type,
           intent,
@@ -317,49 +297,22 @@ export async function getPendingResults(
   const offset = options.offset ?? 0;
 
   // 件数取得
-  const countResult = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(llmInferenceResults)
-    .where(eq(llmInferenceResults.status, "pending"));
-  const count = countResult[0]?.count ?? 0;
+  const count = await inferenceRepo.countPendingResults();
 
   // データ取得
-  const rows = await db
-    .select({
-      id: llmInferenceResults.id,
-      noteId: llmInferenceResults.noteId,
-      type: llmInferenceResults.type,
-      confidence: llmInferenceResults.confidence,
-      reasoning: llmInferenceResults.reasoning,
-      createdAt: llmInferenceResults.createdAt,
-    })
-    .from(llmInferenceResults)
-    .where(eq(llmInferenceResults.status, "pending"))
-    .orderBy(desc(llmInferenceResults.createdAt))
-    .limit(limit)
-    .offset(offset);
+  const rows = await inferenceRepo.findPendingResults(limit, offset);
 
   // ノート情報を付加
   const items: PendingItem[] = [];
   for (const row of rows) {
-    const noteData = await db
-      .select({ title: notes.title })
-      .from(notes)
-      .where(eq(notes.id, row.noteId))
-      .limit(1);
-
-    const currentInference = await db
-      .select({ type: noteInferences.type })
-      .from(noteInferences)
-      .where(eq(noteInferences.noteId, row.noteId))
-      .orderBy(desc(noteInferences.createdAt))
-      .limit(1);
+    const title = await inferenceRepo.findNoteTitle(row.noteId);
+    const currentInference = await inferenceRepo.findLatestInferenceBasic(row.noteId);
 
     items.push({
       id: row.id,
       noteId: row.noteId,
-      title: noteData[0]?.title ?? "Unknown",
-      currentType: (currentInference[0]?.type ?? "scratch") as NoteType,
+      title: title ?? "Unknown",
+      currentType: (currentInference?.type ?? "scratch") as NoteType,
       suggestedType: row.type as NoteType,
       confidence: row.confidence,
       reasoning: row.reasoning ?? "",
@@ -389,42 +342,21 @@ export async function getAutoAppliedNotifiedResults(
   const offset = options.offset ?? 0;
 
   // 件数取得
-  const countResult = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(llmInferenceResults)
-    .where(eq(llmInferenceResults.status, "auto_applied_notified"));
-  const count = countResult[0]?.count ?? 0;
+  const count = await inferenceRepo.countAutoAppliedNotifiedResults();
 
   // データ取得
-  const rows = await db
-    .select({
-      id: llmInferenceResults.id,
-      noteId: llmInferenceResults.noteId,
-      type: llmInferenceResults.type,
-      confidence: llmInferenceResults.confidence,
-      reasoning: llmInferenceResults.reasoning,
-      createdAt: llmInferenceResults.createdAt,
-    })
-    .from(llmInferenceResults)
-    .where(eq(llmInferenceResults.status, "auto_applied_notified"))
-    .orderBy(desc(llmInferenceResults.createdAt))
-    .limit(limit)
-    .offset(offset);
+  const rows = await inferenceRepo.findAutoAppliedNotifiedResults(limit, offset);
 
   // ノート情報を付加
   const items: PendingItem[] = [];
   for (const row of rows) {
-    const noteData = await db
-      .select({ title: notes.title })
-      .from(notes)
-      .where(eq(notes.id, row.noteId))
-      .limit(1);
+    const title = await inferenceRepo.findNoteTitle(row.noteId);
 
     // 確認推奨はすでにnoteInferencesに反映済みなので、現在のタイプ = 提案タイプ
     items.push({
       id: row.id,
       noteId: row.noteId,
-      title: noteData[0]?.title ?? "Unknown",
+      title: title ?? "Unknown",
       currentType: row.type as NoteType,  // 反映済みなのでLLM推論結果がcurrentType
       suggestedType: row.type as NoteType,
       confidence: row.confidence,
@@ -444,17 +376,13 @@ export async function getAutoAppliedNotifiedResults(
  * 推論結果を承認（pending または auto_applied_notified に対応）
  */
 export async function approveResult(resultId: number): Promise<{ success: boolean; message: string }> {
-  const result = await db
-    .select()
-    .from(llmInferenceResults)
-    .where(eq(llmInferenceResults.id, resultId))
-    .limit(1);
+  const result = await inferenceRepo.findLlmResultById(resultId);
 
-  if (result.length === 0) {
+  if (!result) {
     return { success: false, message: "結果が見つかりません" };
   }
 
-  const { noteId, type, intent, confidence, confidenceDetail, decayProfile, reasoning, model, status } = result[0];
+  const { noteId, type, intent, confidence, confidenceDetail, decayProfile, reasoning, model, status } = result;
 
   // pending または auto_applied_notified のみ承認可能
   if (status !== "pending" && status !== "auto_applied_notified") {
@@ -462,25 +390,19 @@ export async function approveResult(resultId: number): Promise<{ success: boolea
   }
 
   // ステータス更新
-  await db
-    .update(llmInferenceResults)
-    .set({
-      status: "approved",
-      resolvedAt: Math.floor(Date.now() / 1000),
-    })
-    .where(eq(llmInferenceResults.id, resultId));
+  await inferenceRepo.updateLlmResultStatus(resultId, "approved");
 
   // auto_applied_notified は既にnoteInferencesに反映済みなのでスキップ
   if (status === "pending") {
-    await db.insert(noteInferences).values({
+    await inferenceRepo.insertNoteInference({
       noteId,
       type,
       intent,
       confidence,
-      confidenceDetail,
-      decayProfile,
+      confidenceDetail: confidenceDetail ?? undefined,
+      decayProfile: decayProfile ?? undefined,
       model: `llm-${model}`,
-      reasoning,
+      reasoning: reasoning ?? undefined,
     });
   }
 
@@ -500,17 +422,13 @@ export async function overrideResult(
   overrideType: NoteType,
   reason?: string
 ): Promise<{ success: boolean; message: string }> {
-  const result = await db
-    .select()
-    .from(llmInferenceResults)
-    .where(eq(llmInferenceResults.id, resultId))
-    .limit(1);
+  const result = await inferenceRepo.findLlmResultById(resultId);
 
-  if (result.length === 0) {
+  if (!result) {
     return { success: false, message: "結果が見つかりません" };
   }
 
-  const { noteId, intent, decayProfile, status } = result[0];
+  const { noteId, intent, decayProfile, status } = result;
 
   // pending または auto_applied_notified のみ上書き可能
   if (status !== "pending" && status !== "auto_applied_notified") {
@@ -518,39 +436,23 @@ export async function overrideResult(
   }
 
   // ステータス更新
-  await db
-    .update(llmInferenceResults)
-    .set({
-      status: "overridden",
-      userOverrideType: overrideType,
-      userOverrideReason: reason ?? null,
-      resolvedAt: Math.floor(Date.now() / 1000),
-    })
-    .where(eq(llmInferenceResults.id, resultId));
+  await inferenceRepo.updateLlmResultStatus(resultId, "overridden", {
+    userOverrideType: overrideType,
+    userOverrideReason: reason ?? null,
+  });
 
   // auto_applied_notified の場合、既存のnoteInferencesを削除してから新規追加
   if (status === "auto_applied_notified") {
-    const latestInference = await db
-      .select({ id: noteInferences.id })
-      .from(noteInferences)
-      .where(eq(noteInferences.noteId, noteId))
-      .orderBy(desc(noteInferences.createdAt))
-      .limit(1);
-
-    if (latestInference.length > 0) {
-      await db
-        .delete(noteInferences)
-        .where(eq(noteInferences.id, latestInference[0].id));
-    }
+    await inferenceRepo.deleteLatestInference(noteId);
   }
 
   // noteInferencesにユーザー指定タイプで反映
-  await db.insert(noteInferences).values({
+  await inferenceRepo.insertNoteInference({
     noteId,
     type: overrideType,
     intent,
     confidence: 1.0, // ユーザー指定は確信度100%
-    decayProfile,
+    decayProfile: decayProfile ?? undefined,
     model: "user-override",
     reasoning: reason ?? "ユーザーによる手動分類",
   });
@@ -578,17 +480,7 @@ export async function getWeeklySummary(): Promise<WeeklySummary> {
   const endTs = Math.floor(weekEnd.getTime() / 1000);
 
   // 統計を取得
-  const allResults = await db
-    .select({
-      status: llmInferenceResults.status,
-    })
-    .from(llmInferenceResults)
-    .where(
-      and(
-        gte(llmInferenceResults.createdAt, startTs),
-        lte(llmInferenceResults.createdAt, endTs)
-      )
-    );
+  const allResults = await inferenceRepo.findWeeklyResults(startTs, endTs);
 
   const stats: WeeklySummaryStats = {
     autoAppliedHigh: allResults.filter((r) => r.status === "auto_applied").length,
@@ -599,36 +491,15 @@ export async function getWeeklySummary(): Promise<WeeklySummary> {
   };
 
   // 最近の自動反映（週次通知対象）
-  const recentAutoAppliedRows = await db
-    .select({
-      noteId: llmInferenceResults.noteId,
-      type: llmInferenceResults.type,
-      confidence: llmInferenceResults.confidence,
-      reasoning: llmInferenceResults.reasoning,
-      createdAt: llmInferenceResults.createdAt,
-    })
-    .from(llmInferenceResults)
-    .where(
-      and(
-        eq(llmInferenceResults.status, "auto_applied_notified"),
-        gte(llmInferenceResults.createdAt, startTs),
-        lte(llmInferenceResults.createdAt, endTs)
-      )
-    )
-    .orderBy(desc(llmInferenceResults.createdAt))
-    .limit(10);
+  const recentAutoAppliedRows = await inferenceRepo.findWeeklyAutoAppliedNotified(startTs, endTs, 10);
 
   const recentAutoApplied: RecentAutoAppliedItem[] = [];
   for (const row of recentAutoAppliedRows) {
-    const noteData = await db
-      .select({ title: notes.title })
-      .from(notes)
-      .where(eq(notes.id, row.noteId))
-      .limit(1);
+    const title = await inferenceRepo.findNoteTitle(row.noteId);
 
     recentAutoApplied.push({
       noteId: row.noteId,
-      title: noteData[0]?.title ?? "Unknown",
+      title: title ?? "Unknown",
       type: row.type as NoteType,
       confidence: row.confidence,
       reasoning: row.reasoning ?? "",

@@ -5,8 +5,7 @@
  * ノートの内容から特徴的なキーワードを抽出してラベルにする
  */
 
-import { db } from "../../db/client";
-import { sql } from "drizzle-orm";
+import * as clusterRepo from "../../repositories/clusterRepo";
 
 // 日本語ストップワード（一般的すぎる単語を除外）
 const STOP_WORDS = new Set([
@@ -117,29 +116,11 @@ export async function generateClusterLabel(
   identityId: number
 ): Promise<string | null> {
   // クラスタに属するノートを取得
-  const notes = await db.all<{ id: string; content: string; title: string | null }>(sql`
-    SELECT n.id, n.content, n.title
-    FROM notes n
-    JOIN snapshot_note_assignments sna ON n.id = sna.note_id
-    JOIN snapshot_clusters sc ON sna.snapshot_id = sc.snapshot_id AND sna.cluster_id = sc.id
-    WHERE sc.identity_id = ${identityId}
-    AND n.deleted_at IS NULL
-    LIMIT 100
-  `);
+  const notes = await clusterRepo.findNotesByIdentityId(identityId);
 
   if (notes.length === 0) {
     // 直接cluster_idで取得を試みる
-    const directNotes = await db.all<{ id: string; content: string; title: string | null }>(sql`
-      SELECT id, content, title
-      FROM notes
-      WHERE cluster_id IN (
-        SELECT sc.local_id
-        FROM snapshot_clusters sc
-        WHERE sc.identity_id = ${identityId}
-      )
-      AND deleted_at IS NULL
-      LIMIT 100
-    `);
+    const directNotes = await clusterRepo.findNotesByIdentityIdDirect(identityId);
 
     if (directNotes.length === 0) {
       return null;
@@ -219,11 +200,7 @@ export async function generateAllClusterLabels(forceRegenerate = false): Promise
   failed: number;
 }> {
   // アクティブなクラスタを取得
-  const identities = await db.all<{ id: number }>(
-    forceRegenerate
-      ? sql`SELECT id FROM cluster_identities WHERE is_active = 1`
-      : sql`SELECT id FROM cluster_identities WHERE is_active = 1 AND (label IS NULL OR label = '')`
-  );
+  const identities = await clusterRepo.findActiveIdentities(forceRegenerate);
 
   let updated = 0;
   let failed = 0;
@@ -233,11 +210,7 @@ export async function generateAllClusterLabels(forceRegenerate = false): Promise
       const label = await generateClusterLabel(identity.id);
 
       if (label) {
-        await db.run(sql`
-          UPDATE cluster_identities
-          SET label = ${label}
-          WHERE id = ${identity.id}
-        `);
+        await clusterRepo.updateIdentityLabel(identity.id, label);
         updated++;
       } else {
         failed++;
@@ -258,11 +231,7 @@ export async function regenerateClusterLabel(identityId: number): Promise<string
   const label = await generateClusterLabel(identityId);
 
   if (label) {
-    await db.run(sql`
-      UPDATE cluster_identities
-      SET label = ${label}
-      WHERE id = ${identityId}
-    `);
+    await clusterRepo.updateIdentityLabel(identityId, label);
   }
 
   return label;

@@ -4,9 +4,7 @@
  * ノートの自動分類・推論を管理するサービス
  */
 
-import { db } from "../../db/client";
-import { noteInferences } from "../../db/schema";
-import { eq, desc } from "drizzle-orm";
+import * as inferenceRepo from "../../repositories/inferenceRepo";
 import { inferNoteType, type InferenceResult } from "./inferNoteType";
 import {
   classify,
@@ -44,7 +42,7 @@ export async function inferAndSave(
 
   const result = inferNoteType(content);
 
-  await db.insert(noteInferences).values({
+  await inferenceRepo.insertNoteInference({
     noteId,
     type: result.type,
     intent: result.intent,
@@ -87,16 +85,9 @@ export async function inferAndSave(
 export async function getLatestInference(
   noteId: string
 ): Promise<InferenceResult | null> {
-  const rows = await db
-    .select()
-    .from(noteInferences)
-    .where(eq(noteInferences.noteId, noteId))
-    .orderBy(desc(noteInferences.createdAt))
-    .limit(1);
+  const row = await inferenceRepo.findLatestInference(noteId);
 
-  if (rows.length === 0) return null;
-
-  const row = rows[0];
+  if (!row) return null;
 
   // v4.1: confidenceDetail をパース（後方互換: 無い場合はデフォルト値）
   const defaultConfidenceDetail = {
@@ -141,25 +132,14 @@ export async function getClassification(
  * ノートの全推論履歴を取得
  */
 export async function getInferenceHistory(noteId: string) {
-  return db
-    .select()
-    .from(noteInferences)
-    .where(eq(noteInferences.noteId, noteId))
-    .orderBy(desc(noteInferences.createdAt));
+  return inferenceRepo.findInferenceHistory(noteId);
 }
 
 /**
  * 再推論が必要なノートIDを取得
  */
 export async function getNoteIdsNeedingReinference(): Promise<string[]> {
-  const rows = await db
-    .select({
-      noteId: noteInferences.noteId,
-      type: noteInferences.type,
-      confidence: noteInferences.confidence,
-    })
-    .from(noteInferences)
-    .orderBy(desc(noteInferences.createdAt));
+  const rows = await inferenceRepo.findAllLatestInferences();
 
   // 各ノートの最新推論のみをチェック
   const latestByNote = new Map<
