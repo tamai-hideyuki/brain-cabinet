@@ -140,7 +140,7 @@
                       },
                       "content": {
                         "type": "string",
-                        "description": "本文（note.create, update用）"
+                        "description": "本文（note.create, update用）。⚠️重要: 改行は必ず \\n でエスケープし、ダブルクォートは \\\" でエスケープすること。Markdownの見出し（#）や箇条書き（-）はそのまま使用可。JSONとして有効な文字列であることを確認してから送信すること"
                       },
                       "mode": {
                         "type": "string",
