@@ -22,7 +22,7 @@ const app = new Hono();
  *   "payload": { "title": "New Note", "content": "..." }
  * }
  */
-app.post("/", async (c) => {
+const handleCommand = async (c: { req: { json: <T>() => Promise<T> }; json: (data: unknown, status?: number) => Response }) => {
   let body: BrainCommand;
 
   try {
@@ -76,7 +76,10 @@ app.post("/", async (c) => {
   const result = await dispatch(body);
 
   return c.json(result, result.success ? 200 : 400);
-});
+};
+
+app.post("/", handleCommand);
+app.post("/:domain", handleCommand);
 
 /**
  * GET /api/command/actions
