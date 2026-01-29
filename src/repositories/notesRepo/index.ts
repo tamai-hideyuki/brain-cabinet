@@ -10,6 +10,12 @@ import { deleteClusterHistoryByNoteIdRaw } from "../clusterRepo";
 import { deleteEmbeddingRaw } from "../embeddingRepo";
 import { deleteImagesByNoteIdRaw } from "../noteImagesRepo";
 
+/**
+ * タイトルからパス生成時に危険な文字をスペースに置換
+ */
+const sanitizePath = (title: string): string =>
+  title.replace(/[\/\\:*?"<>|]/g, " ").replace(/\s+/g, " ").trim();
+
 export const findAllNotes = async () => {
   return await db
     .select()
@@ -42,7 +48,7 @@ export const createNoteInDB = async (title: string, content: string) => {
     await tx.insert(notes).values({
       id,
       title,
-      path: `api-created/${title}.md`,
+      path: `api-created/${sanitizePath(title)}.md`,
       content,
       tags: tagsJson,
       category: metadata.category,
