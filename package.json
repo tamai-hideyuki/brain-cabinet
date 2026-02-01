@@ -9,7 +9,7 @@
     ]
   },
   "scripts": {
-    "dev": "tsx src/index.ts & tsx packages/knowledge/src/index.ts & cd ui && pnpm dev & cd packages/knowledge/ui && pnpm dev",
+    "dev": "tsx src/index.ts & tsx packages/knowledge/src/index.ts & tsx packages/live-session/src/index.ts & cd ui && pnpm dev & cd packages/knowledge/ui && pnpm dev & cd packages/live-session/ui && pnpm dev",
     "ui:build": "cd ui && npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
