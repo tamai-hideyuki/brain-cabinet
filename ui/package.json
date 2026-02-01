@@ -8,7 +8,9 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "devDependencies": {
     "@testing-library/react": "^16.3.1",
@@ -23,7 +25,16 @@
     "typescript": "~5.9.3",
     "unified": "^11.0.5",
     "vite": "^7.2.4",
-    "vitest": "^4.0.15"
+    "vitest": "^4.0.15",
+    "storybook": "^10.2.3",
+    "@storybook/react-vite": "^10.2.3",
+    "@chromatic-com/storybook": "^5.0.0",
+    "@storybook/addon-vitest": "^10.2.3",
+    "@storybook/addon-a11y": "^10.2.3",
+    "@storybook/addon-docs": "^10.2.3",
+    "playwright": "^1.58.1",
+    "@vitest/browser-playwright": "^4.0.15",
+    "@vitest/coverage-v8": "^4.0.15"
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.59.0",

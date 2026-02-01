@@ -9,7 +9,8 @@ export default defineConfig({
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
-      'ui/**'
+      'ui/**',
+      '**/whisper.cpp/**'
     ],
 
     // テスト起動前に DB クライアントをモックする
