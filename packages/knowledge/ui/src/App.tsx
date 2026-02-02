@@ -47,6 +47,11 @@ const cabinetUrl = import.meta.env.DEV
   ? 'http://localhost:5173/ui/'
   : '/ui/'
 
+// 開発時と本番時でLive Session UIのURLを切り替え
+const liveSessionUrl = import.meta.env.DEV
+  ? 'http://localhost:5175/'
+  : '/live-session/'
+
 // API base URL: 開発時は /api、本番時は /knowledge/api
 const apiBase = import.meta.env.DEV ? '/api' : '/knowledge/api'
 
@@ -976,6 +981,11 @@ function App() {
           <a href="/knowledge/" className="header__app-link header__app-link--active" title="Brain Knowledge（知識）">
             <span className="header__app-link-full">Knowledge</span>
             <span className="header__app-link-short">BK</span>
+          </a>
+          <span className="header__app-separator">/</span>
+          <a href={liveSessionUrl} className="header__app-link" title="Live Session（会話支援）">
+            <span className="header__app-link-full">Live</span>
+            <span className="header__app-link-short">LS</span>
           </a>
         </div>
         <div className="header__search">

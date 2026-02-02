@@ -24,6 +24,9 @@ build/
 npm-debug.log*
 pnpm-debug.log*
 
+# TypeScript build info
+*.tsbuildinfo
+
 # OS files
 .DS_Store
 Thumbs.db

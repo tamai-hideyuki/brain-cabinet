@@ -147,3 +147,84 @@ staticRoutes.get("/knowledge/*", async (c) => {
     return c.redirect("http://localhost:5174/");
   }
 });
+
+// ========== Live Session API プロキシ ==========
+const LIVE_SESSION_API_URL = process.env.LIVE_SESSION_API_URL || "http://localhost:3003";
+
+staticRoutes.all("/live-session/api/*", async (c) => {
+  const apiPath = c.req.path.replace("/live-session/api", "/api");
+  const queryString = c.req.url.split("?")[1] || "";
+  const targetUrl = `${LIVE_SESSION_API_URL}${apiPath}${queryString ? "?" + queryString : ""}`;
+
+  const headers: Record<string, string> = {};
+  c.req.raw.headers.forEach((value, key) => {
+    if (key.toLowerCase() !== "host") {
+      headers[key] = value;
+    }
+  });
+
+  const response = await fetch(targetUrl, {
+    method: c.req.method,
+    headers,
+    body: c.req.method !== "GET" && c.req.method !== "HEAD" ? await c.req.raw.text() : undefined,
+  });
+
+  const responseHeaders: Record<string, string> = {};
+  response.headers.forEach((value, key) => {
+    responseHeaders[key] = value;
+  });
+
+  const body = await response.text();
+  return c.body(body, response.status as 200, responseHeaders);
+});
+
+// ========== Live Session UI 静的ファイル配信 ==========
+const rewriteLiveSessionPath = (p: string) => p.replace(/^\/live-session/, "");
+
+staticRoutes.use(
+  "/live-session/assets/*",
+  serveStatic({
+    root: "./packages/live-session/ui/dist",
+    rewriteRequestPath: rewriteLiveSessionPath,
+  })
+);
+
+staticRoutes.use(
+  "/live-session/*.png",
+  serveStatic({
+    root: "./packages/live-session/ui/dist",
+    rewriteRequestPath: rewriteLiveSessionPath,
+  })
+);
+staticRoutes.use(
+  "/live-session/*.ico",
+  serveStatic({
+    root: "./packages/live-session/ui/dist",
+    rewriteRequestPath: rewriteLiveSessionPath,
+  })
+);
+staticRoutes.use(
+  "/live-session/*.json",
+  serveStatic({
+    root: "./packages/live-session/ui/dist",
+    rewriteRequestPath: rewriteLiveSessionPath,
+  })
+);
+
+// /live-session → /live-session/ へリダイレクト
+staticRoutes.get("/live-session", (c) => c.redirect("/live-session/"));
+
+// Live Session SPA fallback
+staticRoutes.get("/live-session/*", async (c) => {
+  const indexPath = path.join(
+    __dirname,
+    "../../packages/live-session/ui/dist/index.html"
+  );
+  try {
+    const html = fs.readFileSync(indexPath, "utf8");
+    return c.html(html);
+  } catch {
+    // ビルドされていない場合は開発サーバーへリダイレクト
+    return c.redirect("http://localhost:5175/");
+  }
+});

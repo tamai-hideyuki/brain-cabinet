@@ -9,12 +9,13 @@
     ]
   },
   "scripts": {
-    "dev": "tsx src/index.ts & tsx packages/knowledge/src/index.ts & cd ui && pnpm dev & cd packages/knowledge/ui && pnpm dev",
-    "ui:build": "cd ui && npm run build",
-    "test": "vitest run",
+    "dev": "tsx src/index.ts & tsx packages/knowledge/src/index.ts & tsx packages/live-session/src/index.ts & cd ui && pnpm dev & cd packages/knowledge/ui && pnpm dev & cd packages/live-session/ui && pnpm dev & cd packages/live-session && pnpm whisper:server",
+    "dev:no-whisper": "tsx src/index.ts & tsx packages/knowledge/src/index.ts & tsx packages/live-session/src/index.ts & cd ui && pnpm dev & cd packages/knowledge/ui && pnpm dev & cd packages/live-session/ui && pnpm dev",
+    "build": "pnpm --filter ui build && pnpm --filter @brain-cabinet/knowledge-ui build && pnpm --filter @brain-cabinet/live-session-ui build && pnpm --filter @brain-cabinet/live-session build",
+    "test": "vitest run && pnpm --filter ui test",
     "test:watch": "vitest",
-    "test:ui": "cd ui && npm test",
-    "test:all": "vitest run && cd ui && npm test",
+    "storybook": "pnpm --filter ui storybook",
+    "storybook:build": "pnpm --filter ui build-storybook",
     "migrate": "drizzle-kit push",
     "import-notes": "tsx src/importer/import-notes.ts",
     "export-notes": "tsx src/exporter/export-notes.ts",
