@@ -117,6 +117,31 @@ app.delete("/api/suggestions/:id/pin", async (c) => {
   return c.json({ success: true });
 });
 
+// ========== Noise Patterns ==========
+
+app.get("/api/noise-patterns", async (c) => {
+  const { listNoisePatterns } = await import("./services/noisePatternService");
+  const patterns = await listNoisePatterns();
+  return c.json({ patterns });
+});
+
+app.post("/api/noise-patterns", async (c) => {
+  const body = await c.req.json();
+  const { addNoisePattern } = await import("./services/noisePatternService");
+  const { reloadUserNoisePatterns } = await import("./services/refineService");
+  const pattern = await addNoisePattern(body.pattern, body.isRegex ?? false);
+  await reloadUserNoisePatterns();
+  return c.json(pattern, 201);
+});
+
+app.delete("/api/noise-patterns/:id", async (c) => {
+  const { deleteNoisePattern } = await import("./services/noisePatternService");
+  const { reloadUserNoisePatterns } = await import("./services/refineService");
+  await deleteNoisePattern(c.req.param("id"));
+  await reloadUserNoisePatterns();
+  return c.json({ success: true });
+});
+
 // ========== Whisper Health ==========
 
 app.get("/api/whisper/health", async (c) => {
@@ -128,8 +153,13 @@ app.get("/api/whisper/health", async (c) => {
 
 const port = parseInt(process.env.LIVE_SESSION_PORT || "3003");
 
-const server = serve({ fetch: app.fetch, port }, () => {
+const server = serve({ fetch: app.fetch, port }, async () => {
   log.info(`Live Session API server running on http://localhost:${port}`);
+  // 起動時にユーザー登録ノイズパターンをキャッシュに読み込み
+  const { reloadUserNoisePatterns } = await import("./services/refineService");
+  await reloadUserNoisePatterns().catch((err) =>
+    log.warn({ err }, "Failed to load user noise patterns on startup")
+  );
 });
 
 // WebSocketをHTTPサーバーに接続

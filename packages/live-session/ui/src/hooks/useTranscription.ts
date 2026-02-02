@@ -13,7 +13,7 @@ interface TranscriptionCallbacks {
 
 /**
  * 音声文字起こしhook
- * - whisper: MediaRecorderで7秒チャンク → サーバーのWhisper.cppで処理（高精度）
+ * - whisper: MediaRecorderで30秒チャンク → サーバーのWhisper.cppで処理（高精度）
  * - webspeech: Web Speech API（フォールバック）
  */
 export function useTranscription(callbacks: TranscriptionCallbacks) {
@@ -29,7 +29,7 @@ export function useTranscription(callbacks: TranscriptionCallbacks) {
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   callbacksRef.current = callbacks;
 
-  // === Whisperモード: MediaRecorderで7秒チャンク ===
+  // === Whisperモード: MediaRecorderで30秒チャンク ===
 
   const captureChunk = useCallback(() => {
     if (!isListeningRef.current || !streamRef.current) return;
@@ -59,7 +59,7 @@ export function useTranscription(callbacks: TranscriptionCallbacks) {
       if (recorder.state === "recording") {
         recorder.stop();
       }
-    }, 7000);
+    }, 30000);
   }, []);
 
   const startWhisper = useCallback(async () => {

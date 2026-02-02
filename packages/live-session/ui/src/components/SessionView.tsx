@@ -7,6 +7,7 @@ import { TranscriptPanel } from "./TranscriptPanel";
 import { SuggestionPanel } from "./SuggestionPanel";
 import { MindmapPanel } from "./MindmapPanel";
 import { RefinedPanel } from "./RefinedPanel";
+import { NoisePatternsPanel } from "./NoisePatternsPanel";
 
 interface Props {
   sessionId: string;
@@ -31,6 +32,7 @@ export function SessionView({ sessionId, sessionTitle, onEnd }: Props) {
   const [refinedText, setRefinedText] = useState("");
   const [activeTab, setActiveTab] = useState<TabKey>("transcript");
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [showNoisePatterns, setShowNoisePatterns] = useState(false);
 
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth <= 768);
@@ -178,6 +180,18 @@ export function SessionView({ sessionId, sessionTitle, onEnd }: Props) {
     }
   };
 
+  const handleMarkNoise = async (text: string) => {
+    try {
+      await fetch(`${API_BASE}/noise-patterns`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pattern: text }),
+      });
+    } catch (err) {
+      console.error("Failed to register noise pattern:", err);
+    }
+  };
+
   const engineLabel =
     transcription.engine === "whisper" ? "Whisper" : "Web Speech";
   const sourceLabel =
@@ -221,6 +235,12 @@ export function SessionView({ sessionId, sessionTitle, onEnd }: Props) {
               </button>
             </>
           )}
+          <button
+            style={{ ...styles.btn, ...styles.btnNoise }}
+            onClick={() => setShowNoisePatterns(true)}
+          >
+            ノイズ管理
+          </button>
           <button style={{ ...styles.btn, ...styles.btnEnd }} onClick={handleEnd}>
             終了
           </button>
@@ -243,7 +263,7 @@ export function SessionView({ sessionId, sessionTitle, onEnd }: Props) {
       <main className="sv-panels">
         {(!isMobile || activeTab === "transcript") && (
           <div className="sv-panel">
-            <TranscriptPanel segments={segments} interimText={interimText} />
+            <TranscriptPanel segments={segments} interimText={interimText} onMarkNoise={handleMarkNoise} />
           </div>
         )}
         {(!isMobile || activeTab === "refined") && (
@@ -266,6 +286,9 @@ export function SessionView({ sessionId, sessionTitle, onEnd }: Props) {
           </div>
         )}
       </main>
+      {showNoisePatterns && (
+        <NoisePatternsPanel onClose={() => setShowNoisePatterns(false)} />
+      )}
     </div>
   );
 }
@@ -397,6 +420,11 @@ const styles: Record<string, React.CSSProperties> = {
   btnStop: {
     background: "#555",
     color: "#fff",
+  },
+  btnNoise: {
+    background: "#2a2a2a",
+    color: "#888",
+    border: "1px solid #444",
   },
   btnEnd: {
     background: "#333",

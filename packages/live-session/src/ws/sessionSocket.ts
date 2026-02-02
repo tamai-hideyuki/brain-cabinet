@@ -79,7 +79,7 @@ export function setupWebSocket(server: Server) {
       try {
         if (isBinary) {
           // バイナリ = 音声チャンク（webm/opus）
-          await handleAudioChunk(sessionId, Buffer.from(raw as ArrayBuffer));
+          enqueueAudioChunk(sessionId, Buffer.from(raw as ArrayBuffer));
           return;
         }
         const msg = JSON.parse(raw.toString()) as ClientMessage;
@@ -126,11 +126,62 @@ async function handleMessage(sessionId: string, msg: ClientMessage) {
 }
 
 /**
+ * 音声チャンク処理キュー（セッションごと）
+ */
+const audioQueues = new Map<string, { queue: Buffer[]; processing: boolean }>();
+
+function getAudioQueue(sessionId: string) {
+  let entry = audioQueues.get(sessionId);
+  if (!entry) {
+    entry = { queue: [], processing: false };
+    audioQueues.set(sessionId, entry);
+  }
+  return entry;
+}
+
+/**
+ * 音声チャンクをキューに追加し、順次処理する
+ */
+function enqueueAudioChunk(sessionId: string, audioData: Buffer) {
+  const entry = getAudioQueue(sessionId);
+  entry.queue.push(audioData);
+  const sizeKB = (audioData.length / 1024).toFixed(1);
+  log.info(
+    { sessionId, sizeKB, queued: entry.queue.length, processing: entry.processing },
+    `[QUEUE] +1 (待ち: ${entry.queue.length}件) 音声 ${sizeKB}KB`
+  );
+
+  if (!entry.processing) {
+    processAudioQueue(sessionId);
+  }
+}
+
+async function processAudioQueue(sessionId: string) {
+  const entry = getAudioQueue(sessionId);
+  entry.processing = true;
+
+  while (entry.queue.length > 0) {
+    const audioData = entry.queue.shift()!;
+    const remaining = entry.queue.length;
+    log.info({ sessionId, remaining }, `[PROCESS] 開始 (残り: ${remaining}件)`);
+
+    const startTime = Date.now();
+    try {
+      await processAudioChunk(sessionId, audioData);
+    } catch (err) {
+      log.error({ sessionId, err }, "[PROCESS] エラー");
+    }
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    log.info({ sessionId, elapsed }, `[PROCESS] 完了 (${elapsed}s)`);
+  }
+
+  entry.processing = false;
+}
+
+/**
  * 音声チャンク処理: webm → wav → Whisper → テキスト → 通常のtranscript処理
  */
-async function handleAudioChunk(sessionId: string, audioData: Buffer) {
-  log.info({ sessionId, bytes: audioData.length }, "Received audio chunk");
-
+async function processAudioChunk(sessionId: string, audioData: Buffer) {
   // 1. webm → wav変換
   const wavBuffer = await webmToWav(audioData);
 
@@ -139,11 +190,12 @@ async function handleAudioChunk(sessionId: string, audioData: Buffer) {
 
   // 完全な空のみスキップ（短いテキストも全保存）
   if (!text || text.trim().length === 0) {
-    log.info("Empty transcription, skipping");
+    log.info({ sessionId }, "[RESULT] (空テキスト、スキップ)");
     return;
   }
 
-  log.info({ text }, "Whisper transcription result");
+  const preview = text.length > 50 ? text.slice(0, 50) + "..." : text;
+  log.info({ sessionId, textLength: text.length }, `[RESULT] "${preview}" (${text.length}文字)`);
 
   // 3. 通常のtranscript処理と同じパイプラインに流す
   await handleTranscript(sessionId, {

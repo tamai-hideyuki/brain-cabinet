@@ -16,6 +16,9 @@ export async function transcribe(wavBuffer: Buffer): Promise<{ text: string }> {
   );
   formData.append("response_format", "json");
   formData.append("language", "ja");
+  formData.append("temperature", "0.0");
+  formData.append("beam_size", "5");
+  formData.append("no_speech_threshold", "0.6");
 
   const res = await fetch(`${WHISPER_SERVER_URL}/inference`, {
     method: "POST",

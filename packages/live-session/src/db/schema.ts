@@ -58,6 +58,16 @@ export const mindmapNodes = sqliteTable("mindmap_nodes", {
   createdAt: integer("created_at").notNull(),
 });
 
+/**
+ * ノイズパターン（ユーザー登録）
+ */
+export const noisePatterns = sqliteTable("noise_patterns", {
+  id: text("id").primaryKey(),
+  pattern: text("pattern").notNull(),
+  isRegex: integer("is_regex").default(0), // 1なら正規表現として扱う
+  createdAt: integer("created_at").notNull(),
+});
+
 // 型エクスポート
 export type Session = typeof sessions.$inferSelect;
 export type NewSession = typeof sessions.$inferInsert;
@@ -67,3 +77,5 @@ export type Suggestion = typeof suggestions.$inferSelect;
 export type NewSuggestion = typeof suggestions.$inferInsert;
 export type MindmapNode = typeof mindmapNodes.$inferSelect;
 export type NewMindmapNode = typeof mindmapNodes.$inferInsert;
+export type NoisePattern = typeof noisePatterns.$inferSelect;
+export type NewNoisePattern = typeof noisePatterns.$inferInsert;
