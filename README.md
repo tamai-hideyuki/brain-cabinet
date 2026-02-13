@@ -29,6 +29,8 @@ pnpm init-embeddings   # Embedding（ローカル、API不要）
 
 pnpm dev
 
+cloudflared tunnel run brain-cabinet
+
 ```
 
 ## 主なUI
