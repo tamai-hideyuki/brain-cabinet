@@ -61,6 +61,7 @@ export const NotesPage = () => {
   const activeFilterCount = filter.tags.length + filter.categories.length
 
   const handleNoteClick = (id: string) => {
+    sessionStorage.setItem('notesListPage', String(currentPage))
     navigate(`/ui/notes/${id}`)
   }
 
