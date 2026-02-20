@@ -26,8 +26,22 @@ export const useNotes = () => {
   const [searchMode, setSearchMode] = useState<SearchMode>('keyword')
   const [totalNotes, setTotalNotes] = useState(0)
 
-  // URLからページ番号を取得（デフォルト1）
-  const currentPage = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
+  // sessionStorageから復元するページ番号（初回マウント時のみ読み取る）
+  const [restoredPage] = useState<number | null>(() => {
+    const saved = sessionStorage.getItem('notesListPage')
+    if (saved) {
+      sessionStorage.removeItem('notesListPage')
+      const page = parseInt(saved, 10)
+      if (page > 1) return page
+    }
+    return null
+  })
+
+  // URLからページ番号を取得、sessionStorageの復元値をフォールバック
+  const urlPage = parseInt(searchParams.get('page') || '', 10)
+  const currentPage = urlPage >= 1
+    ? urlPage
+    : (restoredPage ?? 1)
   const totalPages = Math.ceil(totalNotes / PAGE_SIZE)
 
   const loadNotes = useCallback(async (page: number) => {
@@ -75,6 +89,13 @@ export const useNotes = () => {
     }
     loadNotes(page)
   }
+
+  // sessionStorageから復元した場合、URLパラメータを同期
+  useEffect(() => {
+    if (restoredPage && restoredPage > 1 && !searchParams.get('page')) {
+      setSearchParams({ page: String(restoredPage) }, { replace: true })
+    }
+  }, [restoredPage, searchParams, setSearchParams])
 
   // 初回ロード時とURLのpage変更時にデータを取得
   useEffect(() => {
