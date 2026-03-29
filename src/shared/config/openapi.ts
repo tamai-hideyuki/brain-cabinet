@@ -9,5 +9,5 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export const openapi = JSON.parse(
-  fs.readFileSync(path.join(__dirname, "../../openapi.json"), "utf8")
+  fs.readFileSync(path.join(__dirname, "../../../openapi.json"), "utf8")
 );
