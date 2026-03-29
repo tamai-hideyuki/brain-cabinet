@@ -9,9 +9,9 @@
  * 3. influence = cosine × drift_score >= 0.15 のペアをエッジとして保存
  */
 
-import { db } from "../db/client";
+import { db } from "../shared/db/client";
 import { sql } from "drizzle-orm";
-import { computeDriftScore } from "../services/drift/computeDriftScore";
+import { computeDriftScore } from "../modules/drift/computeDriftScore";
 
 const INFLUENCE_THRESHOLD = 0.15; // 影響エッジを作成する最小重み
 

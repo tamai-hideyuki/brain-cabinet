@@ -7,8 +7,8 @@
  *   npx tsx src/scripts/init-fts.ts
  */
 
-import { findAllNotes } from "../repositories/notesRepo";
-import { createFTSTable, rebuildFTS, checkFTSTableExists } from "../repositories/ftsRepo";
+import { findAllNotes } from "../modules/note/repository";
+import { createFTSTable, rebuildFTS, checkFTSTableExists } from "../modules/search/ftsRepository";
 
 const main = async () => {
   console.log("🔍 FTS5インデックス初期化を開始します...\n");

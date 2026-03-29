@@ -5,7 +5,7 @@
  * prev_cluster_id は履歴がないため NULL のまま。
  */
 
-import { db } from "../db/client";
+import { db } from "../shared/db/client";
 import { sql } from "drizzle-orm";
 
 async function main() {

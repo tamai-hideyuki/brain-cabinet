@@ -11,9 +11,9 @@
  *   --force: 既存のEmbeddingも再生成する
  */
 
-import { generateAllEmbeddings } from "../services/embeddingService";
-import { countEmbeddings, createEmbeddingTable, checkEmbeddingTableExists } from "../repositories/embeddingRepo";
-import { db } from "../db/client";
+import { generateAllEmbeddings } from "../modules/search/embeddingService";
+import { countEmbeddings, createEmbeddingTable, checkEmbeddingTableExists } from "../modules/search/embeddingRepository";
+import { db } from "../shared/db/client";
 import { sql } from "drizzle-orm";
 
 const main = async () => {

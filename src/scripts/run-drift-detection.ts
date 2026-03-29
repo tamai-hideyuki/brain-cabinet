@@ -8,8 +8,8 @@
 import {
   detectAllDriftEvents,
   saveDriftEvents,
-} from "../services/drift/detectDriftEvents";
-import { db } from "../db/client";
+} from "../modules/drift/detectDriftEvents";
+import { db } from "../shared/db/client";
 import { sql } from "drizzle-orm";
 
 async function main() {

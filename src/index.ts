@@ -8,8 +8,8 @@ import { serve } from "@hono/node-server";
 import http from "http";
 import net from "net";
 import { app } from "./app";
-import { logger } from "./utils/logger";
-import { enqueueJob } from "./services/jobs/job-queue";
+import { logger } from "./shared/utils/logger";
+import { enqueueJob } from "./modules/jobs/services/job-queue";
 
 const LIVE_SESSION_WS_URL = process.env.LIVE_SESSION_API_URL || "http://localhost:3003";
 

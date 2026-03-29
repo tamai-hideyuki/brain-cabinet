@@ -13,14 +13,14 @@
  * - ジャンプ時は +0.5
  */
 
-import { db } from "../db/client";
+import { db } from "../shared/db/client";
 import { sql } from "drizzle-orm";
 import {
   computeDriftScore,
   classifyDriftEvent,
   DRIFT_THRESHOLD,
   LARGE_DRIFT_THRESHOLD,
-} from "../services/drift/computeDriftScore";
+} from "../modules/drift/computeDriftScore";
 
 type HistoryRow = {
   id: string;

@@ -5,7 +5,7 @@
  * 既存の履歴がある場合はスキップ。
  */
 
-import { db } from "../db/client";
+import { db } from "../shared/db/client";
 import { sql } from "drizzle-orm";
 
 async function main() {

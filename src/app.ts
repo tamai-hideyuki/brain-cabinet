@@ -4,10 +4,10 @@
  * ミドルウェア・ルートを組み立ててアプリを構築する
  */
 import { Hono } from "hono";
-import { applyMiddleware } from "./middleware";
+import { applyMiddleware } from "./shared/middleware";
 import { apiRoutes } from "./routes/api";
 import { staticRoutes } from "./routes/static";
-import { openapi } from "./config/openapi";
+import { openapi } from "./shared/config/openapi";
 
 export const app = new Hono();
 

@@ -85,14 +85,73 @@ POST /api/v1
 → review.start
 ```
 
+## アーキテクチャ: モジュラーモノリス
+
+本プロジェクトは**モジュラーモノリス**を採用している。
+
+### モジュラーモノリスとは
+
+物理的には1つのプロセスだが、コード上はモジュール境界で論理的に分離されたアーキテクチャ。
+マイクロサービス（物理分離）の運用コストを避けつつ、モノリスの依存関係カオスを防ぐ。
+
+| | モノリス | モジュラーモノリス | マイクロサービス |
+|---|---|---|---|
+| 分離の種類 | なし | **論理分離** | 物理分離 |
+| 境界の強制力 | なし | 規約（index.ts） | ネットワーク |
+| 通信コスト | 関数呼び出し | 関数呼び出し | HTTP/gRPC |
+| デプロイ | 1回 | 1回 | サービスごと |
+| 将来の選択肢 | 全書き換え | 必要な部分だけ切り出し可能 | ここが終着点 |
+
+### ディレクトリ構成
+
+```
+src/
+├── app.ts / index.ts / dispatcher.ts   # エントリポイント
+├── routes/api.ts                        # ルート登録ハブ
+├── shared/                              # 横断的関心事
+│   ├── db/          # DBクライアント、スキーマ
+│   ├── middleware/   # 認証、エラーハンドリング
+│   ├── utils/       # 共通ユーティリティ
+│   ├── types/       # 共有型定義
+│   └── config/      # OpenAPI設定
+└── modules/                             # 23ドメインモジュール
+    ├── note/        # メモCRUD、履歴、画像、リレーション
+    ├── search/      # FTS、セマンティック検索、エンベディング
+    ├── cluster/     # クラスタリング、メトリクス、進化
+    ├── drift/       # ドリフト検出、予測
+    ├── influence/   # 影響グラフ、因果推論、時間減衰
+    ├── gpt/         # GPT/LLM統合、RAG
+    ├── decision/    # 意思決定、反証
+    ├── ptm/         # パーソナル思考モデル
+    ├── inference/   # 型推論、LLM推論
+    ├── review/      # SM-2スペース反復
+    └── ...          # 他13モジュール
+```
+
+### モジュール境界のルール
+
+各モジュールは `index.ts` を公開インターフェースとして持つ。**他モジュールからは必ずindex.ts経由でのみアクセスする。**
+
+```ts
+// OK: 公開インターフェース経由
+import { findNoteById, createNote } from "../note";
+
+// NG: 内部ファイルへの直接アクセス
+import { findNoteById } from "../note/repository";
+```
+
+この規約により、モジュール内部の実装変更が他モジュールに影響しない。
+将来特定のモジュールをマイクロサービスとして切り出す場合も、index.tsのインターフェースを維持すれば移行がスムーズに行える。
+
 ## 技術スタック
 
-- **Frontend**: Next.js, React, Three.js (3Dライブラリ)
-- **Backend**: Next.js API Routes
-- **Database**: SQLite + better-sqlite3
-- **Search**: FTS5 + TF-IDF
-- **Embedding**: ローカル MiniLM（API不要）
+- **Frontend**: React 19, Vite, Three.js (3Dライブラリ)
+- **Backend**: Hono (Node.js)
+- **Database**: SQLite + Drizzle ORM (WALモード)
+- **Search**: FTS5 + TF-IDF + セマンティック検索
+- **Embedding**: ローカル MiniLM + HNSW（API不要）
 - **LLM推論**: Ollama + Qwen2.5:3b（オプション）
+- **認証**: Clerk
 
 ## ライセンス
 
