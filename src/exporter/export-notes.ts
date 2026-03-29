@@ -10,10 +10,10 @@
 
 import fs from "fs";
 import path from "path";
-import { db } from "../db/client";
-import { notes } from "../db/schema";
+import { db } from "../shared/db/client";
+import { notes } from "../shared/db/schema";
 import { eq } from "drizzle-orm";
-import { slugify } from "../utils/slugify";
+import { slugify } from "../shared/utils/slugify";
 import { formatNoteAsMarkdown, generateExportPath } from "./markdown-formatter";
 
 // エクスポート先ディレクトリ

@@ -4,23 +4,21 @@
  * /api/* 配下の全ルートをまとめて管理
  */
 import { Hono } from "hono";
-import { notesRoute } from "./notes/index";
-import { searchRoute } from "./search/index";
-import { gptRoute } from "./gpt/index";
-import { clustersRoute } from "./clusters/index";
-import { analyticsRoute } from "./analytics/index";
-import { driftRoute } from "./drift/index";
-import { influenceRoute } from "./influence/index";
-import { clusterDynamicsRoute } from "./cluster-dynamics/index";
-import { clusterEvolutionRoute } from "./cluster-evolution/index";
-import { ptmRoute } from "./ptm/index";
-import { insightRoute } from "./insight/index";
-import commandRoute from "./command/index";
-import { bookmarksRoute } from "./bookmarks/index";
-import { secretBoxRoute } from "./secret-box/index";
-import { systemRoute } from "./system/index";
-import { thinkingReportRoute } from "./thinking-report/index";
-import { pomodoroRoute } from "./pomodoro/index";
+import { notesRoute } from "../modules/note";
+import { searchRoute } from "../modules/search";
+import { gptRoute } from "../modules/gpt";
+import { clustersRoute, clusterDynamicsRoute, clusterEvolutionRoute } from "../modules/cluster";
+import { analyticsRoute } from "../modules/analytics";
+import { driftRoute } from "../modules/drift";
+import { influenceRoute } from "../modules/influence";
+import { ptmRoute } from "../modules/ptm";
+import { insightRoute } from "../modules/insight";
+import { commandRoute } from "../modules/command";
+import { bookmarksRoute } from "../modules/bookmark";
+import { secretBoxRoute } from "../modules/secret-box";
+import { systemRoute } from "../modules/system";
+import { thinkingReportRoute } from "../modules/thinking-report";
+import { pomodoroRoute } from "../modules/pomodoro";
 
 export const apiRoutes = new Hono();
 

@@ -1,13 +1,13 @@
 #!/usr/bin/env tsx
 import fs from "fs";
 import path from "path";
-import { db } from "../db/client";
-import { notes, noteHistory } from "../db/schema";
+import { db } from "../shared/db/client";
+import { notes, noteHistory } from "../shared/db/schema";
 import { eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
-import { computeDiff } from "../utils/diff";
-import { extractMetadata } from "../utils/metadata";
-import { invalidateIDFCache } from "../services/searchService";
+import { computeDiff } from "../shared/utils/diff";
+import { extractMetadata } from "../shared/utils/metadata";
+import { invalidateIDFCache } from "../modules/search/service";
 
 const SUPPORTED_EXT = [".md", ".txt", ".mdx"];
 

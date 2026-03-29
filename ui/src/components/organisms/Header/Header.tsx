@@ -11,10 +11,6 @@ const knowledgeUrl = import.meta.env.DEV
   ? 'http://localhost:5174/'
   : '/knowledge/'
 
-const liveSessionUrl = import.meta.env.DEV
-  ? 'http://localhost:5175/'
-  : '/live-session/'
-
 export const Header = () => {
   const { theme, toggleTheme } = useTheme()
   const { ptm, loading: ptmLoading } = usePTM()
@@ -51,7 +47,6 @@ export const Header = () => {
     { href: '/ui/notes', label: 'ノート' },
     { href: '/ui/bookmarks', label: 'ブックマーク' },
     { href: '/ui/reviews', label: 'レビュー' },
-    { href: '/ui/coaching', label: 'コーチング' },
     { href: '/ui/thinking-report', label: '成長' },
     { href: '/ui/timeline', label: 'タイムライン' },
     { href: '/ui/timeline-3d', label: 'TL 3D' },
@@ -75,11 +70,6 @@ export const Header = () => {
           <a href={knowledgeUrl} className="header__app-link" title="Brain Knowledge（知識）">
             <span className="header__app-link-full">Knowledge</span>
             <span className="header__app-link-short">BK</span>
-          </a>
-          <span className="header__app-separator">/</span>
-          <a href={liveSessionUrl} className="header__app-link" title="Live Session（会話支援）">
-            <span className="header__app-link-full">Live</span>
-            <span className="header__app-link-short">LS</span>
           </a>
         </div>
 

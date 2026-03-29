@@ -5,7 +5,7 @@
  * updated_at は更新しない（意味的更新ではないため）。
  */
 
-import { db } from "../db/client";
+import { db } from "../shared/db/client";
 import { sql } from "drizzle-orm";
 
 /**

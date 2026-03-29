@@ -10,9 +10,9 @@
 
 import fs from "fs";
 import path from "path";
-import { db } from "../db/client";
-import { notes } from "../db/schema";
-import { parseMarkdown, extractNoteData } from "../utils/markdown-parser";
+import { db } from "../shared/db/client";
+import { notes } from "../shared/db/schema";
+import { parseMarkdown, extractNoteData } from "../shared/utils/markdown-parser";
 import { formatNoteAsMarkdown } from "../exporter/markdown-formatter";
 
 // チェック対象ディレクトリ

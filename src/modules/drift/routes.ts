@@ -1,0 +1,648 @@
+import { Hono } from "hono";
+import {
+  buildDriftTimeline,
+  getStateDescription,
+} from "./driftService";
+import {
+  getDailyDriftData,
+  calcGrowthAngle,
+  calcDriftForecast,
+  detectWarning,
+  detectExtendedWarning,
+  generateDriftInsight,
+} from "./driftCore";
+import { getDailyPhases } from "./driftService";
+import {
+  analyzeDriftDirection,
+  analyzeDriftDirectionByHistoryId,
+  analyzeDriftFlows,
+  analyzeRecentDrifts,
+  generateDriftDirectionSummary,
+} from "./driftDirection";
+import {
+  upsertAnnotation,
+  getAnnotationByDate,
+  getRecentAnnotations,
+  deleteAnnotation,
+  deleteAnnotationByDate,
+  getAnnotationStats,
+  isValidLabel,
+} from "./driftAnnotation";
+import { DRIFT_ANNOTATION_LABELS } from "../../shared/db/schema";
+import * as driftEventRepo from "./driftEventRepo";
+import { getOrCompute, generateCacheKey } from "../cache";
+
+export const driftRoute = new Hono();
+
+/**
+ * GET /api/drift/timeline
+ * Drift Timeline（成長の折れ線グラフ）を取得
+ *
+ * Query:
+ * - range: 日数（default: "90d"）
+ * - annotations: "true" でアノテーションを含める（default: false）
+ *
+ * Response:
+ * - range: "90d"
+ * - days: [{ date, drift, ema, phase, annotation? }]
+ *   - phase: v7.2 (creation/destruction/neutral)
+ *   - annotation: v7.3 ({ label, note }) - annotations=true の場合のみ
+ * - summary: { todayDrift, todayEMA, state, trend, mean, stdDev }
+ * - description: 状態の日本語説明
+ */
+driftRoute.get("/timeline", async (c) => {
+  const rangeParam = c.req.query("range") ?? "90d";
+  const includeAnnotations = c.req.query("annotations") === "true";
+
+  // パース: "90d" → 90, "30d" → 30
+  const match = rangeParam.match(/^(\d+)d$/);
+  const rangeDays = match ? parseInt(match[1], 10) : 90;
+
+  if (isNaN(rangeDays) || rangeDays < 1 || rangeDays > 365) {
+    return c.json({ error: "Invalid range. Use format: 30d, 90d, etc." }, 400);
+  }
+
+  const timeline = await buildDriftTimeline(rangeDays, includeAnnotations);
+  const description = getStateDescription(timeline.summary);
+
+  return c.json({
+    ...timeline,
+    description,
+  });
+});
+
+/**
+ * GET /api/drift/events
+ * Drift Events（成長の転換点）を取得
+ *
+ * Query:
+ * - range: 日数（default: "30d"）
+ * - severity: "all" | "high" | "mid" | "low" (default: "all")
+ */
+driftRoute.get("/events", async (c) => {
+  const rangeParam = c.req.query("range") ?? "30d";
+  const severity = c.req.query("severity") ?? "all";
+
+  const match = rangeParam.match(/^(\d+)d$/);
+  const rangeDays = match ? parseInt(match[1], 10) : 30;
+
+  if (isNaN(rangeDays) || rangeDays < 1 || rangeDays > 365) {
+    return c.json({ error: "Invalid range" }, 400);
+  }
+
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - rangeDays);
+  const startTimestamp = Math.floor(startDate.getTime() / 1000);
+
+  const events = await driftEventRepo.findEventsSince(
+    startTimestamp,
+    severity === "all" ? undefined : severity
+  );
+
+  // フォーマット
+  const formattedEvents = events.map((e) => ({
+    id: e.id,
+    detectedAt: new Date(e.detected_at * 1000).toISOString(),
+    date: new Date(e.detected_at * 1000).toISOString().split("T")[0],
+    severity: e.severity,
+    type: e.type,
+    message: e.message,
+    relatedCluster: e.related_cluster,
+  }));
+
+  // 統計
+  const stats = {
+    total: events.length,
+    high: events.filter((e) => e.severity === "high").length,
+    mid: events.filter((e) => e.severity === "mid").length,
+    low: events.filter((e) => e.severity === "low").length,
+  };
+
+  return c.json({
+    range: `${rangeDays}d`,
+    severity: severity,
+    stats,
+    events: formattedEvents,
+  });
+});
+
+/**
+ * GET /api/drift/summary
+ * Drift の現在状態サマリーを取得（GPT向け）
+ */
+driftRoute.get("/summary", async (c) => {
+  // 過去30日のタイムラインを取得
+  const timeline = await buildDriftTimeline(30);
+  const description = getStateDescription(timeline.summary);
+
+  // 最新のイベント5件
+  const recentEvents = await driftEventRepo.findRecentEvents(5);
+
+  return c.json({
+    current: {
+      ...timeline.summary,
+      description,
+    },
+    recentEvents: recentEvents.map((e) => ({
+      date: new Date(e.detected_at * 1000).toISOString().split("T")[0],
+      severity: e.severity,
+      type: e.type,
+      message: e.message,
+    })),
+    advice: generateAdvice(timeline.summary),
+  });
+});
+
+/**
+ * 状態に応じたアドバイスを生成
+ */
+function generateAdvice(summary: {
+  state: string;
+  trend: string;
+  todayEMA: number;
+  mean: number;
+}): string {
+  const { state, trend } = summary;
+
+  if (state === "overheat" && trend === "rising") {
+    return "思考が過熱しています。一度立ち止まって、今日の学びを整理してみましょう。";
+  }
+
+  if (state === "overheat") {
+    return "活発な思考活動が続いています。振り返りの時間を設けると良いかもしれません。";
+  }
+
+  if (state === "stagnation" && trend === "falling") {
+    return "思考が停滞気味です。新しい情報や異なる視点に触れてみましょう。";
+  }
+
+  if (state === "stagnation") {
+    return "少しペースが落ちています。小さなアイデアでも書き留めることから始めてみましょう。";
+  }
+
+  if (trend === "rising") {
+    return "良い成長リズムです。この調子で続けましょう。";
+  }
+
+  if (trend === "falling") {
+    return "成長ペースが落ち着いてきました。定着のフェーズかもしれません。";
+  }
+
+  return "安定した成長を続けています。";
+}
+
+/**
+ * GET /api/drift/angle
+ * Growth Angle（成長角度）を取得
+ *
+ * A. 成長の方向と速度を分析
+ */
+driftRoute.get("/angle", async (c) => {
+  const rangeParam = c.req.query("range") ?? "30d";
+  const match = rangeParam.match(/^(\d+)d$/);
+  const rangeDays = match ? parseInt(match[1], 10) : 30;
+
+  const data = await getDailyDriftData(rangeDays);
+  const angle = calcGrowthAngle(data);
+
+  const description = getAngleDescription(angle);
+
+  return c.json({
+    range: `${rangeDays}d`,
+    ...angle,
+    description,
+  });
+});
+
+function getAngleDescription(angle: {
+  trend: string;
+  angleDegrees: number;
+  velocity: number;
+}): string {
+  if (angle.trend === "rising") {
+    if (angle.angleDegrees > 30) {
+      return "今日は成長角度が非常に鋭く、理解が急速に深まっています。";
+    }
+    return "成長が加速しています。良いリズムです。";
+  }
+
+  if (angle.trend === "falling") {
+    if (angle.angleDegrees < -30) {
+      return "成長ペースが大きく落ちています。休息が必要かもしれません。";
+    }
+    return "成長ペースが落ち着いてきました。定着フェーズに入っています。";
+  }
+
+  return "安定した成長リズムを維持しています。";
+}
+
+/**
+ * GET /api/drift/forecast
+ * Drift Forecast（ドリフト予測）を取得
+ *
+ * B. 3日後・7日後の成長予測
+ */
+driftRoute.get("/forecast", async (c) => {
+  const rangeParam = c.req.query("range") ?? "30d";
+  const match = rangeParam.match(/^(\d+)d$/);
+  const rangeDays = match ? parseInt(match[1], 10) : 30;
+
+  const data = await getDailyDriftData(rangeDays);
+  const angle = calcGrowthAngle(data);
+  const forecast = calcDriftForecast(data, angle);
+
+  const interpretation = getForecastInterpretation(forecast, angle);
+
+  return c.json({
+    range: `${rangeDays}d`,
+    ...forecast,
+    currentEMA: data.length > 0 ? data[data.length - 1].ema : 0,
+    interpretation,
+  });
+});
+
+function getForecastInterpretation(
+  forecast: { forecast3d: number; forecast7d: number; confidence: string },
+  angle: { trend: string }
+): string {
+  if (angle.trend === "rising") {
+    return "今のペースを維持すれば成長が加速する見込みです。";
+  }
+
+  if (angle.trend === "falling") {
+    return "成長ペースが落ち着く見込みです。統合・振り返りの良いタイミングかもしれません。";
+  }
+
+  return "安定した成長が続く見込みです。";
+}
+
+/**
+ * GET /api/drift/warning
+ * Warning System（警告システム）を取得
+ *
+ * C. 過熱・停滞の検出
+ *
+ * v7.4: extendedWarning を追加（phase と組み合わせた詳細な警告）
+ * - isCreativeOverheat: 創造的な過熱かどうか
+ * - extendedType: 詳細な警告タイプ
+ */
+driftRoute.get("/warning", async (c) => {
+  const rangeParam = c.req.query("range") ?? "30d";
+  const match = rangeParam.match(/^(\d+)d$/);
+  const rangeDays = match ? parseInt(match[1], 10) : 30;
+
+  const data = await getDailyDriftData(rangeDays);
+  const warning = detectWarning(data);
+
+  // v7.4: 今日のphaseを取得して拡張警告を計算
+  const today = data.length > 0 ? data[data.length - 1] : null;
+  let extendedWarning = null;
+
+  if (today) {
+    try {
+      const phases = await getDailyPhases(7);
+      const todayPhase = phases.get(today.date) ?? null;
+      extendedWarning = detectExtendedWarning(warning, todayPhase);
+    } catch {
+      extendedWarning = detectExtendedWarning(warning, null);
+    }
+  } else {
+    extendedWarning = detectExtendedWarning(warning, null);
+  }
+
+  return c.json({
+    range: `${rangeDays}d`,
+    ...warning,
+    extendedWarning,
+  });
+});
+
+/**
+ * GET /api/drift/insight
+ * 統合 Insight（GPT向け完全版）
+ *
+ * A（角度）+ B（予測）+ C（警告）+ モード + アドバイス
+ */
+driftRoute.get("/insight", async (c) => {
+  const rangeParam = c.req.query("range") ?? "30d";
+  const match = rangeParam.match(/^(\d+)d$/);
+  const rangeDays = match ? parseInt(match[1], 10) : 30;
+
+  const insight = await generateDriftInsight(rangeDays);
+
+  return c.json({
+    range: `${rangeDays}d`,
+    ...insight,
+  });
+});
+
+// ============================================================
+// v5.10 ドリフト方向性追跡
+// ============================================================
+
+/**
+ * GET /api/drift/direction/note/:id
+ * 特定ノートのドリフト方向を分析
+ */
+driftRoute.get("/direction/note/:id", async (c) => {
+  const noteId = c.req.param("id");
+
+  const direction = await analyzeDriftDirection(noteId);
+
+  if (!direction) {
+    return c.json({ error: "No drift data available for this note" }, 404);
+  }
+
+  return c.json({
+    noteId: direction.noteId,
+    historyId: direction.historyId,
+    driftScore: direction.driftScore,
+    magnitude: direction.magnitude,
+    trajectory: direction.trajectory,
+    primaryDirection: direction.primaryDirection,
+    secondaryDirection: direction.secondaryDirection,
+    movingAwayFrom: direction.movingAwayFrom,
+    alignmentCount: direction.allAlignments.length,
+  });
+});
+
+/**
+ * GET /api/drift/direction/history/:id
+ * 特定履歴IDのドリフト方向を分析
+ */
+driftRoute.get("/direction/history/:id", async (c) => {
+  const idParam = c.req.param("id");
+  const historyId = parseInt(idParam, 10);
+
+  if (isNaN(historyId)) {
+    return c.json({ error: "Invalid history ID" }, 400);
+  }
+
+  const direction = await analyzeDriftDirectionByHistoryId(historyId);
+
+  if (!direction) {
+    return c.json({ error: "No drift data available for this history" }, 404);
+  }
+
+  return c.json({
+    noteId: direction.noteId,
+    historyId: direction.historyId,
+    driftScore: direction.driftScore,
+    magnitude: direction.magnitude,
+    trajectory: direction.trajectory,
+    primaryDirection: direction.primaryDirection,
+    secondaryDirection: direction.secondaryDirection,
+    movingAwayFrom: direction.movingAwayFrom,
+    allAlignments: direction.allAlignments,
+  });
+});
+
+/**
+ * GET /api/drift/direction/recent
+ * 最近のドリフト方向一覧を取得
+ *
+ * Query:
+ * - range: 日数（default: "30d"）
+ * - limit: 件数（default: 20）
+ */
+driftRoute.get("/direction/recent", async (c) => {
+  const rangeParam = c.req.query("range") ?? "30d";
+  const limitParam = c.req.query("limit") ?? "20";
+
+  const match = rangeParam.match(/^(\d+)d$/);
+  const rangeDays = match ? parseInt(match[1], 10) : 30;
+  const limit = parseInt(limitParam, 10);
+
+  if (isNaN(rangeDays) || rangeDays < 1 || rangeDays > 365) {
+    return c.json({ error: "Invalid range" }, 400);
+  }
+
+  if (isNaN(limit) || limit < 1 || limit > 100) {
+    return c.json({ error: "Invalid limit (1-100)" }, 400);
+  }
+
+  const directions = await analyzeRecentDrifts(rangeDays, limit);
+
+  return c.json({
+    range: `${rangeDays}d`,
+    limit,
+    count: directions.length,
+    directions: directions.map((d) => ({
+      noteId: d.noteId,
+      historyId: d.historyId,
+      driftScore: d.driftScore,
+      magnitude: d.magnitude,
+      trajectory: d.trajectory,
+      primaryDirection: d.primaryDirection,
+    })),
+  });
+});
+
+/**
+ * GET /api/drift/direction/summary
+ * ドリフト方向のサマリーを取得
+ *
+ * Query:
+ * - range: 日数（default: "30d"）
+ */
+driftRoute.get("/direction/summary", async (c) => {
+  const rangeParam = c.req.query("range") ?? "30d";
+  const match = rangeParam.match(/^(\d+)d$/);
+  const rangeDays = match ? parseInt(match[1], 10) : 30;
+
+  if (isNaN(rangeDays) || rangeDays < 1 || rangeDays > 365) {
+    return c.json({ error: "Invalid range" }, 400);
+  }
+
+  const summary = await generateDriftDirectionSummary(rangeDays);
+
+  return c.json({
+    range: `${rangeDays}d`,
+    ...summary,
+  });
+});
+
+/**
+ * GET /api/drift/flows
+ * クラスター間のドリフトフローを分析
+ *
+ * Query:
+ * - range: 日数（default: "90d"）
+ */
+driftRoute.get("/flows", async (c) => {
+  const rangeParam = c.req.query("range") ?? "90d";
+  const match = rangeParam.match(/^(\d+)d$/);
+  const rangeDays = match ? parseInt(match[1], 10) : 90;
+
+  if (isNaN(rangeDays) || rangeDays < 1 || rangeDays > 365) {
+    return c.json({ error: "Invalid range" }, 400);
+  }
+
+  const cacheKey = generateCacheKey("drift_flows", { rangeDays });
+  const flows = await getOrCompute(
+    cacheKey,
+    "drift_flows",
+    () => analyzeDriftFlows(rangeDays)
+  );
+
+  return c.json({
+    range: `${rangeDays}d`,
+    analysisDate: flows.analysisDate,
+    totalDrifts: flows.totalDrifts,
+    dominantFlow: flows.dominantFlow,
+    insight: flows.insight,
+    flows: flows.flows.slice(0, 10),  // Top 10 flows
+    clusterSummaries: flows.clusterSummaries,
+  });
+});
+
+// ============================================================
+// v7.3 ドリフトアノテーション
+// ============================================================
+
+/**
+ * GET /api/drift/annotation/labels
+ * 使用可能なラベル一覧を取得
+ */
+driftRoute.get("/annotation/labels", (c) => {
+  const labels = DRIFT_ANNOTATION_LABELS.map((label) => ({
+    value: label,
+    description: getLabelDescription(label),
+  }));
+
+  return c.json({ labels });
+});
+
+function getLabelDescription(label: string): string {
+  const descriptions: Record<string, string> = {
+    breakthrough: "突破・飛躍: 新しい理解や発見があった日",
+    exploration: "探索・発散: 新しい領域を探索した日",
+    deepening: "深化・収束: 既存の理解を深めた日",
+    confusion: "混乱・迷走: 考えがまとまらなかった日",
+    rest: "休息・停滞: 思考活動が少なかった日",
+    routine: "日常・維持: 通常通りの日",
+  };
+  return descriptions[label] ?? label;
+}
+
+/**
+ * GET /api/drift/annotation/stats
+ * アノテーションの統計を取得
+ *
+ * Query:
+ * - days: 日数（default: 90）
+ *
+ * NOTE: このルートは /annotation/:date より前に定義する必要がある
+ */
+driftRoute.get("/annotation/stats", async (c) => {
+  const daysParam = c.req.query("days") ?? "90";
+  const days = parseInt(daysParam, 10);
+
+  if (isNaN(days) || days < 1 || days > 365) {
+    return c.json({ error: "Invalid days parameter (1-365)" }, 400);
+  }
+
+  const stats = await getAnnotationStats(days);
+
+  return c.json({
+    days,
+    ...stats,
+  });
+});
+
+/**
+ * GET /api/drift/annotation/:date
+ * 特定日のアノテーションを取得
+ */
+driftRoute.get("/annotation/:date", async (c) => {
+  const date = c.req.param("date");
+
+  const annotation = await getAnnotationByDate(date);
+
+  if (!annotation) {
+    return c.json({ annotation: null });
+  }
+
+  return c.json({ annotation });
+});
+
+/**
+ * GET /api/drift/annotations
+ * 最近のアノテーション一覧を取得
+ *
+ * Query:
+ * - days: 日数（default: 30）
+ */
+driftRoute.get("/annotations", async (c) => {
+  const daysParam = c.req.query("days") ?? "30";
+  const days = parseInt(daysParam, 10);
+
+  if (isNaN(days) || days < 1 || days > 365) {
+    return c.json({ error: "Invalid days parameter (1-365)" }, 400);
+  }
+
+  const annotations = await getRecentAnnotations(days);
+
+  return c.json({
+    days,
+    count: annotations.length,
+    annotations,
+  });
+});
+
+/**
+ * POST /api/drift/annotation
+ * アノテーションを作成または更新
+ *
+ * Body:
+ * - date: ISO日付 'YYYY-MM-DD'
+ * - label: DriftAnnotationLabel
+ * - note?: ユーザーメモ
+ * - autoPhase?: 自動計算されたphase
+ */
+driftRoute.post("/annotation", async (c) => {
+  try {
+    const body = await c.req.json();
+
+    if (!body.date || !body.label) {
+      return c.json({ error: "date and label are required" }, 400);
+    }
+
+    if (!isValidLabel(body.label)) {
+      return c.json(
+        {
+          error: `Invalid label. Valid labels: ${DRIFT_ANNOTATION_LABELS.join(", ")}`,
+        },
+        400
+      );
+    }
+
+    const annotation = await upsertAnnotation({
+      date: body.date,
+      label: body.label,
+      note: body.note,
+      autoPhase: body.autoPhase,
+    });
+
+    return c.json({ annotation });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return c.json({ error: message }, 400);
+  }
+});
+
+/**
+ * DELETE /api/drift/annotation/:date
+ * 特定日のアノテーションを削除
+ */
+driftRoute.delete("/annotation/:date", async (c) => {
+  const date = c.req.param("date");
+
+  const deleted = await deleteAnnotationByDate(date);
+
+  if (!deleted) {
+    return c.json({ error: "Annotation not found" }, 404);
+  }
+
+  return c.json({ success: true, date });
+});

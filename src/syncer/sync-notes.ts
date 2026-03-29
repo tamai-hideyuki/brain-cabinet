@@ -15,13 +15,13 @@
 
 import fs from "fs";
 import path from "path";
-import { db } from "../db/client";
-import { notes, noteHistory } from "../db/schema";
+import { db } from "../shared/db/client";
+import { notes, noteHistory } from "../shared/db/schema";
 import { eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
-import { computeDiff } from "../utils/diff";
-import { extractMetadata } from "../utils/metadata";
-import { parseMarkdown, extractNoteData } from "../utils/markdown-parser";
+import { computeDiff } from "../shared/utils/diff";
+import { extractMetadata } from "../shared/utils/metadata";
+import { parseMarkdown, extractNoteData } from "../shared/utils/markdown-parser";
 
 const SUPPORTED_EXT = [".md", ".txt", ".mdx"];
 const DEFAULT_DIR = "./notes";

@@ -4,7 +4,7 @@
  * 過去のノート作成/更新履歴から日次メトリクスを計算して保存。
  */
 
-import { db } from "../db/client";
+import { db } from "../shared/db/client";
 import { sql } from "drizzle-orm";
 
 /**

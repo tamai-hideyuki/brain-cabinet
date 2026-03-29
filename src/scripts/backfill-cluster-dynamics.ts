@@ -7,7 +7,7 @@
  * - interactions: 他クラスタとの距離（JSON）
  */
 
-import { db } from "../db/client";
+import { db } from "../shared/db/client";
 import { sql } from "drizzle-orm";
 
 /**

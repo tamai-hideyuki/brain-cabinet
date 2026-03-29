@@ -97,6 +97,6 @@ function createMockDb() {
  * - 実際の DB ファイルには一切アクセスしない
  * - すべてのテストで同一のモックが使用される
  */
-vi.mock("./src/db/client", () => ({ 
+vi.mock("./src/shared/db/client", () => ({
   db: createMockDb(),
 }));

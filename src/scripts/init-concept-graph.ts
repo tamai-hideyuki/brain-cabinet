@@ -6,7 +6,7 @@
  * mutual: 双方向性（現時点では weight と同じ値を設定）
  */
 
-import { db } from "../db/client";
+import { db } from "../shared/db/client";
 import { sql } from "drizzle-orm";
 
 /**

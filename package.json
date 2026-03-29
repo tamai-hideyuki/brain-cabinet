@@ -9,9 +9,8 @@
     ]
   },
   "scripts": {
-    "dev": "tsx src/index.ts & tsx packages/knowledge/src/index.ts & tsx packages/live-session/src/index.ts & cd ui && pnpm dev & cd packages/knowledge/ui && pnpm dev & cd packages/live-session/ui && pnpm dev & cd packages/live-session && pnpm whisper:server",
-    "dev:no-whisper": "tsx src/index.ts & tsx packages/knowledge/src/index.ts & tsx packages/live-session/src/index.ts & cd ui && pnpm dev & cd packages/knowledge/ui && pnpm dev & cd packages/live-session/ui && pnpm dev",
-    "build": "pnpm --filter ui build && pnpm --filter @brain-cabinet/knowledge-ui build && pnpm --filter @brain-cabinet/live-session-ui build && pnpm --filter @brain-cabinet/live-session build",
+    "dev": "tsx src/index.ts & tsx packages/knowledge/src/index.ts & cd ui && pnpm dev & cd packages/knowledge/ui && pnpm dev",
+    "build": "pnpm --filter ui build && pnpm --filter @brain-cabinet/knowledge-ui build",
     "test": "vitest run && pnpm --filter ui test",
     "test:watch": "vitest",
     "storybook": "pnpm --filter ui storybook",
