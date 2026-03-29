@@ -190,19 +190,6 @@ server.registerTool("get_review_queue", {
 }, async ({ limit }) => callBrainCabinet("review.queue", { limit }));
 
 // ============================================
-// コーチング
-// ============================================
-
-server.registerTool("start_coaching", {
-  description: "コーチングセッションを開始する",
-  inputSchema: {
-    phase: z.enum(["selfTalk", "abstraction", "integration", "goalSetting"]).optional().describe("フェーズ"),
-  },
-}, async ({ phase }) =>
-  callBrainCabinet("coaching.start", phase ? { phase } : {}),
-);
-
-// ============================================
 // RAG
 // ============================================
 

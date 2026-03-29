@@ -37,8 +37,3 @@ export {
   type TaskRecommendationResponse,
 } from "./tasks";
 
-// 判断コーチング
-export {
-  coachDecision,
-  type CoachDecisionResponse,
-} from "./coach";
