@@ -24,6 +24,7 @@ export {
   cosineSimilarity,
   semanticChangeScore,
   buildSearchIndex,
+  getIndexStats,
   type HNSWIndexStats,
 } from "./embeddingService";
 
