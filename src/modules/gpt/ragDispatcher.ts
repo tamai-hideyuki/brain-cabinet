@@ -26,6 +26,12 @@ type ContextNote = {
   updatedAt: string;
 };
 
+type OmittedNote = {
+  noteId: string;
+  title: string;
+  relevance: number;
+};
+
 export const ragDispatcher = {
   /**
    * rag.context - 質問に関連するノートのコンテキストを取得
@@ -39,11 +45,13 @@ export const ragDispatcher = {
 
     // セマンティック検索で関連ノートを取得
     const searchResults = await searchNotesSemantic(question);
+    const allResults = searchResults as Array<{ id: string; title: string; score: number }>;
 
-    // 各ノートの詳細を取得してコンテキスト構築（limitで制限）
+    // 上位limit件の詳細を取得してコンテキスト構築
+    const limitedResults = allResults.slice(0, limit);
+    const remainingResults = allResults.slice(limit);
+
     const contextNotes: ContextNote[] = [];
-    const limitedResults = (searchResults as Array<{ id: string; score: number }>).slice(0, limit);
-
     for (const result of limitedResults) {
       const note = await findNoteById(result.id);
       if (!note) continue;
@@ -58,11 +66,20 @@ export const ragDispatcher = {
       });
     }
 
+    // 返さなかったノートのサマリー（タイトルとスコアのみ）
+    const omittedNotes: OmittedNote[] = remainingResults.map((r) => ({
+      noteId: r.id,
+      title: r.title,
+      relevance: Math.round(r.score * 100) / 100,
+    }));
+
     return {
       question,
       noteCount: contextNotes.length,
       context: contextNotes,
-      instruction: "上記のノート内容を参照して、ユーザーの質問に回答してください。回答には参照したノートのタイトルを明記してください。",
+      omittedCount: omittedNotes.length,
+      omittedNotes,
+      instruction: "上記のノート内容を参照して、ユーザーの質問に回答してください。回答には参照したノートのタイトルを明記してください。omittedNotesに含まれるノートは本文未取得です。必要であればget_noteツールで個別に取得してください。",
     };
   },
 };

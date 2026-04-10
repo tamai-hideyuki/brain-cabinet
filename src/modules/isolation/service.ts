@@ -113,17 +113,13 @@ async function calculateConnectivity(): Promise<
 }
 
 /**
- * ノートのembedding類似度を計算
+ * 単一ノートのembedding類似度を計算（embeddingを直接受け取る）
  */
-async function calculateSimilarityStats(
+function calculateSimilarityStats(
   noteId: string,
+  targetEmbedding: number[],
   allEmbeddings: Array<{ noteId: string; embedding: number[] }>
-): Promise<{ avgSimilarity: number; maxSimilarity: number }> {
-  const targetEmbedding = allEmbeddings.find((e) => e.noteId === noteId)?.embedding;
-  if (!targetEmbedding) {
-    return { avgSimilarity: 0, maxSimilarity: 0 };
-  }
-
+): { avgSimilarity: number; maxSimilarity: number } {
   let totalSim = 0;
   let maxSim = 0;
   let count = 0;
@@ -140,6 +136,38 @@ async function calculateSimilarityStats(
     avgSimilarity: count > 0 ? totalSim / count : 0,
     maxSimilarity: maxSim,
   };
+}
+
+/**
+ * 全ノートの類似度統計を一括計算（O(N²)だがループ1回で全ノート分を計算）
+ */
+function calculateAllSimilarityStats(
+  allEmbeddings: Array<{ noteId: string; embedding: number[] }>
+): Map<string, { avgSimilarity: number; maxSimilarity: number }> {
+  const n = allEmbeddings.length;
+  const totals = new Float64Array(n);
+  const maxes = new Float64Array(n);
+  const count = n - 1;
+
+  // 対称性を利用: sim(i,j) = sim(j,i) なので計算量を半分に
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      const sim = cosineSimilarity(allEmbeddings[i].embedding, allEmbeddings[j].embedding);
+      totals[i] += sim;
+      totals[j] += sim;
+      if (sim > maxes[i]) maxes[i] = sim;
+      if (sim > maxes[j]) maxes[j] = sim;
+    }
+  }
+
+  const result = new Map<string, { avgSimilarity: number; maxSimilarity: number }>();
+  for (let i = 0; i < n; i++) {
+    result.set(allEmbeddings[i].noteId, {
+      avgSimilarity: count > 0 ? totals[i] / count : 0,
+      maxSimilarity: maxes[i],
+    });
+  }
+  return result;
 }
 
 /**
@@ -176,10 +204,11 @@ export async function detectIsolatedNotes(
   const avgConnectivity =
     connectivityMap.size > 0 ? totalConnectivity / connectivityMap.size : 1;
 
-  // 類似度計算用のembeddings
-  let allEmbeddings: Array<{ noteId: string; embedding: number[] }> = [];
+  // 類似度計算用のembeddings — 一括で全ノートの統計を計算（O(N)でループ1回）
+  let allSimStats = new Map<string, { avgSimilarity: number; maxSimilarity: number }>();
   if (includeSimilarity) {
-    allEmbeddings = await getAllEmbeddings();
+    const allEmbeddings = await getAllEmbeddings();
+    allSimStats = calculateAllSimilarityStats(allEmbeddings);
   }
 
   // 各ノートの孤立度を計算
@@ -202,10 +231,7 @@ export async function detectIsolatedNotes(
     const isolationScore = 1 - normalizedConnectivity;
 
     // 類似度統計
-    let simStats = { avgSimilarity: 0, maxSimilarity: 0 };
-    if (includeSimilarity) {
-      simStats = await calculateSimilarityStats(note.id, allEmbeddings);
-    }
+    const simStats = allSimStats.get(note.id) || { avgSimilarity: 0, maxSimilarity: 0 };
 
     isolationInfos.push({
       noteId: note.id,
@@ -246,10 +272,7 @@ export async function getIsolationScore(noteId: string): Promise<IsolationInfo |
     return null;
   }
 
-  const note = [noteData];
-
   const connectivityMap = await calculateConnectivity();
-  const allEmbeddings = await getAllEmbeddings();
 
   // 平均接続度
   let totalConnectivity = 0;
@@ -259,8 +282,7 @@ export async function getIsolationScore(noteId: string): Promise<IsolationInfo |
   const avgConnectivity =
     connectivityMap.size > 0 ? totalConnectivity / connectivityMap.size : 1;
 
-  const n = note[0];
-  const conn = connectivityMap.get(n.id) || {
+  const conn = connectivityMap.get(noteData.id) || {
     inDegree: 0,
     outDegree: 0,
     inWeight: 0,
@@ -272,13 +294,19 @@ export async function getIsolationScore(noteId: string): Promise<IsolationInfo |
     avgConnectivity > 0 ? Math.min(connectivity / avgConnectivity, 1) : 0;
   const isolationScore = 1 - normalizedConnectivity;
 
-  const simStats = await calculateSimilarityStats(n.id, allEmbeddings);
+  // 対象ノートのembeddingだけ取得し、全embeddingsで類似度計算
+  const targetEmbedding = await getEmbedding(noteData.id);
+  let simStats = { avgSimilarity: 0, maxSimilarity: 0 };
+  if (targetEmbedding) {
+    const allEmbeddings = await getAllEmbeddings();
+    simStats = calculateSimilarityStats(noteData.id, targetEmbedding, allEmbeddings);
+  }
 
   return {
-    noteId: n.id,
-    title: n.title,
-    category: n.category,
-    clusterId: n.cluster_id,
+    noteId: noteData.id,
+    title: noteData.title,
+    category: noteData.category,
+    clusterId: noteData.cluster_id,
     isolationScore: Math.round(isolationScore * 1000) / 1000,
     inDegree: conn.inDegree,
     outDegree: conn.outDegree,
@@ -287,8 +315,8 @@ export async function getIsolationScore(noteId: string): Promise<IsolationInfo |
     connectivity: Math.round(normalizedConnectivity * 1000) / 1000,
     avgSimilarity: Math.round(simStats.avgSimilarity * 1000) / 1000,
     maxSimilarity: Math.round(simStats.maxSimilarity * 1000) / 1000,
-    createdAt: n.created_at,
-    updatedAt: n.updated_at,
+    createdAt: noteData.created_at,
+    updatedAt: noteData.updated_at,
   };
 }
 
@@ -375,12 +403,12 @@ export async function getIntegrationSuggestions(
     reason: string;
   }>
 > {
-  const allEmbeddings = await getAllEmbeddings();
-  const targetEmbedding = allEmbeddings.find((e) => e.noteId === noteId)?.embedding;
-
+  const targetEmbedding = await getEmbedding(noteId);
   if (!targetEmbedding) {
     return [];
   }
+
+  const allEmbeddings = await getAllEmbeddings();
 
   // 他のノートとの類似度を計算
   const similarities: Array<{

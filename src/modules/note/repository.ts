@@ -260,3 +260,14 @@ export const findNotesByIds = async (ids: string[]) => {
   if (ids.length === 0) return [];
   return await db.select().from(notes).where(inArray(notes.id, ids));
 };
+
+/**
+ * 全ノートのID→clusterIdマッピングを取得（1クエリ）
+ */
+export const findAllNoteClusterIds = async (): Promise<Map<string, number | null>> => {
+  const result = await db
+    .select({ id: notes.id, clusterId: notes.clusterId })
+    .from(notes)
+    .where(isNull(notes.deletedAt));
+  return new Map(result.map((r) => [r.id, r.clusterId]));
+};

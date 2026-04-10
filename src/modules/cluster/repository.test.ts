@@ -42,6 +42,13 @@ vi.mock("../../shared/db/client", () => {
       run: mockRun,
       delete: mockDelete,
       update: mockUpdate,
+      transaction: vi.fn().mockImplementation(async (fn: (tx: unknown) => Promise<void>) => {
+        const tx = {
+          run: mockRun,
+          update: mockUpdate,
+        };
+        await fn(tx);
+      }),
     },
   };
 });
