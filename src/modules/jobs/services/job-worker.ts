@@ -237,14 +237,14 @@ const rebuildRelationsForNote = async (
 export const handleCleanupDeletedNotesJob = async (payload: CleanupDeletedNotesPayload) => {
   const thresholdSeconds = payload.thresholdSeconds ?? 3600; // デフォルト: 1時間
 
-  logger.info(
+  logger.debug(
     { thresholdSeconds },
     "[JobWorker] Starting cleanup of deleted notes"
   );
 
   const deletedCount = await purgeExpiredDeletedNotes(thresholdSeconds);
 
-  logger.info(
+  logger.debug(
     { deletedCount, thresholdSeconds },
     "[JobWorker] Cleanup completed"
   );

@@ -11,7 +11,7 @@ export const requestLogger: MiddlewareHandler = async (c, next) => {
   await next();
   const duration = Date.now() - start;
 
-  logger.info(
+  logger.debug(
     {
       method: c.req.method,
       path: c.req.path,

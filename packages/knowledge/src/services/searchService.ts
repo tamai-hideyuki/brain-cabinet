@@ -9,9 +9,7 @@ import { db } from "../db/client";
 import { knowledgeNotes, knowledgeEmbeddings } from "../db/schema";
 import { eq, isNull, sql, desc, and, inArray } from "drizzle-orm";
 import type { KnowledgeNote } from "../db/schema";
-import pino from "pino";
-
-const log = pino({ name: "knowledge-search" });
+import { log } from "../logger";
 
 // 検索結果型
 export type SearchResult = {
@@ -39,7 +37,7 @@ export const setupFTS = async (): Promise<void> => {
         tags
       )
     `);
-    log.info("FTS5 setup completed");
+    log.debug("FTS5 setup completed");
   } catch (err) {
     log.error({ err }, "Failed to setup FTS5");
     throw err;
@@ -69,7 +67,7 @@ export const rebuildFTSIndex = async (): Promise<number> => {
     `);
   }
 
-  log.info({ count: notes.length }, "FTS index rebuilt");
+  log.debug({ count: notes.length }, "FTS index rebuilt");
   return notes.length;
 };
 
@@ -315,9 +313,9 @@ const getEmbedder = async (): Promise<FeatureExtractionPipeline> => {
 
   isModelLoading = true;
   try {
-    log.info("Loading MiniLM model...");
+    log.debug("Loading MiniLM model...");
     embedder = await pipeline("feature-extraction", MODEL_NAME);
-    log.info("MiniLM model loaded");
+    log.debug("MiniLM model loaded");
     return embedder;
   } finally {
     isModelLoading = false;
@@ -545,6 +543,6 @@ export const generateAllEmbeddings = async (): Promise<{
     }
   }
 
-  log.info({ success, failed }, "Embedding generation completed");
+  log.debug({ success, failed }, "Embedding generation completed");
   return { success, failed };
 };
