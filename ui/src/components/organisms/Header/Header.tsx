@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { UserButton } from '@clerk/clerk-react'
 import { PTMIndicator } from '../../molecules/PTMIndicator'
 import { ViewModeToggle } from '../../molecules/ViewModeToggle'
 import { useTheme } from '../../../hooks/useTheme'
 import { usePTM } from '../../../hooks/usePTM'
+import { useCondition, CONDITION_OPTIONS } from '../../../hooks/useCondition'
 import './Header.css'
 
 // 開発時と本番時でKnowledge UIのURLを切り替え
@@ -14,7 +15,10 @@ const knowledgeUrl = import.meta.env.DEV
 export const Header = () => {
   const { theme, toggleTheme } = useTheme()
   const { ptm, loading: ptmLoading } = usePTM()
+  const { todayLogs, recording, sensorConnected, checkingSensor, checkSensor, record } = useCondition()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isConditionOpen, setIsConditionOpen] = useState(false)
+  const conditionRef = useRef<HTMLDivElement>(null)
 
   // メニュー開閉時にbodyのスクロールを制御
   useEffect(() => {
@@ -27,6 +31,19 @@ export const Header = () => {
       document.body.style.overflow = ''
     }
   }, [isMenuOpen])
+
+  // 体調パネル外クリックで閉じる
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (conditionRef.current && !conditionRef.current.contains(e.target as Node)) {
+        setIsConditionOpen(false)
+      }
+    }
+    if (isConditionOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isConditionOpen])
 
   // 画面幅が変わったらメニューを閉じる
   useEffect(() => {
@@ -41,6 +58,27 @@ export const Header = () => {
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen)
   const closeMenu = () => setIsMenuOpen(false)
+
+  const toggleConditionPanel = () => {
+    const next = !isConditionOpen
+    setIsConditionOpen(next)
+    if (next) checkSensor()
+  }
+
+  const handleConditionClick = async (label: string) => {
+    await record(label)
+    setIsConditionOpen(false)
+  }
+
+  const formatTime = (unix: number) => {
+    const d = new Date(unix * 1000)
+    return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
+  }
+
+  const lastCondition = todayLogs.length > 0 ? todayLogs[0] : null
+  const lastOption = lastCondition
+    ? CONDITION_OPTIONS.find(o => o.label === lastCondition.label)
+    : null
 
   const navLinks = [
     { href: '/ui/', label: 'ホーム' },
@@ -87,6 +125,80 @@ export const Header = () => {
         </nav>
 
         <div className="header__actions">
+          {/* 体調セクション */}
+          <div className="header__condition" ref={conditionRef}>
+          <button
+            className="header__condition-trigger"
+            onClick={toggleConditionPanel}
+            title="体調を記録"
+          >
+            <span
+              className="header__condition-trigger-dot"
+              style={{ background: lastOption?.color ?? 'var(--color-text-subtle)' }}
+            />
+            <span className="header__condition-label-text">
+              {lastCondition ? lastCondition.label : '体調'}
+            </span>
+          </button>
+
+          {isConditionOpen && (
+            <div className="header__condition-panel">
+              <div className="header__condition-panel-header">
+                <div className="header__condition-panel-title">今の体調は？</div>
+                <span
+                  className={`header__condition-sensor ${sensorConnected === false ? 'header__condition-sensor--offline' : ''}`}
+                  title={sensorConnected === false ? 'Pico W 未接続' : 'Pico W 接続中'}
+                >
+                  {checkingSensor ? '確認中...' : sensorConnected === false ? '未接続' : '接続中'}
+                </span>
+              </div>
+              {sensorConnected === false && (
+                <div className="header__condition-env-warn">
+                  Pico W との接続を確認してください
+                </div>
+              )}
+              <div className="header__condition-buttons">
+                {CONDITION_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.label}
+                    className="header__condition-btn"
+                    style={{ '--condition-color': opt.color } as React.CSSProperties}
+                    onClick={() => handleConditionClick(opt.label)}
+                    disabled={recording || checkingSensor || sensorConnected !== true}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+
+              {todayLogs.length > 0 && (
+                <div className="header__condition-timeline">
+                  <div className="header__condition-timeline-title">今日のタイムライン</div>
+                  {todayLogs.map((log) => {
+                    const opt = CONDITION_OPTIONS.find(o => o.label === log.label)
+                    return (
+                      <div key={log.id} className="header__condition-timeline-item">
+                        <span className="header__condition-timeline-time">{formatTime(log.recordedAt)}</span>
+                        <span
+                          className="header__condition-timeline-dot"
+                          style={{ background: opt?.color ?? '#999' }}
+                        />
+                        <span className="header__condition-timeline-label">{log.label}</span>
+                        <span className={`header__condition-timeline-env ${log.temperature == null ? 'header__condition-timeline-env--offline' : ''}`}>
+                          {log.temperature != null
+                            ? `${log.temperature.toFixed(1)}℃ ${log.humidity?.toFixed(0)}% ${log.pressure?.toFixed(0)}hPa`
+                            : '--'
+                          }
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+          </div>
+
           <ViewModeToggle compact />
           <PTMIndicator ptm={ptm} loading={ptmLoading} />
           <a
