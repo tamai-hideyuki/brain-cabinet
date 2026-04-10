@@ -49,6 +49,7 @@ export {
   getEmbedding,
   deleteEmbedding,
   getAllEmbeddings,
+  getAllEmbeddingNoteIds,
   countEmbeddings,
   createEmbeddingTable,
   checkEmbeddingTableExists,

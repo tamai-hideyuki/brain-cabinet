@@ -50,6 +50,7 @@ export {
   findDeletedNotes,
   updateNotesCategoryInDB,
   purgeExpiredDeletedNotes,
+  findAllNoteClusterIds,
 } from "./repository";
 
 export {

@@ -1,5 +1,5 @@
 import { kmeans } from "ml-kmeans";
-import { getAllEmbeddings, getEmbedding } from "../../search/embeddingRepository";
+import { getAllEmbeddings, getEmbedding, getAllEmbeddingNoteIds } from "../../search/embeddingRepository";
 import {
   deleteAllClusters,
   saveClusters,
@@ -27,6 +27,8 @@ const MIN_NOTES_FOR_CLUSTERING = 3;
  */
 const ensureAllEmbeddings = async (): Promise<{ generated: number; skipped: number; failed: number }> => {
   const allNotes = await findAllNotes();
+  // Embedding済みノートIDを1クエリで取得
+  const existingIds = await getAllEmbeddingNoteIds();
   let generated = 0;
   let skipped = 0;
   let failed = 0;
@@ -34,8 +36,7 @@ const ensureAllEmbeddings = async (): Promise<{ generated: number; skipped: numb
   logger.debug({ totalNotes: allNotes.length }, "[ClusterWorker] Checking embeddings for all notes");
 
   for (const note of allNotes) {
-    const existing = await getEmbedding(note.id);
-    if (existing) {
+    if (existingIds.has(note.id)) {
       skipped++;
       continue;
     }

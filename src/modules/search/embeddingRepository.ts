@@ -53,19 +53,32 @@ export const deleteEmbedding = async (noteId: string) => {
 };
 
 /**
- * 全Embeddingを取得（類似度検索用）
+ * 全Embeddingを取得（類似度検索用、削除済みノートを除外）
  */
 export const getAllEmbeddings = async (): Promise<
   Array<{ noteId: string; embedding: number[] }>
 > => {
   const result = await db.all<{ note_id: string; embedding: Buffer }>(sql`
-    SELECT note_id, embedding FROM note_embeddings
+    SELECT ne.note_id, ne.embedding
+    FROM note_embeddings ne
+    JOIN notes n ON ne.note_id = n.id
+    WHERE n.deleted_at IS NULL
   `);
 
   return result.map((row) => ({
     noteId: row.note_id,
     embedding: bufferToFloat32Array(row.embedding),
   }));
+};
+
+/**
+ * Embedding済みのノートIDセットを取得（1クエリ）
+ */
+export const getAllEmbeddingNoteIds = async (): Promise<Set<string>> => {
+  const result = await db.all<{ note_id: string }>(sql`
+    SELECT note_id FROM note_embeddings
+  `);
+  return new Set(result.map((r) => r.note_id));
 };
 
 /**

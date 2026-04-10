@@ -11,6 +11,7 @@ import {
   getEmbedding,
   deleteEmbedding,
   getAllEmbeddings,
+  getAllEmbeddingNoteIds,
   hasEmbedding,
   createEmbeddingTable,
   checkEmbeddingTableExists,
@@ -184,6 +185,33 @@ describe("embeddingRepo", () => {
       const result = await getAllEmbeddings();
 
       expect(result).toEqual([]);
+    });
+  });
+
+  describe("getAllEmbeddingNoteIds", () => {
+    it("Embedding済みノートIDのSetを返す", async () => {
+      vi.mocked(db.all).mockResolvedValue([
+        { note_id: "note-1" },
+        { note_id: "note-2" },
+        { note_id: "note-3" },
+      ]);
+
+      const result = await getAllEmbeddingNoteIds();
+
+      expect(result).toBeInstanceOf(Set);
+      expect(result.size).toBe(3);
+      expect(result.has("note-1")).toBe(true);
+      expect(result.has("note-2")).toBe(true);
+      expect(result.has("non-existent")).toBe(false);
+    });
+
+    it("Embeddingがない場合は空Setを返す", async () => {
+      vi.mocked(db.all).mockResolvedValue([]);
+
+      const result = await getAllEmbeddingNoteIds();
+
+      expect(result).toBeInstanceOf(Set);
+      expect(result.size).toBe(0);
     });
   });
 

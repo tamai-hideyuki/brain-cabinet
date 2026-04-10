@@ -1,4 +1,4 @@
-import { findNoteById, purgeExpiredDeletedNotes, insertHistory, deleteRelationsBySourceNote, createRelations } from "../../note";
+import { findNoteById, purgeExpiredDeletedNotes, insertHistory, deleteRelationsBySourceNote, createRelations, findAllNoteClusterIds } from "../../note";
 import { getAllEmbeddings, saveEmbedding, generateEmbedding, cosineSimilarity, semanticChangeScore } from "../../search";
 import { computeDiff } from "../../../shared/utils/diff";
 import { logger } from "../../../shared/utils/logger";
@@ -154,14 +154,8 @@ const rebuildRelationsForNote = async (
   // 他の全ノートのEmbeddingを取得
   const allEmbeddings = await getAllEmbeddings();
 
-  // 全ノートのcluster_idを取得（バッチ処理のため）
-  const noteClusterMap = new Map<string, number | null>();
-  for (const { noteId: otherId } of allEmbeddings) {
-    if (otherId !== noteId) {
-      const otherNote = await findNoteById(otherId);
-      noteClusterMap.set(otherId, otherNote?.clusterId ?? null);
-    }
-  }
+  // 全ノートのcluster_idを1クエリで取得
+  const noteClusterMap = await findAllNoteClusterIds();
 
   // 類似度を計算してフィルタ
   const candidates: Array<{

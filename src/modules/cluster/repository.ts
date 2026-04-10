@@ -31,12 +31,25 @@ export const saveCluster = async (data: ClusterInput) => {
 };
 
 /**
- * 複数クラスタを一括保存
+ * 複数クラスタを一括保存（トランザクション内でバッチ処理）
  */
 export const saveClusters = async (clusterList: ClusterInput[]) => {
-  for (const cluster of clusterList) {
-    await saveCluster(cluster);
-  }
+  if (clusterList.length === 0) return;
+  await db.transaction(async (tx) => {
+    const now = Math.floor(Date.now() / 1000);
+    for (const data of clusterList) {
+      const centroidBase64 = arrayToBase64(data.centroid);
+      await tx.run(sql`
+        INSERT INTO clusters (id, centroid, size, sample_note_id, created_at, updated_at)
+        VALUES (${data.id}, ${centroidBase64}, ${data.size}, ${data.sampleNoteId}, ${now}, ${now})
+        ON CONFLICT(id) DO UPDATE SET
+          centroid = ${centroidBase64},
+          size = ${data.size},
+          sample_note_id = ${data.sampleNoteId},
+          updated_at = ${now}
+      `);
+    }
+  });
 };
 
 /**
@@ -97,14 +110,20 @@ export const updateNoteClusterId = async (noteId: string, clusterId: number) => 
 };
 
 /**
- * 全ノートのcluster_idを一括更新（バッチ処理）
+ * 全ノートのcluster_idを一括更新（トランザクション内でバッチ処理）
  */
 export const updateAllNoteClusterIds = async (
   assignments: Array<{ noteId: string; clusterId: number }>
 ) => {
-  for (const { noteId, clusterId } of assignments) {
-    await updateNoteClusterId(noteId, clusterId);
-  }
+  if (assignments.length === 0) return;
+  await db.transaction(async (tx) => {
+    for (const { noteId, clusterId } of assignments) {
+      await tx
+        .update(notes)
+        .set({ clusterId })
+        .where(eq(notes.id, noteId));
+    }
+  });
 };
 
 /**

@@ -7,6 +7,7 @@ import {
   findAllNotes,
   findNoteById,
   findNotesByIds,
+  findAllNoteClusterIds,
   updateNotesCategoryInDB,
 } from "./repository";
 
@@ -167,6 +168,39 @@ describe("notesRepo", () => {
 
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe("note-1");
+    });
+  });
+
+  describe("findAllNoteClusterIds", () => {
+    it("全ノートのID→clusterIdマッピングを返す", async () => {
+      const mockNotes = [
+        { id: "note-1", clusterId: 0 },
+        { id: "note-2", clusterId: 3 },
+        { id: "note-3", clusterId: null },
+      ];
+
+      const mockWhere = vi.fn().mockResolvedValue(mockNotes);
+      const mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
+      vi.mocked(db.select).mockReturnValue({ from: mockFrom } as any);
+
+      const result = await findAllNoteClusterIds();
+
+      expect(result).toBeInstanceOf(Map);
+      expect(result.get("note-1")).toBe(0);
+      expect(result.get("note-2")).toBe(3);
+      expect(result.get("note-3")).toBeNull();
+      expect(result.size).toBe(3);
+    });
+
+    it("ノートがない場合は空Mapを返す", async () => {
+      const mockWhere = vi.fn().mockResolvedValue([]);
+      const mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
+      vi.mocked(db.select).mockReturnValue({ from: mockFrom } as any);
+
+      const result = await findAllNoteClusterIds();
+
+      expect(result).toBeInstanceOf(Map);
+      expect(result.size).toBe(0);
     });
   });
 
