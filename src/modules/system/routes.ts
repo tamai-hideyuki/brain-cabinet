@@ -100,7 +100,7 @@ async function getTableSize(tableName: string, blobColumns?: string[]): Promise<
 systemRoute.get("/storage", async (c) => {
   try {
     // DBファイルの全体サイズを取得
-    const dbPath = path.join(__dirname, "../../../data.db");
+    const dbPath = path.join(process.cwd(), "data.db");
     let totalSize = 0;
 
     try {
