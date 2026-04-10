@@ -31,7 +31,7 @@ const ensureAllEmbeddings = async (): Promise<{ generated: number; skipped: numb
   let skipped = 0;
   let failed = 0;
 
-  logger.info({ totalNotes: allNotes.length }, "[ClusterWorker] Checking embeddings for all notes");
+  logger.debug({ totalNotes: allNotes.length }, "[ClusterWorker] Checking embeddings for all notes");
 
   for (const note of allNotes) {
     const existing = await getEmbedding(note.id);
@@ -50,7 +50,7 @@ const ensureAllEmbeddings = async (): Promise<{ generated: number; skipped: numb
     }
   }
 
-  logger.info(
+  logger.debug(
     { generated, skipped, failed, total: allNotes.length },
     "[ClusterWorker] Embedding generation completed"
   );
@@ -71,7 +71,7 @@ export const handleClusterRebuildJob = async (payload: ClusterRebuildPayload) =>
   const k = payload.k ?? DEFAULT_K;
   const regenerateEmbeddings = payload.regenerateEmbeddings ?? true; // デフォルトで有効
 
-  logger.info({ k, regenerateEmbeddings }, "[ClusterWorker] Starting cluster rebuild");
+  logger.debug({ k, regenerateEmbeddings }, "[ClusterWorker] Starting cluster rebuild");
 
   // 1. Embedding 未生成ノートを自動生成
   if (regenerateEmbeddings) {
@@ -92,7 +92,7 @@ export const handleClusterRebuildJob = async (payload: ClusterRebuildPayload) =>
   // クラスタ数がノート数より大きい場合は調整
   const actualK = Math.min(k, allEmbeddings.length);
 
-  logger.info(
+  logger.debug(
     { noteCount: allEmbeddings.length, k: actualK },
     "[ClusterWorker] Running K-Means"
   );
@@ -151,7 +151,7 @@ export const handleClusterRebuildJob = async (payload: ClusterRebuildPayload) =>
   }
 
   // 5. DB 更新
-  logger.info("[ClusterWorker] Updating database");
+  logger.debug("[ClusterWorker] Updating database");
 
   // 既存クラスタを削除
   await deleteAllClusters();
@@ -165,7 +165,7 @@ export const handleClusterRebuildJob = async (payload: ClusterRebuildPayload) =>
   // ノートの cluster_id を更新
   await updateAllNoteClusterIds(assignments);
 
-  logger.info(
+  logger.debug(
     {
       k: actualK,
       noteCount: allEmbeddings.length,
@@ -182,7 +182,7 @@ export const handleClusterRebuildJob = async (payload: ClusterRebuildPayload) =>
       payload.forceSnapshot ?? false
     );
     if (snapshot) {
-      logger.info(
+      logger.debug(
         {
           snapshotId: snapshot.id,
           trigger: snapshot.trigger,
@@ -207,7 +207,7 @@ export const handleClusterRebuildJob = async (payload: ClusterRebuildPayload) =>
           clusterSizes: clusterInfos.map((c) => c.size),
         },
       });
-      logger.info(
+      logger.debug(
         { workflowId: latestWorkflow.id },
         "[ClusterWorker] Updated workflow clusters step to completed"
       );

@@ -72,7 +72,7 @@ export async function enqueueJob(type: JobType, payload: JobPayload = {}): Promi
   };
 
   queue.push(job);
-  logger.info({ type, jobId }, "[JobQueue] Job enqueued");
+  logger.debug({ type, jobId }, "[JobQueue] Job enqueued");
 
   // 非同期でキュー処理開始
   processQueue();
@@ -93,13 +93,13 @@ const processQueue = async () => {
     try {
       // ジョブ開始をDBに記録
       await startJob(job.id);
-      logger.info({ type: job.type, jobId: job.id }, "[JobQueue] Processing job");
+      logger.debug({ type: job.type, jobId: job.id }, "[JobQueue] Processing job");
 
       await handleJob(job);
 
       // ジョブ成功をDBに記録
       await completeJob(job.id, { completedAt: Date.now() });
-      logger.info({ type: job.type, jobId: job.id }, "[JobQueue] Job completed");
+      logger.debug({ type: job.type, jobId: job.id }, "[JobQueue] Job completed");
     } catch (err) {
       // ジョブ失敗をDBに記録
       const errorMessage = err instanceof Error ? err.message : String(err);

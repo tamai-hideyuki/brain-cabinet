@@ -1,12 +1,11 @@
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { logger } from "hono/logger";
 import { db } from "./db/client";
 import { knowledgeNotes, categories, tags, knowledgeBookmarkNodes } from "./db/schema";
 import { eq, desc, isNull, isNotNull, lt, and, count, asc } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
-import pino from "pino";
+import { log } from "./logger";
 import {
   setupFTS,
   rebuildFTSIndex,
@@ -20,12 +19,10 @@ import {
   generateAllEmbeddings,
 } from "./services/searchService";
 
-const log = pino({ name: "knowledge-api" });
 const app = new Hono();
 
 // Middleware
 app.use("*", cors());
-app.use("*", logger());
 
 // Health check
 app.get("/health", (c) => c.json({ status: "ok", service: "knowledge" }));
@@ -191,7 +188,7 @@ app.post("/api/notes", async (c) => {
   };
 
   await db.insert(knowledgeNotes).values(newNote);
-  log.info({ noteId: id }, "Knowledge note created");
+  log.debug({ noteId: id }, "Knowledge note created");
 
   // 非同期でEmbedding生成とFTS更新（レスポンスはブロックしない）
   Promise.all([
@@ -224,7 +221,7 @@ app.put("/api/notes/:id", async (c) => {
     })
     .where(eq(knowledgeNotes.id, id));
 
-  log.info({ noteId: id }, "Knowledge note updated");
+  log.debug({ noteId: id }, "Knowledge note updated");
 
   // 非同期でEmbedding更新とFTS更新
   Promise.all([
@@ -261,7 +258,7 @@ app.delete("/api/notes/:id", async (c) => {
     log.error({ err, noteId: id }, "Failed to remove from FTS");
   });
 
-  log.info({ noteId: id }, "Knowledge note soft deleted");
+  log.debug({ noteId: id }, "Knowledge note soft deleted");
   return c.json({ message: "Note deleted (can be restored within 1 hour)", note });
 });
 
@@ -294,7 +291,7 @@ app.post("/api/notes/:id/restore", async (c) => {
     log.error({ err, noteId: id }, "Failed to restore FTS");
   });
 
-  log.info({ noteId: id }, "Knowledge note restored");
+  log.debug({ noteId: id }, "Knowledge note restored");
   return c.json({ message: "Note restored", note: { ...note, deletedAt: null } });
 });
 
@@ -318,7 +315,7 @@ app.delete("/api/notes/:id/permanent", async (c) => {
     log.error({ err, noteId: id }, "Failed to delete embedding");
   });
 
-  log.info({ noteId: id }, "Knowledge note permanently deleted");
+  log.debug({ noteId: id }, "Knowledge note permanently deleted");
   return c.json({ message: "Note permanently deleted" });
 });
 
@@ -498,7 +495,7 @@ app.post("/api/bookmarks", async (c) => {
     updatedAt: now,
   });
 
-  log.info({ bookmarkId: id, type: body.type }, "Bookmark created");
+  log.debug({ bookmarkId: id, type: body.type }, "Bookmark created");
   return c.json({ id, position }, 201);
 });
 
@@ -538,7 +535,7 @@ const deleteBookmarkRecursive = async (id: string) => {
 app.delete("/api/bookmarks/:id", async (c) => {
   const id = c.req.param("id");
   await deleteBookmarkRecursive(id);
-  log.info({ bookmarkId: id }, "Bookmark deleted");
+  log.debug({ bookmarkId: id }, "Bookmark deleted");
   return c.json({ success: true });
 });
 
@@ -626,7 +623,7 @@ const purgeExpiredDeletedNotes = async () => {
   }
 
   if (deletedCount > 0) {
-    log.info({ deletedCount }, "Purged expired deleted notes");
+    log.debug({ deletedCount }, "Purged expired deleted notes");
   }
 
   return deletedCount;
@@ -652,10 +649,10 @@ const startCleanupJob = () => {
 const port = parseInt(process.env.KNOWLEDGE_PORT || "3002");
 
 serve({ fetch: app.fetch, port }, async () => {
-  log.info(`Knowledge API server running on http://localhost:${port}`);
-
   // FTSセットアップ
   await setupFTS();
 
   startCleanupJob();
+
+  console.log(`  Knowledge → http://localhost:${port}`);
 });

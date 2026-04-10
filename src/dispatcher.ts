@@ -95,7 +95,7 @@ export async function dispatch(cmd: BrainCommand): Promise<CommandResponse> {
     const result = await handler(payload);
 
     const duration = Date.now() - startTime;
-    logger.info({ action: cmd.action, duration }, "Command executed");
+    logger.debug({ action: cmd.action, duration }, "Command executed");
 
     // パフォーマンスメトリクス（v5.14）
     const _bcMeta: BcMeta = {
