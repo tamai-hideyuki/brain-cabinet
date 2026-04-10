@@ -19,6 +19,7 @@ import { secretBoxRoute } from "../modules/secret-box";
 import { systemRoute } from "../modules/system";
 import { thinkingReportRoute } from "../modules/thinking-report";
 import { pomodoroRoute } from "../modules/pomodoro";
+import { conditionRoute } from "../modules/condition";
 
 export const apiRoutes = new Hono();
 
@@ -39,3 +40,4 @@ apiRoutes.route("/secret-box", secretBoxRoute);
 apiRoutes.route("/system", systemRoute);
 apiRoutes.route("/thinking-report", thinkingReportRoute);
 apiRoutes.route("/pomodoro", pomodoroRoute);
+apiRoutes.route("/condition", conditionRoute);

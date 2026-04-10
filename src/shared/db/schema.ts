@@ -868,3 +868,29 @@ export const coachingMessages = sqliteTable("coaching_messages", {
   extractedInsights: text("extracted_insights"),                      // このターンで抽出したインサイト（JSON）
   createdAt: integer("created_at").notNull().default(sql`(strftime('%s','now'))`),
 });
+
+// ============================================================
+// 体調記録機能（環境センサー連携）
+// ============================================================
+
+// 体調ラベル定義
+export const CONDITION_LABELS = [
+  "絶好調",
+  "好調",
+  "普通",
+  "疲れてきた",
+  "しんどい",
+  "眠い",
+  "気分悪い",
+] as const;
+export type ConditionLabel = (typeof CONDITION_LABELS)[number];
+
+// 体調記録テーブル
+export const conditionLogs = sqliteTable("condition_logs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  label: text("label").notNull(),                                      // ConditionLabel
+  temperature: real("temperature"),                                     // 気温 (℃)
+  humidity: real("humidity"),                                           // 湿度 (%)
+  pressure: real("pressure"),                                           // 気圧 (hPa)
+  recordedAt: integer("recorded_at").notNull().default(sql`(strftime('%s','now'))`),
+});
