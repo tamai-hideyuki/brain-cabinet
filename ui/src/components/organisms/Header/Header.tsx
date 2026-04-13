@@ -15,7 +15,11 @@ const knowledgeUrl = import.meta.env.DEV
 export const Header = () => {
   const { theme, toggleTheme } = useTheme()
   const { ptm, loading: ptmLoading } = usePTM()
-  const { todayLogs, recording, sensorConnected, checkingSensor, checkSensor, record } = useCondition()
+  const {
+    logs, selectedDate, isToday, loading: conditionLoading, recording,
+    sensorConnected, checkingSensor, checkSensor, record,
+    goToPrevDay, goToNextDay, goToToday,
+  } = useCondition()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isConditionOpen, setIsConditionOpen] = useState(false)
   const conditionRef = useRef<HTMLDivElement>(null)
@@ -75,7 +79,12 @@ export const Header = () => {
     return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
   }
 
-  const lastCondition = todayLogs.length > 0 ? todayLogs[0] : null
+  const formatDateLabel = (dateStr: string) => {
+    const d = new Date(dateStr + 'T00:00:00')
+    return `${d.getMonth() + 1}/${d.getDate()}`
+  }
+
+  const lastCondition = logs.length > 0 && isToday ? logs[0] : null
   const lastOption = lastCondition
     ? CONDITION_OPTIONS.find(o => o.label === lastCondition.label)
     : null
@@ -143,38 +152,67 @@ export const Header = () => {
 
           {isConditionOpen && (
             <div className="header__condition-panel">
-              <div className="header__condition-panel-header">
-                <div className="header__condition-panel-title">今の体調は？</div>
-                <span
-                  className={`header__condition-sensor ${sensorConnected === false ? 'header__condition-sensor--offline' : ''}`}
-                  title={sensorConnected === false ? 'Pico W 未接続' : 'Pico W 接続中'}
-                >
-                  {checkingSensor ? '確認中...' : sensorConnected === false ? '未接続' : '接続中'}
-                </span>
-              </div>
-              {sensorConnected === false && (
-                <div className="header__condition-env-warn">
-                  Pico W との接続を確認してください
-                </div>
+              {isToday && (
+                <>
+                  <div className="header__condition-panel-header">
+                    <div className="header__condition-panel-title">今の体調は？</div>
+                    <span
+                      className={`header__condition-sensor ${sensorConnected === false ? 'header__condition-sensor--offline' : ''}`}
+                      title={sensorConnected === false ? 'Pico W 未接続' : 'Pico W 接続中'}
+                    >
+                      {checkingSensor ? '確認中...' : sensorConnected === false ? '未接続' : '接続中'}
+                    </span>
+                  </div>
+                  {sensorConnected === false && (
+                    <div className="header__condition-env-warn">
+                      Pico W との接続を確認してください
+                    </div>
+                  )}
+                  <div className="header__condition-buttons">
+                    {CONDITION_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.label}
+                        className="header__condition-btn"
+                        style={{ '--condition-color': opt.color } as React.CSSProperties}
+                        onClick={() => handleConditionClick(opt.label)}
+                        disabled={recording || checkingSensor || sensorConnected !== true}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
               )}
-              <div className="header__condition-buttons">
-                {CONDITION_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.label}
-                    className="header__condition-btn"
-                    style={{ '--condition-color': opt.color } as React.CSSProperties}
-                    onClick={() => handleConditionClick(opt.label)}
-                    disabled={recording || checkingSensor || sensorConnected !== true}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
 
-              {todayLogs.length > 0 && (
-                <div className="header__condition-timeline">
-                  <div className="header__condition-timeline-title">今日のタイムライン</div>
-                  {todayLogs.map((log) => {
+              <div className="header__condition-timeline">
+                <div className="header__condition-date-nav">
+                  <button
+                    className="header__condition-date-btn"
+                    onClick={goToPrevDay}
+                    aria-label="前日"
+                  >
+                    &lt;
+                  </button>
+                  <button
+                    className={`header__condition-date-current ${isToday ? '' : 'header__condition-date-current--past'}`}
+                    onClick={isToday ? undefined : goToToday}
+                    disabled={isToday}
+                  >
+                    {isToday ? '今日' : formatDateLabel(selectedDate)}
+                  </button>
+                  <button
+                    className="header__condition-date-btn"
+                    onClick={goToNextDay}
+                    disabled={isToday}
+                    aria-label="翌日"
+                  >
+                    &gt;
+                  </button>
+                </div>
+                {conditionLoading ? (
+                  <div className="header__condition-timeline-empty">読み込み中...</div>
+                ) : logs.length > 0 ? (
+                  logs.map((log) => {
                     const opt = CONDITION_OPTIONS.find(o => o.label === log.label)
                     return (
                       <div key={log.id} className="header__condition-timeline-item">
@@ -192,9 +230,11 @@ export const Header = () => {
                         </span>
                       </div>
                     )
-                  })}
-                </div>
-              )}
+                  })
+                ) : (
+                  <div className="header__condition-timeline-empty">記録なし</div>
+                )}
+              </div>
             </div>
           )}
           </div>

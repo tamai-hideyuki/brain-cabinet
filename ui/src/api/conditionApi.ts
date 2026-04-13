@@ -63,6 +63,17 @@ export const getToday = async (): Promise<ConditionLog[]> => {
 };
 
 /**
+ * 指定日の体調ログを取得
+ */
+export const getByDate = async (date: string): Promise<ConditionLog[]> => {
+  const res = await fetchWithAuth(`${API_BASE}/date/${date}`);
+  if (!res.ok) {
+    throw new Error("Failed to fetch condition logs by date");
+  }
+  return res.json();
+};
+
+/**
  * 直近の体調ログを取得
  */
 export const getRecent = async (limit: number = 50): Promise<ConditionLog[]> => {

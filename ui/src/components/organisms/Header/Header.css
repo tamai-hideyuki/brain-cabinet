@@ -381,11 +381,68 @@
   padding-top: 0.75rem;
 }
 
-.header__condition-timeline-title {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--color-text-subtle);
+.header__condition-date-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   margin-bottom: 0.5rem;
+}
+
+.header__condition-date-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-subtle);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.header__condition-date-btn:hover:not(:disabled) {
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+}
+
+.header__condition-date-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.header__condition-date-current {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text);
+  min-width: 3rem;
+  text-align: center;
+  padding: 0.25rem 0.5rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  cursor: default;
+}
+
+.header__condition-date-current--past {
+  color: var(--color-primary);
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.header__condition-date-current--past:hover {
+  background: var(--color-bg-muted);
+}
+
+.header__condition-timeline-empty {
+  font-size: 0.75rem;
+  color: var(--color-text-subtle);
+  text-align: center;
+  padding: 0.75rem 0;
 }
 
 .header__condition-timeline-item {
