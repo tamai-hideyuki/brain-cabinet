@@ -301,12 +301,14 @@ describe("clusterDispatcher", () => {
       expect(enqueueJob).toHaveBeenCalledWith("CLUSTER_REBUILD", {
         k: 8,
         regenerateEmbeddings: false,
+        forceRegenerate: false,
       });
       expect(result).toStrictEqual({
         message: "Cluster rebuild job enqueued",
         params: {
           k: 8,
           regenerateEmbeddings: false,
+          forceRegenerate: false,
         },
       });
     });
@@ -319,6 +321,7 @@ describe("clusterDispatcher", () => {
       expect(enqueueJob).toHaveBeenCalledWith("CLUSTER_REBUILD", {
         k: 15,
         regenerateEmbeddings: false,
+        forceRegenerate: false,
       });
       expect(result.params.k).toBe(15);
     });
@@ -331,6 +334,7 @@ describe("clusterDispatcher", () => {
       expect(enqueueJob).toHaveBeenCalledWith("CLUSTER_REBUILD", {
         k: 2,
         regenerateEmbeddings: false,
+        forceRegenerate: false,
       });
 
       vi.clearAllMocks();
@@ -340,6 +344,7 @@ describe("clusterDispatcher", () => {
       expect(enqueueJob).toHaveBeenCalledWith("CLUSTER_REBUILD", {
         k: 50,
         regenerateEmbeddings: false,
+        forceRegenerate: false,
       });
     });
 
@@ -351,8 +356,22 @@ describe("clusterDispatcher", () => {
       expect(enqueueJob).toHaveBeenCalledWith("CLUSTER_REBUILD", {
         k: 8,
         regenerateEmbeddings: true,
+        forceRegenerate: false,
       });
       expect(result.params.regenerateEmbeddings).toBe(true);
+    });
+
+    it("forceRegenerate=trueで全Embedding再生成ジョブをエンキューする", async () => {
+      vi.mocked(enqueueJob).mockResolvedValue("job-123");
+
+      const result = await clusterDispatcher.rebuild({ forceRegenerate: true });
+
+      expect(enqueueJob).toHaveBeenCalledWith("CLUSTER_REBUILD", {
+        k: 8,
+        regenerateEmbeddings: true,
+        forceRegenerate: true,
+      });
+      expect(result.params.forceRegenerate).toBe(true);
     });
   });
 });

@@ -8,6 +8,7 @@ import { serve } from "@hono/node-server";
 import { app } from "./app";
 import { logger } from "./shared/utils/logger";
 import { enqueueJob } from "./modules/jobs/services/job-queue";
+import { startEnvReceiver } from "./modules/condition/envReceiver";
 import { createRequire } from "module";
 
 const require = createRequire(import.meta.url);
@@ -22,6 +23,9 @@ serve({ fetch: app.fetch, port: 3000 }, (info) => {
     Log  → ${process.env.LOG_LEVEL || "info"}
   ─────────────────────────────`;
   console.log(banner);
+
+  // 環境センサーUDP受信を開始
+  startEnvReceiver();
 
   // サーバー起動時に削除済みノートのクリーンアップを実行
   enqueueJob("CLEANUP_DELETED_NOTES").catch((err) => {

@@ -44,15 +44,32 @@ export const systemDispatcher = {
 
   // system.embed
   async embed(payload: unknown) {
-    const p = payload as { text?: string } | undefined;
+    const p = payload as { text?: string; prefix?: "query" | "passage" } | undefined;
     if (!p?.text) {
       throw new Error("text is required");
     }
-    const embedding = await embeddingService.generateEmbedding(p.text);
+    const embedding = await embeddingService.generateEmbedding(p.text, p.prefix ?? "passage");
     return {
       text: p.text,
       embedding,
       dimensions: embedding.length,
+    };
+  },
+
+  // system.similarity
+  async similarity(payload: unknown) {
+    const p = payload as { text1?: string; text2?: string } | undefined;
+    if (!p?.text1 || !p?.text2) {
+      throw new Error("text1 and text2 are required");
+    }
+    const [emb1, emb2] = await Promise.all([
+      embeddingService.generateEmbedding(p.text1, "passage"),
+      embeddingService.generateEmbedding(p.text2, "passage"),
+    ]);
+    const similarity = embeddingService.cosineSimilarity(emb1, emb2);
+    return {
+      similarity: Math.round(similarity * 1000) / 1000,
+      semanticDiff: Math.round((1 - similarity) * 1000) / 1000,
     };
   },
 

@@ -250,6 +250,7 @@ describe("clustersRoute", () => {
       expect(mockEnqueueJob).toHaveBeenCalledWith("CLUSTER_REBUILD", {
         k: 10,
         regenerateEmbeddings: true,
+        forceRegenerate: false,
       });
     });
 

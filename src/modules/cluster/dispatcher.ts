@@ -103,13 +103,15 @@ export const clusterDispatcher = {
   },
 
   async rebuild(payload: unknown) {
-    const p = payload as { k?: number; regenerateEmbeddings?: boolean } | undefined;
+    const p = payload as { k?: number; regenerateEmbeddings?: boolean; forceRegenerate?: boolean } | undefined;
     const k = validateK(p?.k);
     const regenerateEmbeddings = p?.regenerateEmbeddings ?? false;
+    const forceRegenerate = p?.forceRegenerate ?? false;
 
     await enqueueJob("CLUSTER_REBUILD", {
       k,
-      regenerateEmbeddings,
+      regenerateEmbeddings: forceRegenerate || regenerateEmbeddings,
+      forceRegenerate,
     });
 
     return {
@@ -117,6 +119,7 @@ export const clusterDispatcher = {
       params: {
         k,
         regenerateEmbeddings,
+        forceRegenerate,
       },
     };
   },

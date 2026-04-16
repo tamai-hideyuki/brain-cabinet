@@ -25,12 +25,12 @@ embedRoute.post("/embed", async (c) => {
     throw new ValidationError("text is too long (max 10000 chars)", "text", ErrorCodes.VALIDATION_TOO_LONG);
   }
 
-  const embedding = await generateEmbedding(text);
+  const embedding = await generateEmbedding(text, "passage");
 
   return c.json({
     embedding,
     dimensions: embedding.length,
-    model: "Xenova/all-MiniLM-L6-v2",
+    model: "Xenova/multilingual-e5-small",
   });
 });
 
@@ -95,8 +95,8 @@ embedRoute.post("/similarity", async (c) => {
   }
 
   const [embedding1, embedding2] = await Promise.all([
-    generateEmbedding(text1),
-    generateEmbedding(text2),
+    generateEmbedding(text1, "passage"),
+    generateEmbedding(text2, "passage"),
   ]);
 
   const similarity = cosineSimilarity(embedding1, embedding2);
@@ -134,7 +134,7 @@ embedRoute.get("/embedding-stats", async (c) => {
   return c.json({
     totalEmbeddings: allEmbeddings.length,
     dimensions: allEmbeddings.length > 0 ? allEmbeddings[0].embedding.length : 384,
-    model: "Xenova/all-MiniLM-L6-v2",
+    model: "Xenova/multilingual-e5-small",
     isLocal: true,
   });
 });
