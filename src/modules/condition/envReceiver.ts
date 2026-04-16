@@ -62,7 +62,7 @@ export const startEnvReceiver = (): void => {
       }
       const data = parsed as EnvPayload;
       latest = { data, receivedAt: Date.now() };
-      logger.debug({ device: data.device, from: rinfo.address }, "Env data received");
+      logger.trace({ device: data.device, from: rinfo.address }, "Env data received");
     } catch {
       logger.warn({ from: rinfo.address }, "Invalid env sensor packet");
     }

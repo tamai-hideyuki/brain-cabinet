@@ -196,13 +196,15 @@ export type InfluenceSumRow = {
 };
 
 /**
- * クラスタの最新centroidを取得
+ * クラスタの最新centroidを取得（現在のスナップショットから）
  */
 export const findLatestCentroid = async (clusterId: number): Promise<CentroidRow | null> => {
   const rows = await db.all<CentroidRow>(sql`
-    SELECT centroid FROM cluster_dynamics
-    WHERE cluster_id = ${clusterId}
-    ORDER BY date DESC
+    SELECT sc.centroid
+    FROM snapshot_clusters sc
+    JOIN clustering_snapshots cs ON sc.snapshot_id = cs.id
+    WHERE cs.is_current = 1
+      AND sc.local_id = ${clusterId}
     LIMIT 1
   `);
   return rows[0] ?? null;
@@ -223,14 +225,15 @@ export const findNotesWithEmbeddingByClusterId = async (
 };
 
 /**
- * クラスタの基本情報を取得
+ * クラスタの基本情報を取得（現在のスナップショットから）
  */
 export const findClusterDynamicsInfo = async (clusterId: number): Promise<ClusterInfoRow | null> => {
   const rows = await db.all<ClusterInfoRow>(sql`
-    SELECT note_count, cohesion
-    FROM cluster_dynamics
-    WHERE cluster_id = ${clusterId}
-    ORDER BY date DESC
+    SELECT sc.size AS note_count, sc.cohesion
+    FROM snapshot_clusters sc
+    JOIN clustering_snapshots cs ON sc.snapshot_id = cs.id
+    WHERE cs.is_current = 1
+      AND sc.local_id = ${clusterId}
     LIMIT 1
   `);
   return rows[0] ?? null;
@@ -315,14 +318,17 @@ export const findClusterInDegree = async (clusterId: number): Promise<number> =>
 };
 
 /**
- * 全クラスタIDを取得
+ * 全クラスタIDを取得（現在のスナップショットから）
  */
 export const findAllClusterIds = async (): Promise<number[]> => {
-  const rows = await db.all<{ cluster_id: number }>(sql`
-    SELECT DISTINCT cluster_id FROM cluster_dynamics
-    ORDER BY cluster_id
+  const rows = await db.all<{ local_id: number }>(sql`
+    SELECT sc.local_id
+    FROM snapshot_clusters sc
+    JOIN clustering_snapshots cs ON sc.snapshot_id = cs.id
+    WHERE cs.is_current = 1
+    ORDER BY sc.local_id
   `);
-  return rows.map((r) => r.cluster_id);
+  return rows.map((r) => r.local_id);
 };
 
 // ============================================================
