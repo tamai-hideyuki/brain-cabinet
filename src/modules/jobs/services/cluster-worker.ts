@@ -1,5 +1,5 @@
 import { kmeans } from "ml-kmeans";
-import { getAllEmbeddings, getEmbedding, getAllEmbeddingNoteIds } from "../../search/embeddingRepository";
+import { getAllEmbeddings, getEmbedding, getAllEmbeddingNoteIds, deleteAllEmbeddings } from "../../search/embeddingRepository";
 import {
   deleteAllClusters,
   saveClusters,
@@ -71,11 +71,18 @@ const ensureAllEmbeddings = async (): Promise<{ generated: number; skipped: numb
 export const handleClusterRebuildJob = async (payload: ClusterRebuildPayload) => {
   const k = payload.k ?? DEFAULT_K;
   const regenerateEmbeddings = payload.regenerateEmbeddings ?? true; // デフォルトで有効
+  const forceRegenerate = payload.forceRegenerate ?? false;
 
-  logger.debug({ k, regenerateEmbeddings }, "[ClusterWorker] Starting cluster rebuild");
+  logger.debug({ k, regenerateEmbeddings, forceRegenerate }, "[ClusterWorker] Starting cluster rebuild");
 
-  // 1. Embedding 未生成ノートを自動生成
-  if (regenerateEmbeddings) {
+  // 1. Embedding 生成
+  if (forceRegenerate) {
+    // 全 Embedding を削除してから全ノート分を再生成
+    logger.info("[ClusterWorker] Force regenerating all embeddings");
+    await deleteAllEmbeddings();
+    await ensureAllEmbeddings();
+  } else if (regenerateEmbeddings) {
+    // 未生成分のみ補完
     await ensureAllEmbeddings();
   }
 

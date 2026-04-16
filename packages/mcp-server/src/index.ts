@@ -156,6 +156,17 @@ server.registerTool("get_cluster_map", {
   callBrainCabinet("cluster.map", { format }),
 );
 
+server.registerTool("rebuild_clusters", {
+  description: "クラスターを再構築する。forceRegenerate=trueで全ノートのEmbeddingを再計算してからクラスタリングする",
+  inputSchema: {
+    k: z.number().optional().describe("クラスター数（2-50、デフォルト: 8）"),
+    regenerateEmbeddings: z.boolean().default(false).describe("Embedding未生成ノートを自動生成するか"),
+    forceRegenerate: z.boolean().default(false).describe("全ノートのEmbeddingを強制的に再生成するか"),
+  },
+}, async ({ k, regenerateEmbeddings, forceRegenerate }) =>
+  callBrainCabinet("cluster.rebuild", { k, regenerateEmbeddings, forceRegenerate }),
+);
+
 // ============================================
 // アナリティクス
 // ============================================

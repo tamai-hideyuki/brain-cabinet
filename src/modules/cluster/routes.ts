@@ -243,15 +243,16 @@ clustersRoute.post("/rebuild", async (c) => {
   const body = await c.req.json().catch(() => ({}));
   const k = body.k ? parseInt(body.k, 10) : undefined;
   const regenerateEmbeddings = body.regenerateEmbeddings !== false; // デフォルト true
+  const forceRegenerate = body.forceRegenerate === true; // デフォルト false
 
   if (k !== undefined && (isNaN(k) || k < 2 || k > 50)) {
     return c.json({ error: "k must be a number between 2 and 50" }, 400);
   }
 
-  enqueueJob("CLUSTER_REBUILD", { k, regenerateEmbeddings });
+  enqueueJob("CLUSTER_REBUILD", { k, regenerateEmbeddings, forceRegenerate });
 
   logger.info(
-    { k: k ?? "default", regenerateEmbeddings },
+    { k: k ?? "default", regenerateEmbeddings, forceRegenerate },
     "[ClustersRoute] Cluster rebuild job enqueued"
   );
 
@@ -259,9 +260,12 @@ clustersRoute.post("/rebuild", async (c) => {
     message: "Cluster rebuild job enqueued",
     k: k ?? 8,
     regenerateEmbeddings,
-    note: regenerateEmbeddings
-      ? "Embedding 未生成ノートを自動生成してからクラスタリングします"
-      : "既存の Embedding のみでクラスタリングします",
+    forceRegenerate,
+    note: forceRegenerate
+      ? "全ノートの Embedding を再生成してからクラスタリングします"
+      : regenerateEmbeddings
+        ? "Embedding 未生成ノートを自動生成してからクラスタリングします"
+        : "既存の Embedding のみでクラスタリングします",
   });
 });
 

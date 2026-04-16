@@ -53,6 +53,13 @@ export const deleteEmbedding = async (noteId: string) => {
 };
 
 /**
+ * 全Embeddingを削除
+ */
+export const deleteAllEmbeddings = async () => {
+  await db.run(sql`DELETE FROM note_embeddings`);
+};
+
+/**
  * 全Embeddingを取得（類似度検索用、削除済みノートを除外）
  */
 export const getAllEmbeddings = async (): Promise<
