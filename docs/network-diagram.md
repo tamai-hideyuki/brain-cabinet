@@ -1,6 +1,6 @@
 # Brain Cabinet ネットワーク構成図
 
-**v7.1.0**
+**v7.9.0**
 
 ## システム全体構成
 
@@ -16,8 +16,10 @@ flowchart TB
             TimelinePage["TimelinePage"]
             BookmarkPage["BookmarkPage"]
             SecretBoxPage["SecretBoxPage"]
-            CoachingPage["CoachingPage"]
+            ThinkingReportPage["ThinkingReportPage"]
             LibraryPage["LibraryPage"]
+            ClusterEvolutionPage["ClusterEvolutionPage"]
+            SystemPage["SystemPage"]
         end
     end
 
@@ -36,7 +38,7 @@ flowchart TB
             ReviewRoute["/api/reviews"]
         end
 
-        subgraph Dispatchers["Dispatchers (21)"]
+        subgraph Dispatchers["Dispatchers (22)"]
             NoteDisp["note"]
             SearchDisp["search"]
             ClusterDisp["cluster"]
@@ -57,10 +59,10 @@ flowchart TB
             BookmarkDisp["bookmark"]
             LLMInferenceDisp["llmInference"]
             IsolationDisp["isolation"]
-            CoachingDisp["coaching"]
+            ConditionDisp["condition"]
         end
 
-        subgraph Services["Service Layer (27)"]
+        subgraph Services["Service Layer"]
             NotesService["notesService"]
             HistoryService["historyService"]
             SearchService["searchService"]
@@ -83,7 +85,7 @@ flowchart TB
             GPTService["gptService"]
             BookmarkService["bookmark"]
             SecretBoxService["secretBox"]
-            CoachingService["coachingService"]
+            ConditionService["condition"]
             VoiceEvalService["voiceEvaluation"]
             ThinkingReportService["thinkingReport"]
             HealthService["health"]
@@ -108,7 +110,7 @@ flowchart TB
     end
 
     subgraph Database["データベース層"]
-        SQLite[("SQLite<br/>(data.db)<br/>WAL Mode<br/>38 tables")]
+        SQLite[("SQLite<br/>(data.db)<br/>WAL Mode<br/>39 tables")]
     end
 
     %% クライアント接続
@@ -176,7 +178,7 @@ flowchart TD
     subgraph Additional["追加機能 (5)"]
         Bookmark["bookmark"]
         SecretBox["secretBox"]
-        Coaching["coachingService"]
+        Condition["condition"]
         VoiceEval["voiceEvaluation"]
         ThinkingReport["thinkingReport"]
     end
@@ -196,7 +198,6 @@ flowchart TD
     Drift --> Embedding
     Influence --> Embedding
     Review --> Notes
-    Coaching --> GPT
 ```
 
 ## データフロー詳細
@@ -285,8 +286,8 @@ flowchart LR
     subgraph Application["アプリケーション層"]
         direction TB
         A1["Routes"]
-        A2["Dispatchers (21)"]
-        A3["Services (27)"]
+        A2["Dispatchers (22)"]
+        A3["Services"]
     end
 
     subgraph Domain["ドメイン層"]
@@ -297,7 +298,7 @@ flowchart LR
 
     subgraph Infrastructure["インフラ層"]
         direction TB
-        I1["SQLite / Drizzle ORM<br/>(38 tables)"]
+        I1["SQLite / Drizzle ORM<br/>(39 tables)"]
         I2["External APIs<br/>(OpenAI)"]
         I3["Local LLM<br/>(Ollama)"]
         I4["Local ML<br/>(Xenova)"]
@@ -308,7 +309,7 @@ flowchart LR
     Domain --> Infrastructure
 ```
 
-## ディスパッチャー一覧（21個）
+## ディスパッチャー一覧（22個）
 
 | ディスパッチャー | 主要アクション |
 |-----------------|----------------|
@@ -321,7 +322,7 @@ flowchart LR
 | influence | graph, topInfluencers |
 | insight | overview, growth |
 | analytics | summary |
-| gpt | search, context, coachDecision |
+| gpt | search, context, task |
 | system | health, embed, rebuildFts |
 | job | getStatus, list |
 | workflow | reconstruct |
@@ -332,9 +333,11 @@ flowchart LR
 | bookmark | list, create, update, delete |
 | llmInference | run, get, list |
 | isolation | detect, list |
-| coaching | start, message, end |
+| condition | sensor, record, today, recent, byDate |
 
-## サービス一覧（27個）
+※ `debug`, `embedding` は `system` のエイリアス
+
+## サービス一覧
 
 | カテゴリ | サービス |
 |---------|----------|
@@ -343,7 +346,7 @@ flowchart LR
 | 推論 | inference, decision, promotion, counterevidence, timeDecay |
 | 学習 | review |
 | AI | gptService |
-| 追加機能 | bookmark, secretBox, coachingService, voiceEvaluation, thinkingReport |
+| 追加機能 | bookmark, secretBox, condition, voiceEvaluation, thinkingReport |
 | 運用 | health, jobs |
 
 ---
@@ -354,7 +357,7 @@ flowchart LR
 |---------|------|
 | フロントエンド | React, TypeScript, TailwindCSS |
 | バックエンド | Hono (Node.js), TypeScript |
-| データベース | SQLite (Drizzle ORM), WAL Mode, 38 tables |
+| データベース | SQLite (Drizzle ORM), WAL Mode, 39 tables |
 | 認証 | Clerk (OAuth) |
 | LLM | Ollama (ローカル), OpenAI API |
 | ML | Xenova/all-MiniLM-L6-v2 (ローカル) |
@@ -365,10 +368,12 @@ flowchart LR
 | サービス | ポート | 説明 |
 |---------|--------|------|
 | Backend API | 3000 | Hono サーバー |
+| Knowledge API | 3002 | Knowledge サーバー |
 | Frontend Dev | 5173 | Vite 開発サーバー |
+| Knowledge UI | 5174 | Knowledge UI 開発サーバー |
 | Ollama | 11434 | ローカルLLMサーバー |
 | SQLite | - | ファイルベース (data.db) |
 
 ---
 
-最終更新: 2026-01-19
+最終更新: 2026-04-17

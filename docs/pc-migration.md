@@ -113,8 +113,8 @@ pnpm dev
 
 - メインアプリ: http://localhost:5173
 - Knowledge: http://localhost:5174
-- API: http://localhost:3456
-- Knowledge API: http://localhost:3457
+- API: http://localhost:3000
+- Knowledge API: http://localhost:3002
 
 ---
 

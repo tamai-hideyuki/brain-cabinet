@@ -2,9 +2,9 @@
 
 ## 全体概要
 
-このデータベースは **Drizzle ORM + SQLite** で構成されており、ノート管理、セマンティッククラスタリング、思考パターン分析、間隔反復学習、LLM推論、コーチング機能を持っています。
+このデータベースは **Drizzle ORM + SQLite** で構成されており、ノート管理、セマンティッククラスタリング、思考パターン分析、間隔反復学習、LLM��論、体調管理機能を持っています。
 
-**v7.1.0: 全38テーブル**
+**v7.9.0: 全39テーブル**
 
 ---
 
@@ -66,11 +66,12 @@ erDiagram
     }
 
     noteImages {
-        INTEGER id PK
+        TEXT id PK "UUID"
         TEXT noteId FK
-        TEXT imageData "base64"
-        TEXT mimeType
-        INTEGER position
+        TEXT name "NOT NULL"
+        TEXT mimeType "NOT NULL"
+        INTEGER size "bytes"
+        BLOB data "NOT NULL"
         INTEGER createdAt
     }
 
@@ -155,10 +156,10 @@ erDiagram
     }
 
     clusterIdentities {
-        TEXT id PK "UUID"
+        INTEGER id PK "auto increment"
         TEXT label
         TEXT description
-        INTEGER firstSeenSnapshotId FK
+        INTEGER isActive "1=active, 0=extinct"
         INTEGER lastSeenSnapshotId FK
         INTEGER createdAt
     }
@@ -198,10 +199,12 @@ erDiagram
 
     driftAnnotations {
         INTEGER id PK
-        INTEGER driftEventId FK
-        TEXT label
-        TEXT comment
+        TEXT date "YYYY-MM-DD UNIQUE"
+        TEXT label "NOT NULL"
+        TEXT note "user memo"
+        TEXT autoPhase "auto-computed phase"
         INTEGER createdAt
+        INTEGER updatedAt
     }
 
     metricsTimeSeries {
@@ -215,11 +218,12 @@ erDiagram
     }
 
     analysisCache {
-        TEXT id PK
+        INTEGER id PK
         TEXT cacheKey
-        TEXT timeScale "day/week/month"
+        TEXT keyType "cache key type"
         TEXT data "JSON"
-        INTEGER computedAt
+        INTEGER ttlSeconds "TTL in seconds"
+        INTEGER createdAt
         INTEGER expiresAt
     }
 
@@ -398,35 +402,44 @@ erDiagram
 
     secretBoxItems {
         TEXT id PK "UUID"
+        TEXT name "NOT NULL"
+        TEXT originalName "NOT NULL"
+        TEXT type "image/video"
+        TEXT mimeType "NOT NULL"
+        INTEGER size "bytes"
+        BLOB data "NOT NULL"
+        BLOB thumbnail "optional"
         TEXT folderId FK
-        TEXT title
-        TEXT encryptedContent
-        TEXT tags "JSON"
         INTEGER position
         INTEGER createdAt
         INTEGER updatedAt
     }
 
     %% ========================================
-    %% Coaching
+    %% Coaching (DB定義済み)
     %% ========================================
 
     coachingSessions {
         TEXT id PK "UUID"
-        TEXT phase "goal_setting/abstraction/self_talk/integration"
+        TEXT currentPhase "goal_setting/abstraction/self_talk/integration"
         TEXT status "active/completed/abandoned"
-        TEXT goal
-        TEXT summary
-        INTEGER createdAt
-        INTEGER updatedAt
+        INTEGER totalTurns
+        TEXT phaseProgress "JSON"
+        TEXT insights "JSON"
+        INTEGER startedAt
+        INTEGER completedAt
+        INTEGER lastActiveAt
     }
 
     coachingMessages {
         INTEGER id PK
         TEXT sessionId FK
-        TEXT role "user/assistant"
+        INTEGER turn "turn number"
+        TEXT phase "phase at this message"
+        TEXT role "coach/user"
         TEXT content
-        TEXT metadata "JSON"
+        TEXT promptType
+        TEXT extractedInsights "JSON"
         INTEGER createdAt
     }
 
@@ -436,18 +449,21 @@ erDiagram
 
     pomodoroSessions {
         INTEGER id PK
-        TEXT taskDescription
-        INTEGER duration "minutes"
-        TEXT status "completed/interrupted"
-        INTEGER startedAt
-        INTEGER endedAt
+        TEXT date "YYYY-MM-DD"
+        INTEGER completedAt "Unix timestamp"
+        INTEGER duration "seconds"
+        INTEGER isBreak "0=work, 1=break"
+        TEXT description
     }
 
     pomodoroTimerState {
-        INTEGER id PK "singleton"
-        TEXT status "idle/running/paused/break"
-        INTEGER remainingSeconds
-        INTEGER currentSessionId FK
+        INTEGER id PK "singleton (1)"
+        INTEGER isRunning "0=stopped, 1=running"
+        INTEGER isBreak "0=work, 1=break"
+        INTEGER startedAt "Unix ms"
+        INTEGER totalDuration "seconds (default 1500)"
+        INTEGER remainingAtStart "seconds"
+        TEXT description
         INTEGER updatedAt
     }
 
@@ -457,13 +473,31 @@ erDiagram
 
     voiceEvaluationLogs {
         INTEGER id PK
-        TEXT noteId FK
-        TEXT ruleId
-        TEXT ruleName
-        REAL score "0.0-1.0"
-        TEXT feedback
-        TEXT metadata "JSON"
-        INTEGER evaluatedAt
+        INTEGER clusterId FK
+        TEXT clusterName
+        TEXT promptVersion
+        INTEGER totalSentences
+        INTEGER assertionCount
+        INTEGER causalCount
+        INTEGER assertionRate "0-100"
+        INTEGER causalRate "0-100"
+        INTEGER structureSeparated "0/1"
+        TEXT detectedExpressions "JSON"
+        TEXT rawOutput "JSON"
+        INTEGER createdAt
+    }
+
+    %% ========================================
+    %% Condition (v7.5)
+    %% ========================================
+
+    conditionLogs {
+        INTEGER id PK
+        TEXT label "NOT NULL"
+        REAL temperature "celsius"
+        REAL humidity "percent"
+        REAL pressure "hPa"
+        INTEGER recordedAt
     }
 
     %% ========================================
@@ -495,7 +529,6 @@ erDiagram
     %% Influence & Drift
     notes ||--o{ noteInfluenceEdges : "source"
     notes ||--o{ noteInfluenceEdges : "target"
-    driftEvents ||--o{ driftAnnotations : "has annotations"
 
     %% Workflow
     jobStatuses ||--o{ workflowStatus : "cluster job"
@@ -522,11 +555,8 @@ erDiagram
     %% Coaching
     coachingSessions ||--o{ coachingMessages : "has messages"
 
-    %% Pomodoro
-    pomodoroTimerState }o--o| pomodoroSessions : "current session"
-
     %% Voice Evaluation
-    notes ||--o{ voiceEvaluationLogs : "evaluated"
+    clusters ||--o{ voiceEvaluationLogs : "evaluated"
 ```
 
 ---
@@ -565,9 +595,9 @@ erDiagram
 | `conceptGraphEdges` | クラスタ間の影響関係 |
 | `noteInfluenceEdges` | ノート間の影響関係 |
 | `driftEvents` | 思考パターンの異常検出 |
-| `driftAnnotations` | ドリフトイベントへのユーザーラベル |
+| `driftAnnotations` | 日別ラベル（1日1件） |
 | `metricsTimeSeries` | 日次集計メトリクス |
-| `analysisCache` | マルチタイムスケール分析キャッシュ |
+| `analysisCache` | 分析キャッシュ |
 
 ### 5. 推論 & 判断 (4)
 | テーブル | 説明 |
@@ -601,8 +631,8 @@ erDiagram
 ### 9. コーチング (2)
 | テーブル | 説明 |
 |---------|------|
-| `coachingSessions` | コーチングセッション管理 |
-| `coachingMessages` | コーチング会話ログ |
+| `coachingSessions` | コーチングセッション管理（DB定義済み） |
+| `coachingMessages` | コーチング会話ログ（DB定義済み） |
 
 ### 10. ポモドーロタイマー (2)
 | テーブル | 説明 |
@@ -615,6 +645,11 @@ erDiagram
 |---------|------|
 | `voiceEvaluationLogs` | 観測者ルール評価ログ |
 
+### 12. 体調管理 (1)
+| テーブル | 説明 |
+|---------|------|
+| `conditionLogs` | 体調ログ（環境センサーデータ + ラベル） |
+
 ---
 
 ## 主要な外部キー関係
@@ -623,7 +658,7 @@ erDiagram
 notes (ハブ)
 ├── noteHistory (1:N)
 ├── noteEmbeddings (1:1)
-├── noteImages (1:N)
+├─�� noteImages (1:N)
 ├── noteInferences (1:N)
 ├── llmInferenceResults (1:N)
 ├── promotionNotifications (1:N)
@@ -634,15 +669,15 @@ notes (ハブ)
 ├── noteRelations (1:N × 2: source/target)
 ├── noteInfluenceEdges (1:N × 2: source/target)
 ├── bookmarkNodes (1:N)
-├── snapshotNoteAssignments (1:N)
-└── voiceEvaluationLogs (1:N)
+└── snapshotNoteAssignments (1:N)
 
 clusters (ハブ)
 ├── noteEmbeddings (1:N)
 ├── notes (1:N)
 ├── clusterHistory (1:N)
 ├── clusterDynamics (1:N)
-└── conceptGraphEdges (1:N × 2: source/target)
+├── conceptGraphEdges (1:N × 2: source/target)
+└── voiceEvaluationLogs (1:N)
 
 clusteringSnapshots (v7)
 ├── snapshotClusters (1:N)
@@ -672,4 +707,4 @@ secretBoxFolders
 
 ---
 
-最終更新: 2026-01-19
+最終更新: 2026-04-17
