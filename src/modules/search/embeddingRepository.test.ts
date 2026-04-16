@@ -41,16 +41,16 @@ describe("embeddingRepo", () => {
   });
 
   describe("定数", () => {
-    it("DEFAULT_MODELはminilm-v1", () => {
-      expect(DEFAULT_MODEL).toBe("minilm-v1");
+    it("DEFAULT_MODELはmultilingual-e5-small", () => {
+      expect(DEFAULT_MODEL).toBe("multilingual-e5-small");
     });
 
     it("DEFAULT_DIMENSIONSは384", () => {
       expect(DEFAULT_DIMENSIONS).toBe(384);
     });
 
-    it("EMBEDDING_VERSIONはminilm-v1", () => {
-      expect(EMBEDDING_VERSION).toBe("minilm-v1");
+    it("EMBEDDING_VERSIONはme5s-v1", () => {
+      expect(EMBEDDING_VERSION).toBe("me5s-v1");
     });
   });
 

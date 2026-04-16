@@ -34,7 +34,7 @@ export const getLatestEnvData = (): EnvPayload | null => {
 
   const age = Date.now() - latest.receivedAt;
   if (age > STALE_THRESHOLD_MS) {
-    logger.warn({ ageMs: age }, "Env sensor data is stale");
+    logger.debug({ ageMs: age }, "Env sensor data is stale");
     return null;
   }
 
@@ -51,7 +51,16 @@ export const startEnvReceiver = (): void => {
 
   socket.on("message", (msg, rinfo) => {
     try {
-      const data = JSON.parse(msg.toString("utf-8")) as EnvPayload;
+      const parsed = JSON.parse(msg.toString("utf-8"));
+      if (
+        typeof parsed.temp_c !== "number" ||
+        typeof parsed.humidity !== "number" ||
+        typeof parsed.pressure_hpa !== "number"
+      ) {
+        logger.warn({ from: rinfo.address }, "Env sensor packet missing required fields");
+        return;
+      }
+      const data = parsed as EnvPayload;
       latest = { data, receivedAt: Date.now() };
       logger.debug({ device: data.device, from: rinfo.address }, "Env data received");
     } catch {

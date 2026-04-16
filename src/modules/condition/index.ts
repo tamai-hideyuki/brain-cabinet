@@ -3,3 +3,4 @@
  * 公開インターフェース
  */
 export { conditionRoute } from "./routes";
+export { conditionDispatcher } from "./dispatcher";

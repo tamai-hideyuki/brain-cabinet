@@ -4,9 +4,9 @@ import { sql } from "drizzle-orm";
 // トランザクション用の型定義
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-export const DEFAULT_MODEL = "minilm-v1";
-export const DEFAULT_DIMENSIONS = 384; // MiniLM-L6-v2 は 384次元
-export const EMBEDDING_VERSION = "minilm-v1";
+export const DEFAULT_MODEL = "multilingual-e5-small";
+export const DEFAULT_DIMENSIONS = 384;
+export const EMBEDDING_VERSION = "me5s-v1";
 
 /**
  * Embeddingを保存

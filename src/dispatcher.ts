@@ -27,6 +27,7 @@ import { reviewDispatcher } from "./modules/review";
 import { bookmarkDispatcher } from "./modules/bookmark";
 import { isolationDispatcher } from "./modules/isolation";
 import { llmInferenceDispatcher } from "./modules/inference";
+import { conditionDispatcher } from "./modules/condition";
 
 // ============================================
 // ディスパッチャーレジストリ
@@ -69,6 +70,7 @@ register("review", reviewDispatcher);
 register("bookmark", bookmarkDispatcher);
 register("isolation", isolationDispatcher);
 register("llmInference", llmInferenceDispatcher);
+register("condition", conditionDispatcher);
 
 // ============================================
 // メインディスパッチャー

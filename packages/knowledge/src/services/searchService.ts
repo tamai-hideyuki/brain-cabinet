@@ -295,8 +295,8 @@ import { pipeline, type FeatureExtractionPipeline } from "@xenova/transformers";
 let embedder: FeatureExtractionPipeline | null = null;
 let isModelLoading = false;
 
-const MODEL_NAME = "Xenova/all-MiniLM-L6-v2";
-const EMBEDDING_VERSION = 1;
+const MODEL_NAME = "Xenova/multilingual-e5-small";
+const EMBEDDING_VERSION = 2;
 
 /**
  * Embeddingモデルを取得（遅延ロード）
@@ -313,9 +313,9 @@ const getEmbedder = async (): Promise<FeatureExtractionPipeline> => {
 
   isModelLoading = true;
   try {
-    log.debug("Loading MiniLM model...");
+    log.debug("Loading multilingual-e5-small model...");
     embedder = await pipeline("feature-extraction", MODEL_NAME);
-    log.debug("MiniLM model loaded");
+    log.debug("multilingual-e5-small model loaded");
     return embedder;
   } finally {
     isModelLoading = false;
@@ -324,11 +324,16 @@ const getEmbedder = async (): Promise<FeatureExtractionPipeline> => {
 
 /**
  * テキストからEmbeddingを生成
+ * multilingual-e5-small は入力に "query: " or "passage: " プレフィックスが必要
  */
-export const generateEmbedding = async (text: string): Promise<number[]> => {
+export const generateEmbedding = async (
+  text: string,
+  prefix: "query" | "passage" = "passage"
+): Promise<number[]> => {
   const normalized = text.replace(/\s+/g, " ").trim().slice(0, 8000);
+  const input = `${prefix}: ${normalized}`;
   const model = await getEmbedder();
-  const output = await model(normalized, { pooling: "mean", normalize: true });
+  const output = await model(input, { pooling: "mean", normalize: true });
   return Array.from(output.data as Float32Array);
 };
 
@@ -409,8 +414,8 @@ export const searchSemantic = async (
 ): Promise<SearchResult[]> => {
   if (!query.trim()) return [];
 
-  // クエリのEmbeddingを生成
-  const queryEmbedding = await generateEmbedding(query);
+  // クエリのEmbeddingを生成（検索クエリなので query）
+  const queryEmbedding = await generateEmbedding(query, "query");
 
   // 全Embeddingを取得して類似度計算
   const allEmbeddings = await db.select().from(knowledgeEmbeddings);

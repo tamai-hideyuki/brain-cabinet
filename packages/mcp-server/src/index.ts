@@ -168,6 +168,63 @@ server.registerTool("rebuild_clusters", {
 );
 
 // ============================================
+// Embedding
+// ============================================
+
+server.registerTool("get_embedding_stats", {
+  description: "Embeddingの統計情報を取得する（HNSWインデックスの状態・件数）",
+}, async () => callBrainCabinet("system.indexStats", {}));
+
+server.registerTool("embed_text", {
+  description: "テキストをEmbeddingベクトルに変換する（multilingual-e5-small、384次元）",
+  inputSchema: {
+    text: z.string().describe("ベクトル化するテキスト"),
+  },
+}, async ({ text }) =>
+  callBrainCabinet("system.embed", { text }),
+);
+
+server.registerTool("semantic_similarity", {
+  description: "2つのテキスト間のセマンティック類似度を計算する",
+  inputSchema: {
+    text1: z.string().describe("テキスト1"),
+    text2: z.string().describe("テキスト2"),
+  },
+}, async ({ text1, text2 }) =>
+  callBrainCabinet("system.similarity", { text1, text2 }),
+);
+
+// ============================================
+// 体調管理
+// ============================================
+
+server.registerTool("check_sensor", {
+  description: "Pico W環境センサーの接続状態と最新データ（温度・湿度・気圧）を確認する",
+}, async () => callBrainCabinet("condition.sensor", {}));
+
+server.registerTool("record_condition", {
+  description: "体調を記録する（環境センサーデータ付き）。labelは: 絶好調, 好調, 普通, 疲れてきた, しんどい, 眠い, 気分悪い",
+  inputSchema: {
+    label: z.enum(["絶好調", "好調", "普通", "疲れてきた", "しんどい", "眠い", "気分悪い"]).describe("体調ラベル"),
+  },
+}, async ({ label }) =>
+  callBrainCabinet("condition.record", { label }),
+);
+
+server.registerTool("get_condition_today", {
+  description: "今日の体調ログを取得する",
+}, async () => callBrainCabinet("condition.today", {}));
+
+server.registerTool("get_condition_by_date", {
+  description: "指定日の体調ログを取得する",
+  inputSchema: {
+    date: z.string().describe("日付（YYYY-MM-DD形式）"),
+  },
+}, async ({ date }) =>
+  callBrainCabinet("condition.byDate", { date }),
+);
+
+// ============================================
 // アナリティクス
 // ============================================
 

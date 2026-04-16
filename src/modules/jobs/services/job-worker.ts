@@ -46,9 +46,9 @@ export const handleNoteAnalyzeJob = async (payload: NoteAnalyzePayload) => {
     return;
   }
 
-  // 1. Embedding生成
+  // 1. Embedding生成（ドキュメントなので passage）
   const text = `${note.title}\n\n${note.content}`;
-  const embedding = await generateEmbedding(text);
+  const embedding = await generateEmbedding(text, "passage");
 
   // Embedding保存
   await saveEmbedding(noteId, embedding);
@@ -60,7 +60,7 @@ export const handleNoteAnalyzeJob = async (payload: NoteAnalyzePayload) => {
   let beforeEmb: number[] | null = null;
 
   if (previousContent) {
-    beforeEmb = await generateEmbedding(previousContent);
+    beforeEmb = await generateEmbedding(previousContent, "passage");
     semanticDiff = semanticChangeScore(beforeEmb, embedding);
 
     logger.debug(

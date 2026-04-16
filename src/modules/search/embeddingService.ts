@@ -33,12 +33,12 @@ export {
   type HNSWIndexStats,
 };
 
-// MiniLM モデル（遅延初期化）
+// multilingual-e5-small モデル（遅延初期化）
 let embedder: FeatureExtractionPipeline | null = null;
 let isModelLoading = false;
 
 /**
- * MiniLM モデルを取得（遅延ロード）
+ * multilingual-e5-small モデルを取得（遅延ロード）
  */
 const getEmbedder = async (): Promise<FeatureExtractionPipeline> => {
   if (embedder) return embedder;
@@ -53,12 +53,12 @@ const getEmbedder = async (): Promise<FeatureExtractionPipeline> => {
 
   isModelLoading = true;
   try {
-    logger.info("[Embedding] Loading MiniLM model...");
+    logger.info("[Embedding] Loading multilingual-e5-small model...");
     embedder = await pipeline(
       "feature-extraction",
-      "Xenova/all-MiniLM-L6-v2"
+      "Xenova/multilingual-e5-small"
     );
-    logger.info("[Embedding] MiniLM model loaded");
+    logger.info("[Embedding] multilingual-e5-small model loaded");
     return embedder;
   } finally {
     isModelLoading = false;
@@ -66,13 +66,18 @@ const getEmbedder = async (): Promise<FeatureExtractionPipeline> => {
 };
 
 /**
- * テキストからEmbeddingを生成（MiniLM）
+ * テキストからEmbeddingを生成
+ * multilingual-e5-small は入力に "query: " or "passage: " プレフィックスが必要
  */
-export const generateEmbedding = async (text: string): Promise<number[]> => {
-  const normalized = normalizeText(text).slice(0, 8000); // トークン制限対策
+export const generateEmbedding = async (
+  text: string,
+  prefix: "query" | "passage" = "passage"
+): Promise<number[]> => {
+  const normalized = normalizeText(text).slice(0, 8000);
+  const input = `${prefix}: ${normalized}`;
 
   const model = await getEmbedder();
-  const output = await model(normalized, { pooling: "mean", normalize: true });
+  const output = await model(input, { pooling: "mean", normalize: true });
 
   // Float32Array を number[] に変換
   return Array.from(output.data as Float32Array);
@@ -88,9 +93,9 @@ export const generateAndSaveNoteEmbedding = async (noteId: string): Promise<void
     throw new Error(`Note not found: ${noteId}`);
   }
 
-  // タイトル + 本文を結合してEmbedding生成
+  // タイトル + 本文を結合してEmbedding生成（ドキュメントなので passage）
   const text = `${note.title}\n\n${note.content}`;
-  const embedding = await generateEmbedding(text);
+  const embedding = await generateEmbedding(text, "passage");
 
   // DBに保存
   await saveEmbedding(noteId, embedding, DEFAULT_MODEL, EMBEDDING_VERSION);
@@ -123,8 +128,8 @@ export const searchSimilarNotes = async (
   query: string,
   limit = 10
 ): Promise<Array<{ noteId: string; similarity: number }>> => {
-  // クエリのEmbeddingを生成
-  const queryEmbedding = await generateEmbedding(query);
+  // クエリのEmbeddingを生成（検索クエリなので query）
+  const queryEmbedding = await generateEmbedding(query, "query");
 
   // HNSWインデックスが初期化済みなら使用
   if (isIndexInitialized()) {
