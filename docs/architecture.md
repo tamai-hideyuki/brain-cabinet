@@ -2,11 +2,11 @@
 
 ## 概要
 
-**Brain Cabinet v7.1.0** は、思考ベースの検索型知識システムです。単なるメモアプリではなく、ユーザーの思考を理解し、成長を見守る外部脳として機能します。
+**Brain Cabinet v7.9.0** は、思考ベースの検索型知識システムです。単なるメモアプリではなく、ユーザーの思考を理解し、成長を見守る外部脳として機能します。
 
 | 項目 | 値 |
 |------|-----|
-| バージョン | v7.1.0 |
+| バージョン | v7.9.0 |
 | 言語 | TypeScript |
 | フレームワーク | Hono (Node.js) |
 | データベース | SQLite (Drizzle ORM) |
@@ -48,7 +48,7 @@
 
 ## 2. データベーススキーマ
 
-### 2.1 テーブル一覧（全38テーブル）
+### 2.1 テーブル一覧（全39テーブル）
 
 #### コアテーブル
 
@@ -86,9 +86,9 @@
 | **conceptGraphEdges** | クラスタ間の影響グラフ |
 | **noteInfluenceEdges** | ノート間の影響グラフ |
 | **driftEvents** | ドリフト検出イベント |
-| **driftAnnotations** | ドリフトアノテーション（ユーザーラベル） |
+| **driftAnnotations** | ドリフトアノテーション（日別ラベル） |
 | **metricsTimeSeries** | 日次メトリクス |
-| **analysisCache** | マルチタイムスケール分析キャッシュ |
+| **analysisCache** | 分析キャッシュ |
 
 #### 推論・判断テーブル
 
@@ -127,8 +127,8 @@
 
 | テーブル | 説明 |
 |---------|------|
-| **coachingSessions** | コーチングセッション管理 |
-| **coachingMessages** | コーチング会話ログ |
+| **coachingSessions** | コーチングセッション管理（DB定義済み） |
+| **coachingMessages** | コーチング会話ログ（DB定義済み） |
 
 #### ポモドーロタイマー
 
@@ -143,11 +143,17 @@
 |---------|------|
 | **voiceEvaluationLogs** | 観測者ルール評価ログ |
 
+#### 体調管理（v7.5）
+
+| テーブル | 説明 |
+|---------|------|
+| **conditionLogs** | 体調ログ（環境センサーデータ + ラベル） |
+
 ---
 
 ## 3. Dispatchers層
 
-### 3.1 ディスパッチャー一覧（全21個）
+### 3.1 ディスパッチャー一覧（全22個）
 
 単一エンドポイント `/api/v1` を通じてすべての操作をルーティング：
 
@@ -173,13 +179,15 @@
 | **bookmark** | bookmark.list, bookmark.create, bookmark.update, bookmark.delete |
 | **llmInference** | llmInference.run, llmInference.get, llmInference.list |
 | **isolation** | isolation.detect, isolation.list |
-| **coaching** | coaching.start, coaching.message, coaching.end |
+| **condition** | condition.sensor, condition.record, condition.today, condition.recent, condition.byDate |
+
+※ `debug`, `embedding` は `system` のエイリアス
 
 ---
 
 ## 4. Services層
 
-### 4.1 サービス一覧（全27個）
+### 4.1 サービス一覧
 
 #### Notes & Content Services
 
@@ -232,7 +240,7 @@
 |---------|------|
 | **bookmark** | ブックマーク管理 |
 | **secretBox** | シークレットBOX管理 |
-| **coachingService** | コーチングセッション管理 |
+| **condition** | 体調管理（環境センサー連携） |
 | **voiceEvaluation** | 観測者ルール評価 |
 | **thinkingReport** | 思考成長レポート |
 | **health** | ヘルスチェック |
@@ -252,22 +260,50 @@ brain-cabinet/
 ├── src/
 │   ├── index.ts                 # メインエントリーポイント
 │   ├── app.ts                   # Honoアプリ設定
-│   ├── config/                  # 設定
-│   ├── db/
-│   │   ├── client.ts            # DB接続
-│   │   └── schema.ts            # スキーマ定義（38テーブル）
-│   ├── repositories/            # データ永続化層
-│   ├── services/                # ビジネスロジック層（27サービス）
-│   ├── dispatchers/             # コマンドディスパッチ（21ディスパッチャー）
+│   ├── dispatcher.ts            # コマンドディスパッチャー（中枢）
+│   ├── modules/                 # ドメインモジュール（モジュラーモノリス）
+│   │   ├── note/                # ノート管理
+│   │   ├── search/              # 検索
+│   │   ├── cluster/             # クラスタリング
+│   │   ├── drift/               # ドリフト分析
+│   │   ├── ptm/                 # Personal Thinking Model
+│   │   ├── influence/           # 影響分析
+│   │   ├── insight/             # インサイト
+│   │   ├── analytics/           # 分析
+│   │   ├── gpt/                 # GPT連携・RAG
+│   │   ├── decision/            # 意思決定
+│   │   ├── inference/           # LLM推論
+│   │   ├── review/              # Spaced Review
+│   │   ├── bookmark/            # ブックマーク
+│   │   ├── isolation/           # 孤立検出
+│   │   ├── promotion/           # 昇格通知
+│   │   ├── condition/           # 体調管理
+│   │   ├── pomodoro/            # ポモドーロ
+│   │   ├── secret-box/          # シークレットBOX
+│   │   ├── thinking-report/     # 思考成長レポート
+│   │   ├── jobs/                # ジョブ・ワークフロー
+│   │   ├── system/              # システム管理
+│   │   ├── cache/               # キャッシュ
+│   │   └── command/             # コマンド定義
+│   ├── shared/                  # 横断的関心事
+│   │   ├── db/
+│   │   │   ├── client.ts        # DB接続
+│   │   │   └── schema.ts        # スキーマ定義（39テーブル）
+│   │   ├── middleware/          # ミドルウェア
+│   │   ├── utils/               # ユーティリティ
+│   │   ├── types/               # 型定義
+│   │   └── config/              # OpenAPI設定
 │   ├── routes/                  # APIルート
-│   ├── middleware/              # ミドルウェア
-│   ├── utils/                   # ユーティリティ
-│   ├── types/                   # 型定義
 │   ├── scripts/                 # バッチスクリプト
 │   ├── checker/                 # 整合性チェック
 │   ├── importer/                # ノートインポート
 │   ├── exporter/                # ノートエクスポート
 │   └── syncer/                  # ノート同期
+├── ui/                          # React SPA
+├── packages/                    # サブパッケージ
+│   ├── knowledge/               # ブレインナレッジ
+│   ├── live-session/            # リアルタイム会話支援
+│   └── mcp-server/              # MCPサーバー
 ├── drizzle/                     # マイグレーション
 ├── docs/                        # ドキュメント
 └── package.json
@@ -321,4 +357,4 @@ type DecayProfile = "stable" | "exploratory" | "situational"
 
 ---
 
-最終更新: 2026-01-19
+最終更新: 2026-04-17

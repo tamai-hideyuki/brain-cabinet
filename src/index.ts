@@ -9,6 +9,7 @@ import { app } from "./app";
 import { logger } from "./shared/utils/logger";
 import { enqueueJob } from "./modules/jobs/services/job-queue";
 import { startEnvReceiver } from "./modules/condition/envReceiver";
+import { capturePtmSnapshot } from "./modules/ptm";
 import { createRequire } from "module";
 
 const require = createRequire(import.meta.url);
@@ -31,4 +32,13 @@ serve({ fetch: app.fetch, port: 3000 }, (info) => {
   enqueueJob("CLEANUP_DELETED_NOTES").catch((err) => {
     logger.error({ err }, "Failed to enqueue cleanup job");
   });
+
+  // PTMスナップショットを日次で自動キャプチャ（24時間ごと）
+  const PTM_INTERVAL_MS = 24 * 60 * 60 * 1000;
+  setInterval(() => {
+    capturePtmSnapshot().catch((err) => {
+      logger.error({ err }, "Failed to capture PTM snapshot");
+    });
+  }, PTM_INTERVAL_MS);
+  logger.info("[PTM] Daily snapshot scheduler started");
 });

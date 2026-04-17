@@ -1,6 +1,6 @@
 # Brain Cabinet セキュリティ構成図
 
-> v7.1.0 セキュリティアーキテクチャ
+> v7.9.0 セキュリティアーキテクチャ
 
 ---
 
@@ -157,7 +157,9 @@ flowchart LR
 | 変数名 | 場所 | 種類 | 用途 |
 |--------|------|------|------|
 | `VITE_CLERK_PUBLISHABLE_KEY` | ui/.env | 公開 | Clerk認証（フロントエンド） |
-| `OPENAI_API_KEY` | src/.env | **秘密** | OpenAI API（バックエンド） |
+| `CLERK_SECRET_KEY` | .env | **秘密** | Clerk認証（バックエンド） |
+| `CLERK_JWT_KEY` | .env | **秘密** | JWT検証（バックエンド） |
+| `API_KEY` | .env | **秘密** | API認証キー |
 
 ---
 
@@ -271,7 +273,7 @@ flowchart LR
 ```mermaid
 flowchart LR
     subgraph Storage["データ保存"]
-        DB["SQLite\n(data.db)\n38 tables"]
+        DB["SQLite\n(data.db)\n39 tables"]
         SecretBox["Secret Box\n(暗号化コンテンツ)"]
     end
 
@@ -359,4 +361,4 @@ flowchart TB
 
 ---
 
-最終更新: 2026-01-19
+最終更新: 2026-04-17

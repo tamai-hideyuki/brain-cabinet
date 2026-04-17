@@ -31,7 +31,6 @@ ui/src/
 │           ├── BlockEditorContext.tsx
 │           ├── hooks/
 │           │   ├── useBlockEditor.ts
-│           │   ├── useKeyboardShortcuts.ts
 │           │   ├── useSlashCommand.ts
 │           │   ├── useBlockDragDrop.ts
 │           │   └── useTextSelection.ts
@@ -200,4 +199,4 @@ export interface BaseBlock {
 
 ---
 
-最終更新: 2026-01-22
+最終更新: 2026-04-17
