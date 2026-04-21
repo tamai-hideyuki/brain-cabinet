@@ -10,7 +10,7 @@ import * as ptmDynamics from "./services/dynamics";
 
 export const ptmDispatcher = {
   async today() {
-    return ptmSnapshot.getLatestPtmSnapshot();
+    return ptmSnapshot.generatePtmSnapshot();
   },
 
   async history(payload: unknown) {
