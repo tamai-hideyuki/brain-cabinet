@@ -157,7 +157,7 @@ server.registerTool("get_cluster_map", {
 );
 
 server.registerTool("rebuild_clusters", {
-  description: "クラスターを再構築する。forceRegenerate=trueで全ノートのEmbeddingを再計算してからクラスタリングする",
+  description: "クラスターを再構築する。forceRegenerate=trueで全ノートのEmbeddingを再計算してからクラスタリングする。注: HNSW検索インデックスは更新されないため、Embeddingを再生成した場合は別途 build_search_index を実行すること",
   inputSchema: {
     k: z.number().optional().describe("クラスター数（2-50、デフォルト: 8）"),
     regenerateEmbeddings: z.boolean().default(false).describe("Embedding未生成ノートを自動生成するか"),
@@ -174,6 +174,10 @@ server.registerTool("rebuild_clusters", {
 server.registerTool("get_embedding_stats", {
   description: "Embeddingの統計情報を取得する（HNSWインデックスの状態・件数）",
 }, async () => callBrainCabinet("system.indexStats", {}));
+
+server.registerTool("build_search_index", {
+  description: "HNSWセマンティック検索インデックスを構築・再構築する。Embeddingを再生成した後やクラスター再構築後に呼ぶ。同期実行で全Embeddingからインデックスを作り直す",
+}, async () => callBrainCabinet("system.buildIndex", {}));
 
 server.registerTool("embed_text", {
   description: "テキストをEmbeddingベクトルに変換する（multilingual-e5-small、384次元）",
