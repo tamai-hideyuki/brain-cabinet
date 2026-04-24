@@ -551,63 +551,83 @@ import type { Category } from "../../shared/db/schema";
 export interface HybridSearchOptions {
   category?: Category;
   tags?: string[];
-  keywordWeight?: number;  // デフォルト 0.6
-  semanticWeight?: number; // デフォルト 0.4
+  keywordWeight?: number;  // RRF合算時の重み (デフォルト 1.0)
+  semanticWeight?: number; // RRF合算時の重み (デフォルト 1.0)
 }
 
+// Reciprocal Rank Fusion の定数。慣習的に60が用いられる。
+// 値が小さいほど上位の順位差が強調され、大きいほど順位の影響が緩やかになる。
+const RRF_K = 60;
+
 /**
- * キーワード検索とセマンティック検索を組み合わせたハイブリッド検索
- * 両方の結果をマージし、重み付けスコアでソート
+ * Reciprocal Rank Fusion (RRF) によるハイブリッド検索。
+ *
+ * keyword と semantic の絶対スコアではなく「それぞれのリストでの順位」を使って
+ * スコアを合算する。これにより:
+ * - keyword の TF-IDF (0〜数十) と semantic の cos類似度*100 (70〜90に集中)
+ *   というスケール差問題が根本解決される
+ * - 片方のモードだけにヒットしたノートも対等に扱われる
+ *   (旧実装では semantic の床値約32が keyword 単独ヒットを埋もれさせていた)
+ *
+ * 各ノートのスコア: score = w_kw / (RRF_K + rank_kw) + w_sem / (RRF_K + rank_sem)
  */
 export const searchNotesHybrid = async (
   query: string,
   options?: HybridSearchOptions
 ) => {
-  const keywordWeight = options?.keywordWeight ?? 0.6;
-  const semanticWeight = options?.semanticWeight ?? 0.4;
+  const keywordWeight = options?.keywordWeight ?? 1.0;
+  const semanticWeight = options?.semanticWeight ?? 1.0;
 
   const searchOptions = {
     category: options?.category,
     tags: options?.tags,
   };
 
-  // 並行実行
   const [keywordResults, semanticResults] = await Promise.all([
     searchNotes(query, searchOptions),
     searchNotesSemantic(query, searchOptions),
   ]);
 
-  // 結果をマージ（IDをキーにスコアを統合）
   const merged = new Map<string, { note: SearchResult; score: number; sources: string[] }>();
 
-  for (const note of keywordResults) {
+  // keyword 結果: 順位ベースで RRF スコア付与
+  for (const [index, note] of keywordResults.entries()) {
+    const rank = index + 1;
+    const rrfScore = keywordWeight / (RRF_K + rank);
     merged.set(note.id, {
       note,
-      score: note.score * keywordWeight,
+      score: rrfScore,
       sources: ["keyword"],
     });
   }
 
-  for (const note of semanticResults) {
+  // semantic 結果: 同じく順位ベースで合算
+  for (const [index, note] of semanticResults.entries()) {
+    const rank = index + 1;
+    const rrfScore = semanticWeight / (RRF_K + rank);
     const existing = merged.get(note.id);
     if (existing) {
-      existing.score += note.score * semanticWeight;
+      existing.score += rrfScore;
       existing.sources.push("semantic");
     } else {
       merged.set(note.id, {
         note,
-        score: note.score * semanticWeight,
+        score: rrfScore,
         sources: ["semantic"],
       });
     }
   }
 
-  // スコア順にソートして返す
   return Array.from(merged.values())
     .sort((a, b) => b.score - a.score)
-    .map((item) => ({
-      ...item.note,
-      hybridScore: Number(item.score.toFixed(2)),
-      _hybridSources: item.sources,
-    }));
+    .map((item) => {
+      // RRFスコアは小さい値 (0.01〜0.03程度) なので4桁精度で保持
+      const mergedScore = Number(item.score.toFixed(4));
+      return {
+        ...item.note,
+        score: mergedScore,
+        hybridScore: mergedScore,
+        _hybridSources: item.sources,
+      };
+    });
 };

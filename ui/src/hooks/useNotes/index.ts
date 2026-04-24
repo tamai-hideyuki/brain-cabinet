@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import type { Note, SearchMode } from '../../types/note'
 import { fetchNotes, searchNotes } from '../../api/notesApi'
@@ -22,8 +22,6 @@ export const useNotes = () => {
   const [notes, setNotes] = useState<Note[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [search, setSearch] = useState('')
-  const [searchMode, setSearchMode] = useState<SearchMode>('keyword')
   const [totalNotes, setTotalNotes] = useState(0)
 
   // sessionStorageから復元するページ番号（初回マウント時のみ読み取る）
@@ -36,6 +34,20 @@ export const useNotes = () => {
     }
     return null
   })
+
+  // sessionStorageから復元する検索状態（初回マウント時のみ読み取る）
+  // 詳細ページから戻った時に検索結果一覧を維持するための仕組み
+  const [restoredSearchData] = useState<{ search: string; mode: SearchMode } | null>(() => {
+    const savedSearch = sessionStorage.getItem('notesListSearch')
+    if (!savedSearch) return null
+    sessionStorage.removeItem('notesListSearch')
+    const savedMode = (sessionStorage.getItem('notesListSearchMode') as SearchMode) || 'keyword'
+    sessionStorage.removeItem('notesListSearchMode')
+    return { search: savedSearch, mode: savedMode }
+  })
+
+  const [search, setSearch] = useState(restoredSearchData?.search ?? '')
+  const [searchMode, setSearchMode] = useState<SearchMode>(restoredSearchData?.mode ?? 'keyword')
 
   // URLからページ番号を取得、sessionStorageの復元値をフォールバック
   const urlPage = parseInt(searchParams.get('page') || '', 10)
@@ -69,7 +81,8 @@ export const useNotes = () => {
     setError(null)
     try {
       const data = await searchNotes(search, searchMode)
-      setNotes(sortNotes(data))
+      // バックエンドが検索スコア順で返すので、ここで並べ替えない（日付順にすると関連度を破壊する）
+      setNotes(data)
       setTotalNotes(data.length)
       setSearchParams({})
     } catch (e) {
@@ -97,9 +110,24 @@ export const useNotes = () => {
     }
   }, [restoredPage, searchParams, setSearchParams])
 
-  // 初回ロード時とURLのpage変更時にデータを取得
+  // 初回マウントで一度だけ復元処理を行うためのフラグ。
+  // restoredSearchData は state なので useEffect 後も真のままだが、currentPage 変更時に
+  // 再度 executeSearch を呼びたくないため、ref で「初回処理済み」を記録する。
+  const initialEffectDoneRef = useRef(false)
+
+  // 初回マウント: 検索復元があれば実行、なければ通常のloadNotes
+  // 以降のcurrentPage変更（ページネーション等）は loadNotes
   useEffect(() => {
+    if (!initialEffectDoneRef.current) {
+      initialEffectDoneRef.current = true
+      if (restoredSearchData) {
+        executeSearch()
+        return
+      }
+    }
     loadNotes(currentPage)
+    // executeSearch を依存配列に含めると無限ループになるため除外
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, loadNotes])
 
   return {

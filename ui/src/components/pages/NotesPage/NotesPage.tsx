@@ -19,6 +19,7 @@ export const NotesPage = () => {
     error,
     search,
     setSearch,
+    searchMode,
     executeSearch,
     reload,
     currentPage,
@@ -62,6 +63,11 @@ export const NotesPage = () => {
 
   const handleNoteClick = (id: string) => {
     sessionStorage.setItem('notesListPage', String(currentPage))
+    // 検索中なら検索状態も保存し、詳細から戻った時に復元できるようにする
+    if (search.trim()) {
+      sessionStorage.setItem('notesListSearch', search)
+      sessionStorage.setItem('notesListSearchMode', searchMode)
+    }
     navigate(`/ui/notes/${id}`)
   }
 

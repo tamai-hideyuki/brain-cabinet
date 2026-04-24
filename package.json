@@ -21,7 +21,9 @@
     "sync-notes": "tsx src/syncer/sync-notes.ts",
     "integrity-check": "tsx src/checker/integrity-check.ts",
     "init-fts": "tsx src/scripts/init-fts.ts",
-    "init-embeddings": "tsx src/scripts/init-embeddings.ts"
+    "init-embeddings": "tsx src/scripts/init-embeddings.ts",
+    "eval:search": "tsx src/modules/search/eval/runner.ts",
+    "eval:discover": "tsx src/modules/search/eval/discover.ts"
   },
   "dependencies": {
     "@clerk/backend": "^2.29.0",
