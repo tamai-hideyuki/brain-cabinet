@@ -605,9 +605,15 @@ export const searchNotesHybrid = async (
   // スコア順にソートして返す
   return Array.from(merged.values())
     .sort((a, b) => b.score - a.score)
-    .map((item) => ({
-      ...item.note,
-      hybridScore: Number(item.score.toFixed(2)),
-      _hybridSources: item.sources,
-    }));
+    .map((item) => {
+      const mergedScore = Number(item.score.toFixed(2));
+      // score をマージ後のスコアで上書きすることで「表示スコア = ソートキー」を保証する
+      // hybridScore は decision/gpt 側が依存しているので残す
+      return {
+        ...item.note,
+        score: mergedScore,
+        hybridScore: mergedScore,
+        _hybridSources: item.sources,
+      };
+    });
 };

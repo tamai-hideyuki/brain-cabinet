@@ -8,6 +8,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("./service", () => ({
   searchNotes: vi.fn(),
   searchNotesSemantic: vi.fn(),
+  searchNotesHybrid: vi.fn(),
 }));
 
 vi.mock("../note", () => ({
@@ -147,49 +148,19 @@ describe("searchDispatcher", () => {
     });
 
     describe("hybrid検索", () => {
-      it("keywordとsemantic両方を呼び出す", async () => {
-        vi.mocked(searchService.searchNotes).mockResolvedValue([]);
-        vi.mocked(searchService.searchNotesSemantic).mockResolvedValue([]);
+      it("searchNotesHybridに委譲する", async () => {
+        vi.mocked(searchService.searchNotesHybrid).mockResolvedValue([]);
 
-        await searchDispatcher.query({ query: "test", mode: "hybrid" });
+        await searchDispatcher.query({
+          query: "test",
+          mode: "hybrid",
+          category: "学習",
+        });
 
-        expect(searchService.searchNotes).toHaveBeenCalled();
-        expect(searchService.searchNotesSemantic).toHaveBeenCalled();
-      });
-
-      it("結果をスコアでマージする", async () => {
-        vi.mocked(searchService.searchNotes).mockResolvedValue([
-          { id: "1", title: "Note 1", score: 1.0 },
-          { id: "2", title: "Note 2", score: 0.8 },
-        ] as any);
-        vi.mocked(searchService.searchNotesSemantic).mockResolvedValue([
-          { id: "1", title: "Note 1", score: 0.9 },
-          { id: "3", title: "Note 3", score: 0.7 },
-        ] as any);
-
-        const result = await searchDispatcher.query({ query: "test", mode: "hybrid" });
-
-        // Note 1: keyword 1.0*0.6 + semantic 0.9*0.4 = 0.96
-        // Note 2: keyword 0.8*0.6 = 0.48
-        // Note 3: semantic 0.7*0.4 = 0.28
-        expect(result).toHaveLength(3);
-        expect((result as any)[0].id).toBe("1");
-        expect((result as any)[1].id).toBe("2");
-        expect((result as any)[2].id).toBe("3");
-      });
-
-      it("重複するノートはスコアを合算する", async () => {
-        vi.mocked(searchService.searchNotes).mockResolvedValue([
-          { id: "1", title: "Note 1", score: 1.0 },
-        ] as any);
-        vi.mocked(searchService.searchNotesSemantic).mockResolvedValue([
-          { id: "1", title: "Note 1", score: 1.0 },
-        ] as any);
-
-        const result = await searchDispatcher.query({ query: "test", mode: "hybrid" });
-
-        expect(result).toHaveLength(1);
-        // 1.0*0.6 + 1.0*0.4 = 1.0
+        expect(searchService.searchNotesHybrid).toHaveBeenCalledWith("test", {
+          category: "学習",
+          tags: undefined,
+        });
       });
     });
   });

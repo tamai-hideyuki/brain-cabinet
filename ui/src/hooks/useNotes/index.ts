@@ -69,7 +69,8 @@ export const useNotes = () => {
     setError(null)
     try {
       const data = await searchNotes(search, searchMode)
-      setNotes(sortNotes(data))
+      // バックエンドが検索スコア順で返すので、ここで並べ替えない（日付順にすると関連度を破壊する）
+      setNotes(data)
       setTotalNotes(data.length)
       setSearchParams({})
     } catch (e) {

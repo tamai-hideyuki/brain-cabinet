@@ -1,8 +1,20 @@
 import { db } from "../../shared/db/client";
 import { sql } from "drizzle-orm";
+import { tokenize } from "../../shared/utils/tokenizer";
 
 // トランザクション用の型定義
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
+ * FTS5用に日本語をtiny-segmenterで形態素解析し、空白区切りの文字列に変換する。
+ * これによりFTS5のunicode61トークナイザーが日本語を語単位で索引できる。
+ *
+ * 例: "転職の判断" → "転職 の 判断"
+ */
+const tokenizeForFTS = (text: string): string => {
+  if (!text) return "";
+  return tokenize(text).join(" ");
+};
 
 /**
  * FTS5テーブルにノートを追加
@@ -20,7 +32,13 @@ export const insertFTS = async (
 
   await db.run(sql`
     INSERT INTO notes_fts (note_id, title, content, tags, headings)
-    VALUES (${noteId}, ${title}, ${content}, ${tagsText}, ${headingsText})
+    VALUES (
+      ${noteId},
+      ${tokenizeForFTS(title)},
+      ${tokenizeForFTS(content)},
+      ${tokenizeForFTS(tagsText)},
+      ${tokenizeForFTS(headingsText)}
+    )
   `);
 };
 
@@ -40,7 +58,13 @@ export const insertFTSRaw = async (
 
   await tx.run(sql`
     INSERT INTO notes_fts (note_id, title, content, tags, headings)
-    VALUES (${noteId}, ${title}, ${content}, ${tagsText}, ${headingsText})
+    VALUES (
+      ${noteId},
+      ${tokenizeForFTS(title)},
+      ${tokenizeForFTS(content)},
+      ${tokenizeForFTS(tagsText)},
+      ${tokenizeForFTS(headingsText)}
+    )
   `);
 };
 
@@ -200,7 +224,9 @@ export const parseJsonToText = (jsonStr: string | null): string => {
 
 /**
  * 検索クエリをFTS5形式に変換
- * - 各単語を前方一致検索（*付き）
+ * - tiny-segmenterで日本語を形態素解析（「転職の判断」→「転職 の 判断」）
+ * - 短すぎるトークン（≤1文字、助詞や記号片）を除外
+ * - 各トークンを前方一致検索（*付き）
  * - 特殊文字をエスケープ
  * - FTS演算子（OR, AND, NOT）は特別扱い
  */
@@ -208,11 +234,9 @@ export const buildFTSQuery = (query: string): string => {
   const trimmed = query.trim();
   if (!trimmed) return "";
 
-  // FTS5の演算子（大文字小文字を区別しない）
   const FTS_OPERATORS = new Set(["OR", "AND", "NOT"]);
 
-  // 特殊文字を除去/エスケープ
-  // FTS5がトークン区切りとして扱う文字（/ - . +など）も除去
+  // 特殊文字を除去
   const sanitized = trimmed
     .replace(/['"(){}[\]*:^~!@#$%&\\/.+-]/g, " ")
     .replace(/\s+/g, " ")
@@ -220,18 +244,25 @@ export const buildFTSQuery = (query: string): string => {
 
   if (!sanitized) return "";
 
-  // 各単語に前方一致(*) を付与し、AND で結合
-  const tokens = sanitized.split(" ").filter((t) => t.length > 0);
+  // スペース区切りで分割した後、各単語をtiny-segmenterで形態素解析する
+  // 例: "転職の判断" → ["転職", "の", "判断"] → 短語フィルタ → ["転職", "判断"]
+  const tokens: string[] = [];
+  for (const word of sanitized.split(" ")) {
+    if (FTS_OPERATORS.has(word.toUpperCase())) {
+      tokens.push(word.toUpperCase());
+      continue;
+    }
+    const subTokens = tokenize(word).filter((t) => t.length >= 2);
+    tokens.push(...subTokens);
+  }
 
   if (tokens.length === 0) return "";
 
-  // FTS5 のクエリ形式: "token1*" AND "token2*"
-  // または prefix 検索: token1* token2* (暗黙のAND)
-  // FTS演算子はそのまま保持（*を付けない）
+  // FTS5 のクエリ形式: token1* token2* (暗黙のAND)
   return tokens
     .map((t) => {
       if (FTS_OPERATORS.has(t.toUpperCase())) {
-        return t.toUpperCase(); // 演算子は大文字で返す
+        return t.toUpperCase();
       }
       return `${t}*`;
     })

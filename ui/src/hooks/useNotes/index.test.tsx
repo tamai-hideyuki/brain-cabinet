@@ -159,6 +159,33 @@ describe('useNotes', () => {
     expect(result.current.notes).toHaveLength(1)
   })
 
+  it('executeSearchの結果はバックエンドのスコア順を保持する（日付順に並べ替えない）', async () => {
+    // バックエンドが「古いが高スコア」のノートを先頭に返した状況を再現
+    const olderButHigherScore = mockNotes[0] // updatedAt: 2000 (古い)
+    const newerButLowerScore = mockNotes[1] // updatedAt: 3000 (新しい)
+    vi.mocked(notesApi.fetchNotes).mockResolvedValue(mockFetchNotesResult)
+    vi.mocked(notesApi.searchNotes).mockResolvedValue([
+      olderButHigherScore,
+      newerButLowerScore,
+    ])
+
+    const { result } = renderHook(() => useNotes(), { wrapper })
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+
+    act(() => {
+      result.current.setSearch('test')
+    })
+    await act(async () => {
+      await result.current.executeSearch()
+    })
+
+    // 日付順に並べ替えると newer が先頭になるが、検索ではスコア順を維持するべき
+    expect(result.current.notes[0].id).toBe(olderButHigherScore.id)
+    expect(result.current.notes[1].id).toBe(newerButLowerScore.id)
+  })
+
   it('空の検索クエリでexecuteSearchを実行するとloadNotesが呼ばれる', async () => {
     vi.mocked(notesApi.fetchNotes).mockResolvedValue(mockFetchNotesResult)
 

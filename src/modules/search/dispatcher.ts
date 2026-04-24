@@ -52,29 +52,8 @@ export const searchDispatcher = {
     switch (mode) {
       case "semantic":
         return searchService.searchNotesSemantic(query, options);
-      case "hybrid": {
-        // ハイブリッド検索: キーワード + セマンティックを組み合わせ
-        const [keywordResults, semanticResults] = await Promise.all([
-          searchService.searchNotes(query, options),
-          searchService.searchNotesSemantic(query, options),
-        ]);
-        // スコアで統合
-        const merged = new Map<string, { note: unknown; score: number }>();
-        for (const note of keywordResults as Array<{ id: string; score: number }>) {
-          merged.set(note.id, { note, score: note.score * 0.6 });
-        }
-        for (const note of semanticResults as Array<{ id: string; score: number }>) {
-          const existing = merged.get(note.id);
-          if (existing) {
-            existing.score += note.score * 0.4;
-          } else {
-            merged.set(note.id, { note, score: note.score * 0.4 });
-          }
-        }
-        return Array.from(merged.values())
-          .sort((a, b) => b.score - a.score)
-          .map((item) => item.note);
-      }
+      case "hybrid":
+        return searchService.searchNotesHybrid(query, { category, tags });
       case "keyword":
       default:
         return searchService.searchNotes(query, options);
