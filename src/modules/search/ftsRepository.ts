@@ -116,31 +116,52 @@ export const deleteFTSRaw = async (tx: Transaction, noteId: string) => {
 };
 
 /**
- * FTS5で全文検索（note_idのリストを返す）
+ * AND結合の結果がこの件数以下なら OR フォールバックする閾値。
+ * 多語クエリで AND が厳しすぎる時 (例: 「TDD テスト駆動開発」が1件しか返さない) のみ
+ * OR で recall を救うための仕組み。
+ */
+const AND_FALLBACK_THRESHOLD = 5;
+
+/**
+ * FTS5で全文検索（note_idのリストを返す）。
+ * AND で十分な件数取れない場合は OR にフォールバックして recall を確保する。
  */
 export const searchFTS = async (
   query: string,
   limit = 50
 ): Promise<{ noteId: string; rank: number }[]> => {
-  // クエリを FTS5 用に変換（各トークンに * を付けて前方一致）
-  const ftsQuery = buildFTSQuery(query);
+  const andQuery = buildFTSQuery(query, "AND");
+  if (!andQuery) return [];
 
-  if (!ftsQuery) {
-    return [];
-  }
-
-  const result = await db.all<{ note_id: string; rank: number }>(sql`
+  const andResults = await db.all<{ note_id: string; rank: number }>(sql`
     SELECT note_id, rank
     FROM notes_fts
-    WHERE notes_fts MATCH ${ftsQuery}
+    WHERE notes_fts MATCH ${andQuery}
     ORDER BY rank
     LIMIT ${limit}
   `);
 
-  return result.map((row) => ({
-    noteId: row.note_id,
-    rank: row.rank,
-  }));
+  // AND で十分なヒットがあればそのまま返す (precision 維持)
+  if (andResults.length > AND_FALLBACK_THRESHOLD) {
+    return andResults.map((row) => ({ noteId: row.note_id, rank: row.rank }));
+  }
+
+  // ヒット数が少ない多語クエリは OR で recall を救う
+  const orQuery = buildFTSQuery(query, "OR");
+  if (orQuery === andQuery) {
+    // 1トークンクエリ等で OR=AND になる場合は AND結果をそのまま返す
+    return andResults.map((row) => ({ noteId: row.note_id, rank: row.rank }));
+  }
+
+  const orResults = await db.all<{ note_id: string; rank: number }>(sql`
+    SELECT note_id, rank
+    FROM notes_fts
+    WHERE notes_fts MATCH ${orQuery}
+    ORDER BY rank
+    LIMIT ${limit}
+  `);
+
+  return orResults.map((row) => ({ noteId: row.note_id, rank: row.rank }));
 };
 
 /**
@@ -228,15 +249,17 @@ export const parseJsonToText = (jsonStr: string | null): string => {
  * - 短すぎるトークン（≤1文字、助詞や記号片）を除外
  * - 各トークンを前方一致検索（*付き）
  * - 特殊文字をエスケープ
- * - FTS演算子（OR, AND, NOT）は特別扱い
+ * - FTS演算子（OR, AND, NOT）が明示された場合は順序を保持（後方互換）
+ *
+ * デフォルトは暗黙AND（precision重視）。多語クエリで結果が極端に少ない場合は
+ * searchFTS 側でOR フォールバックする（recall を救う）。
  */
-export const buildFTSQuery = (query: string): string => {
+export const buildFTSQuery = (query: string, joinWith: "AND" | "OR" = "AND"): string => {
   const trimmed = query.trim();
   if (!trimmed) return "";
 
   const FTS_OPERATORS = new Set(["OR", "AND", "NOT"]);
 
-  // 特殊文字を除去
   const sanitized = trimmed
     .replace(/['"(){}[\]*:^~!@#$%&\\/.+-]/g, " ")
     .replace(/\s+/g, " ")
@@ -258,13 +281,19 @@ export const buildFTSQuery = (query: string): string => {
 
   if (tokens.length === 0) return "";
 
-  // FTS5 のクエリ形式: token1* token2* (暗黙のAND)
-  return tokens
-    .map((t) => {
-      if (FTS_OPERATORS.has(t.toUpperCase())) {
-        return t.toUpperCase();
-      }
-      return `${t}*`;
-    })
-    .join(" ");
+  // ユーザーが演算子を明示した場合は順序を保持して既存挙動を維持
+  const hasExplicitOperator = tokens.some((t) =>
+    FTS_OPERATORS.has(t.toUpperCase())
+  );
+  if (hasExplicitOperator) {
+    return tokens
+      .map((t) => (FTS_OPERATORS.has(t.toUpperCase()) ? t.toUpperCase() : `${t}*`))
+      .join(" ");
+  }
+
+  // 演算子なし: 指定された連結子で結合
+  // - AND (デフォルト): 全トークンを含むノートに絞る (precision)
+  // - OR (フォールバック): いずれかを含むノートを拾い、BM25が順位付け (recall)
+  const separator = joinWith === "AND" ? " " : " OR ";
+  return tokens.map((t) => `${t}*`).join(separator);
 };

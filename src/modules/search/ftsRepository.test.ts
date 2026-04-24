@@ -85,9 +85,14 @@ describe("ftsRepo", () => {
       expect(result).toBe("TypeScript*");
     });
 
-    it("複数単語に前方一致の*を付ける", () => {
+    it("複数単語はデフォルトAND結合（precision重視）", () => {
       const result = buildFTSQuery("React hooks");
       expect(result).toBe("React* hooks*");
+    });
+
+    it("第2引数でORを指定すると暗黙OR連結になる（recallフォールバック用）", () => {
+      const result = buildFTSQuery("React hooks", "OR");
+      expect(result).toBe("React* OR hooks*");
     });
 
     it("空文字を渡すと空文字を返す", () => {
@@ -153,12 +158,23 @@ describe("ftsRepo", () => {
       expect(result).toBe("転職* 判断*");
     });
 
-    it("複合的な日本語クエリも分割する", () => {
+    it("複合的な日本語クエリも分割する（デフォルトはAND）", () => {
       const result = buildFTSQuery("体調が悪い時の判断");
       // 単文字の助詞「が」「の」は除外され、意味を持つ語のみAND条件になる
       expect(result.split(" ").every((t) => t.endsWith("*"))).toBe(true);
       expect(result).toContain("体調*");
       expect(result).toContain("判断*");
+    });
+
+    it("ORフォールバック用に多語クエリもOR連結できる", () => {
+      // 「TDD テスト駆動開発」のようなケース。AND だと4トークン全部含むノートしか
+      // 拾えず recall が急落する。searchFTS が件数不足時にOR フォールバックで使う
+      const result = buildFTSQuery("TDD テスト駆動開発", "OR");
+      expect(result).toContain("TDD*");
+      expect(result).toContain("テスト*");
+      expect(result).toContain("駆動*");
+      expect(result).toContain("開発*");
+      expect(result).toContain(" OR ");
     });
   });
 
