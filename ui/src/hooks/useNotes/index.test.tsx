@@ -43,10 +43,13 @@ const wrapper = ({ children }: { children: ReactNode }) => (
 describe('useNotes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // sessionStorageをクリアしてテスト間の汚染を防ぐ
+    sessionStorage.clear()
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
+    sessionStorage.clear()
   })
 
   it('初期状態でloadingがtrueになる', () => {
@@ -157,6 +160,46 @@ describe('useNotes', () => {
 
     expect(notesApi.searchNotes).toHaveBeenCalledWith('Note 1', 'keyword')
     expect(result.current.notes).toHaveLength(1)
+  })
+
+  it('sessionStorageに検索状態があると初回マウントで検索が復元される（詳細→戻るで検索結果維持）', async () => {
+    // 詳細ページから戻った状態を再現: sessionStorageに検索状態が保存されている
+    sessionStorage.setItem('notesListSearch', 'TypeScript')
+    sessionStorage.setItem('notesListSearchMode', 'semantic')
+
+    const searchResult = [mockNotes[0]]
+    vi.mocked(notesApi.fetchNotes).mockResolvedValue(mockFetchNotesResult)
+    vi.mocked(notesApi.searchNotes).mockResolvedValue(searchResult)
+
+    const { result } = renderHook(() => useNotes(), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+
+    // searchNotes が復元された値で呼ばれた（fetchNotes ではなく）
+    expect(notesApi.searchNotes).toHaveBeenCalledWith('TypeScript', 'semantic')
+    expect(result.current.search).toBe('TypeScript')
+    expect(result.current.searchMode).toBe('semantic')
+    expect(result.current.notes).toEqual(searchResult)
+
+    // 一度読み取ったらsessionStorageから削除されている
+    expect(sessionStorage.getItem('notesListSearch')).toBeNull()
+    expect(sessionStorage.getItem('notesListSearchMode')).toBeNull()
+  })
+
+  it('sessionStorageに検索状態が無ければ通常のloadNotesが走る', async () => {
+    vi.mocked(notesApi.fetchNotes).mockResolvedValue(mockFetchNotesResult)
+
+    const { result } = renderHook(() => useNotes(), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+
+    expect(notesApi.fetchNotes).toHaveBeenCalled()
+    expect(notesApi.searchNotes).not.toHaveBeenCalled()
+    expect(result.current.search).toBe('')
   })
 
   it('executeSearchの結果はバックエンドのスコア順を保持する（日付順に並べ替えない）', async () => {

@@ -100,10 +100,61 @@ describe("searchNotesHybrid", () => {
     const results = await searchNotesHybrid("テスト");
 
     expect(results).toHaveLength(1);
-    // マージ後スコアは keyword*0.6 + semantic*0.4 で計算され、
-    // 単一モードのスコアより大きいはず
     const merged = (results[0] as { _hybridSources: string[] })._hybridSources;
     expect(merged).toContain("keyword");
     expect(merged).toContain("semantic");
+  });
+
+  it("RRF: keyword単独ヒットがsemanticの床値に埋もれない", async () => {
+    // 旧実装のバグ: keyword の絶対スコアが semantic の最低スコア (約32) より低いと
+    // 上位に来れなかった。RRFは順位ベースなのでスケール差は無関係。
+    vi.mocked(searchNotesInDB).mockResolvedValue([
+      buildNote("kw-only-rare"), // keyword 1位 (唯一のヒット、TF-IDFが低くても)
+    ] as any);
+    vi.mocked(searchSimilarNotes).mockResolvedValue([
+      // semantic は別の20件を返す (keyword単独ヒットは含まない)
+      ...Array.from({ length: 20 }, (_, i) => ({
+        noteId: `sem-${i}`,
+        similarity: 0.8,
+      })),
+    ]);
+    vi.mocked(findNoteById).mockImplementation(async (id: string) =>
+      buildNote(id) as any
+    );
+
+    const results = await searchNotesHybrid("レアフレーズ");
+
+    // keyword 1位のノートは hybrid でも上位に残るべき
+    // (RRFスコア 1/61 ≈ 0.0164 は semantic 1位 1/61 と同等)
+    const kwOnly = results.find((r) => (r as { id: string }).id === "kw-only-rare");
+    const kwOnlyIndex = results.findIndex((r) => (r as { id: string }).id === "kw-only-rare");
+    expect(kwOnly).toBeDefined();
+    // semantic 1位と同点 (両方rank=1) になるので、上位2位のどちらかに位置する
+    expect(kwOnlyIndex).toBeLessThan(2);
+  });
+
+  it("RRF: 両方上位にあるノートは単独ヒットより明確に上位になる", async () => {
+    // 両モードで rank=1 のノートは RRF: 2/61 ≈ 0.0328
+    // 片方のみ rank=1: 1/61 ≈ 0.0164
+    vi.mocked(searchNotesInDB).mockResolvedValue([
+      buildNote("both-top"),    // keyword 1位
+      buildNote("kw-only"),      // keyword 2位
+    ] as any);
+    vi.mocked(searchSimilarNotes).mockResolvedValue([
+      { noteId: "both-top", similarity: 0.9 }, // semantic 1位
+      { noteId: "sem-only", similarity: 0.8 },  // semantic 2位
+    ]);
+    vi.mocked(findNoteById).mockImplementation(async (id: string) =>
+      buildNote(id) as any
+    );
+
+    const results = await searchNotesHybrid("テスト");
+
+    // both-top が必ず1位
+    expect((results[0] as { id: string }).id).toBe("both-top");
+    // both-top のスコアは他より明確に大きい
+    const topScore = (results[0] as { score: number }).score;
+    const secondScore = (results[1] as { score: number }).score;
+    expect(topScore).toBeGreaterThan(secondScore);
   });
 });
