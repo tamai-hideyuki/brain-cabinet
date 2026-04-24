@@ -10,6 +10,7 @@ import { logger } from "./shared/utils/logger";
 import { enqueueJob } from "./modules/jobs/services/job-queue";
 import { startEnvReceiver } from "./modules/condition/envReceiver";
 import { capturePtmSnapshot } from "./modules/ptm";
+import { buildSearchIndex } from "./modules/search/embeddingService";
 import { createRequire } from "module";
 
 const require = createRequire(import.meta.url);
@@ -32,6 +33,23 @@ serve({ fetch: app.fetch, port: 3000 }, (info) => {
   enqueueJob("CLEANUP_DELETED_NOTES").catch((err) => {
     logger.error({ err }, "Failed to enqueue cleanup job");
   });
+
+  // HNSW インデックスをバックグラウンドで構築。
+  // 未構築だと semantic 検索が線形スキャンにフォールバックするので、
+  // ノート数が増えるとパフォーマンスが劣化する。失敗してもフォールバックがあるので安全。
+  buildSearchIndex()
+    .then(({ indexed, durationMs }) => {
+      logger.info(
+        { indexed, durationMs },
+        "[HNSW] Search index built on startup"
+      );
+    })
+    .catch((err) => {
+      logger.error(
+        { err },
+        "[HNSW] Failed to build search index on startup (semantic searches will use linear scan fallback)"
+      );
+    });
 
   // PTMスナップショットを日次で自動キャプチャ（24時間ごと）
   const PTM_INTERVAL_MS = 24 * 60 * 60 * 1000;
